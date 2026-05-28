@@ -147,6 +147,25 @@ function Home() {
 }
 
 function MainLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
+  // Hide portal layout completely for nested sub-app login pages
+  if (location.pathname.endsWith('/login')) {
+    return <>{children}</>;
+  }
+
+  const subNavLinkStyle = (isActive: boolean) => ({
+    display: 'block',
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '0.85rem',
+    color: isActive ? '#3b82f6' : '#94a3b8',
+    background: isActive ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
+    fontWeight: isActive ? 600 : 500,
+    transition: 'all 0.2s',
+  } as React.CSSProperties);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
       {/* Sidebar */}
@@ -164,6 +183,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <NavLink to="/" icon={LayoutDashboard} label="首页" />
           <NavLink to="/shield" icon={Shield} label="代码安全 (Code Shield)" activePattern={/^\/shield/} />
+          {location.pathname.startsWith('/shield') && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+              <Link to="/shield/tasks" style={subNavLinkStyle(location.pathname === '/shield/tasks' || location.pathname.startsWith('/shield/tasks/'))}>任务中心</Link>
+              <Link to="/shield/issues" style={subNavLinkStyle(location.pathname === '/shield/issues')}>问题清单</Link>
+              <Link to="/shield/opensource" style={subNavLinkStyle(location.pathname === '/shield/opensource')}>开源管理</Link>
+              <Link to="/shield/teams" style={subNavLinkStyle(location.pathname.startsWith('/shield/teams'))}>团队管理</Link>
+              <Link to="/shield/config" style={subNavLinkStyle(location.pathname.startsWith('/shield/config'))}>系统管理</Link>
+            </div>
+          )}
           <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
           <NavLink to="/protohub" icon={Network} label="接口管理系统 (ProtoHub)" activePattern={/^\/protohub/} />
         </nav>
