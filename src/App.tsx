@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon } from 'lucide-react';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
@@ -77,12 +77,12 @@ function NavLink({ to, icon: Icon, label, activePattern }: { to: string; icon: a
     <Link to={to} style={{
       display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem',
       borderRadius: '10px', textDecoration: 'none',
-      color: isActive ? '#3b82f6' : '#94a3b8',
+      color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
       background: isActive ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
       fontWeight: isActive ? 600 : 500,
       fontSize: '0.95rem',
       transition: 'all 0.25s ease',
-      borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent'
+      borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent'
     }}>
       <Icon size={20} />
       <span>{label}</span>
@@ -149,6 +149,23 @@ function Home() {
 function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
+  const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light-theme');
+    } else {
+      root.classList.remove('light-theme');
+    }
+    localStorage.setItem('portal_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   React.useEffect(() => {
     // Dynamically load remote menu metadata from code-shield micro-frontend
@@ -187,23 +204,23 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     borderRadius: '8px',
     textDecoration: 'none',
     fontSize: '0.85rem',
-    color: isActive ? '#3b82f6' : '#94a3b8',
+    color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
     background: isActive ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
     fontWeight: isActive ? 600 : 500,
     transition: 'all 0.2s',
   } as React.CSSProperties);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
       {/* Sidebar */}
-      <aside style={{ width: '280px', background: '#1e293b', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
-        <div style={{ height: '80px', padding: '0 1.5rem', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <aside style={{ width: '280px', background: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
+        <div style={{ height: '80px', padding: '0 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '1.25rem', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}>
             CB
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '1.05rem', color: '#f8fafc', fontWeight: 700, letterSpacing: '0.5px' }}>CodeBench</span>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', letterSpacing: '0.3px' }}>开发者工作台</span>
+            <span style={{ fontSize: '1.05rem', color: 'var(--text-color)', fontWeight: 700, letterSpacing: '0.5px' }}>CodeBench</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.3px' }}>开发者工作台</span>
           </div>
         </div>
 
@@ -233,20 +250,43 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <NavLink to="/protohub" icon={Network} label="接口管理系统 (ProtoHub)" activePattern={/^\/protohub/} />
         </nav>
 
-        <div style={{ padding: '1.5rem', borderTop: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-            U
+        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+              U
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>cndev-user</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc' }}>cndev-user</span>
-            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>管理员</span>
-          </div>
+          <button 
+            onClick={toggleTheme} 
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: '8px', 
+              width: '34px', 
+              height: '34px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              cursor: 'pointer', 
+              color: 'var(--text-color)',
+              transition: 'all 0.2s' 
+            }}
+            title={theme === 'dark' ? "切换为明亮模式" : "切换为暗黑模式"}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <main style={{ flex: 1, overflowY: 'auto', background: '#0f172a' }}>
+        <main style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)' }}>
           {children}
         </main>
       </div>

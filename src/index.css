@@ -3,11 +3,26 @@
 :root {
   --primary-color: #3b82f6;
   --primary-hover: #2563eb;
-  --bg-dark: #0f172a;
-  --card-dark: #1e293b;
-  --border-dark: #334155;
-  --text-primary: #f8fafc;
+  
+  --bg-color: #0f172a;
+  --card-bg: #1e293b;
+  --border-color: #334155;
+  --text-color: #f8fafc;
   --text-secondary: #94a3b8;
+
+  /* Legacy variable mappings for backward compatibility */
+  --bg-dark: var(--bg-color);
+  --card-dark: var(--card-bg);
+  --border-dark: var(--border-color);
+  --text-primary: var(--text-color);
+}
+
+:root.light-theme {
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --border-color: #cbd5e1;
+  --text-color: #0f172a;
+  --text-secondary: #475569;
 }
 
 body {
