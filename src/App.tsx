@@ -155,8 +155,12 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     // @ts-ignore
     import('shield/menu')
       .then(mod => {
-        if (mod && mod.menuItems) {
-          setShieldMenu(mod.menuItems);
+        // Robust module resolution checking all compiled shapes (named, default, or unwrapped array)
+        const items = mod && (mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null));
+        if (items && Array.isArray(items)) {
+          setShieldMenu(items);
+        } else {
+          throw new Error("Invalid menu structure resolved");
         }
       })
       .catch(err => {
