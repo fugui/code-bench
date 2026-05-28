@@ -148,6 +148,29 @@ function Home() {
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    // Dynamically load remote menu metadata from code-shield micro-frontend
+    // @ts-ignore
+    import('shield/menu')
+      .then(mod => {
+        if (mod && mod.menuItems) {
+          setShieldMenu(mod.menuItems);
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to dynamically load shield menu, using robust fallback:", err);
+        // Fallback static menu for resilience
+        setShieldMenu([
+          { path: '/tasks', label: '任务中心' },
+          { path: '/issues', label: '问题清单' },
+          { path: '/opensource', label: '开源管理' },
+          { path: '/teams', label: '团队管理' },
+          { path: '/config', label: '系统管理' }
+        ]);
+      });
+  }, []);
 
   // Hide portal layout completely for nested sub-app login pages
   if (location.pathname.endsWith('/login')) {
@@ -183,13 +206,23 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <NavLink to="/" icon={LayoutDashboard} label="首页" />
           <NavLink to="/shield" icon={Shield} label="代码安全 (Code Shield)" activePattern={/^\/shield/} />
-          {location.pathname.startsWith('/shield') && (
+          {location.pathname.startsWith('/shield') && shieldMenu.length > 0 && (
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-              <Link to="/shield/tasks" style={subNavLinkStyle(location.pathname === '/shield/tasks' || location.pathname.startsWith('/shield/tasks/'))}>任务中心</Link>
-              <Link to="/shield/issues" style={subNavLinkStyle(location.pathname === '/shield/issues')}>问题清单</Link>
-              <Link to="/shield/opensource" style={subNavLinkStyle(location.pathname === '/shield/opensource')}>开源管理</Link>
-              <Link to="/shield/teams" style={subNavLinkStyle(location.pathname.startsWith('/shield/teams'))}>团队管理</Link>
-              <Link to="/shield/config" style={subNavLinkStyle(location.pathname.startsWith('/shield/config'))}>系统管理</Link>
+              {shieldMenu.map((item: any) => {
+                const fullPath = `/shield${item.path}`;
+                return (
+                  <Link
+                    key={item.path}
+                    to={fullPath}
+                    style={subNavLinkStyle(
+                      location.pathname === fullPath ||
+                      location.pathname.startsWith(fullPath + '/')
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           )}
           <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
