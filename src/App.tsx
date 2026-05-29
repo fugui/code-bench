@@ -152,6 +152,19 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
   });
+  const [user, setUser] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    fetch('/api/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setUser(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('code_shield_token');
+    window.location.href = '/shield/login';
+  };
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -249,90 +262,132 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
           <NavLink to="/protohub" icon={Network} label="接口管理系统 (ProtoHub)" activePattern={/^\/protohub/} />
         </nav>
-
-        <div style={{ 
-          padding: '1rem', 
-          margin: '0 1rem 1.5rem 1rem', 
-          borderRadius: '12px', 
-          background: 'rgba(59, 130, 246, 0.03)', 
-          border: '1px solid var(--border-color)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          gap: '0.5rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '10px', 
-              background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
-              color: 'white', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontWeight: 700,
-              fontSize: '1rem',
-              boxShadow: '0 4px 8px rgba(59, 130, 246, 0.2)',
-              flexShrink: 0
-            }}>
-              管
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', letterSpacing: '0.2px' }}>cndev-user</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
-                <span style={{ 
-                  fontSize: '0.65rem', 
-                  padding: '0.1rem 0.35rem', 
-                  borderRadius: '4px', 
-                  background: 'rgba(59, 130, 246, 0.1)', 
-                  color: 'var(--primary-color)', 
-                  fontWeight: 600 
-                }}>
-                  管理员
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button 
-            onClick={toggleTheme} 
-            style={{ 
-              background: 'var(--card-bg)', 
-              border: '1px solid var(--border-color)', 
-              borderRadius: '8px', 
-              width: '36px', 
-              height: '36px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              cursor: 'pointer', 
-              color: 'var(--text-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }}
-            title={theme === 'dark' ? "切换为明亮模式" : "切换为暗黑模式"}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.style.borderColor = 'var(--primary-color)';
-              e.currentTarget.style.color = 'var(--primary-color)';
-              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
-              e.currentTarget.style.color = 'var(--text-color)';
-              e.currentTarget.style.background = 'var(--card-bg)';
-            }}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <header style={{ 
+          height: '80px', 
+          background: 'var(--card-bg)', 
+          borderBottom: '1px solid var(--border-color)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          padding: '0 2.5rem', 
+          justifyContent: 'space-between', 
+          zIndex: 10 
+        }}>
+          <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
+            {(() => {
+              if (location.pathname === '/') return '首页';
+              if (location.pathname.startsWith('/shield/tasks')) return '任务中心';
+              if (location.pathname.startsWith('/shield/issues')) return '问题清单';
+              if (location.pathname.startsWith('/shield/opensource')) return '开源管理';
+              if (location.pathname.startsWith('/shield/teams')) return '团队组织架构与代码仓配置';
+              if (location.pathname.startsWith('/shield/config')) return '系统管理';
+              if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
+              if (location.pathname.startsWith('/protohub')) return '接口管理系统 (ProtoHub)';
+              return '开发者综合工作台';
+            })()}
+          </h1>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <button 
+              onClick={toggleTheme} 
+              style={{ 
+                background: 'var(--bg-color)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '8px', 
+                width: '36px', 
+                height: '36px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                cursor: 'pointer', 
+                color: 'var(--text-color)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' 
+              }}
+              title={theme === 'dark' ? "切换为明亮模式" : "切换为暗黑模式"}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.borderColor = 'var(--primary-color)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.color = 'var(--text-color)';
+                e.currentTarget.style.background = 'var(--bg-color)';
+              }}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
+                  color: 'white', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
+                }}>
+                  {(user.name || user.username).charAt(0).toUpperCase()}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{user.is_admin ? '管理员' : '普通用户'}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.25rem',
+                    borderRadius: '4px',
+                    marginLeft: '0.5rem',
+                    transition: 'all 0.2s'
+                  }}
+                  title="退出登录"
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <Link 
+                to="/shield/login" 
+                style={{ 
+                  fontSize: '0.875rem', 
+                  color: 'var(--primary-color)', 
+                  textDecoration: 'none',
+                  fontWeight: 600
+                }}
+              >
+                登录系统
+              </Link>
+            )}
+          </div>
+        </header>
+
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)' }}>
           {children}
         </main>
