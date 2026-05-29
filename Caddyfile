@@ -1,28 +1,27 @@
 :80 {
-                                          
     # 静态根目录指向主 Portal 编译出的物理路径
     root * /home/fugui/codes/code-bench/dist
+
     # ────────────────────────────────────────────────────────
-    # 1. 专门接收子应用静态资源，直接反代（没有任何 try_files 抢跑，100% 安全）
+    # 1. 匹配子应用的静态资源与 API 请求，统一反向代理
     # ────────────────────────────────────────────────────────
-    handle /shield/assets/* {
-        reverse_proxy localhost:8080
+    # 提示：此处支持通过环境变量 SHIELD_BACKEND 动态覆盖代理目标（例如容器部署时设为 shield-server:8080）
+    # 缺省时默认回退到本地的 localhost:8080 端口
+    @shield_proxy path /shield/assets/* /shield/api/*
+    handle @shield_proxy {
+        reverse_proxy {$SHIELD_BACKEND:localhost:8080}
     }
+
     # ────────────────────────────────────────────────────────
-    # 2. 专门接收子应用 API 接口，直接反代（没有任何 try_files 抢跑，100% 安全）
-    # ────────────────────────────────────────────────────────
-    handle /shield/api/* {
-        reverse_proxy localhost:8080
-    }
-    # ────────────────────────────────────────────────────────
-    # 3. 拦截子应用的页面刷新请求（如 /shield/tasks），重写为 /index.html 返回给基座
+    # 2. 拦截子应用的页面刷新请求（如 /shield/tasks），重写为 /index.html 返回给基座由 React 路由处理
     # ────────────────────────────────────────────────────────
     handle /shield* {
         rewrite * /index.html
         file_server
     }
+
     # ────────────────────────────────────────────────────────
-    # 4. 其它所有主 Portal 站点的正常请求（防刷新 404 兜底）
+    # 3. 其它所有主 Portal 站点的正常请求（防浏览器刷新 404 兜底）
     # ────────────────────────────────────────────────────────
     handle {
         try_files {path} /index.html
