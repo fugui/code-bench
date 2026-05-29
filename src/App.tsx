@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return this.props.fallback || (
         <div style={{
-          padding: '2.5rem', background: '#1e293b', borderRadius: '12px',
+          padding: '2.5rem', background: 'var(--card-bg)', borderRadius: '12px',
           border: '1px solid #ef4444', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: '1.25rem', maxWidth: '500px', margin: '4rem auto', textAlign: 'center'
@@ -41,8 +41,8 @@ class ErrorBoundary extends React.Component<
             <AlertCircle size={24} color="#ef4444" />
           </div>
           <div>
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#f8fafc' }}>子应用加载失败</h3>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.5 }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-color)' }}>子应用加载失败</h3>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               无法连接到对应的子系统模块。这可能是由于子服务未启动或网络连接问题导致的。
             </p>
           </div>
@@ -97,9 +97,9 @@ const ShieldApp = React.lazy(() => import('shield/App'));
 function Home() {
   return (
     <div style={{ padding: '2.5rem' }}>
-      <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
-      <p style={{ color: '#94a3b8', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '800px' }}>
-        这里是您的一站式研发效能与安全管理中心。我们聚合了代码安全、大模型网关、接口集成等核心业务系统。
+      <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '800px' }}>
+        这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量、大模型网关、接口集成等核心业务系统。
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -108,9 +108,9 @@ function Home() {
             <div className="card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
               <Shield size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#f8fafc', fontWeight: 600 }}>代码安全 (Code Shield)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>代码质量 (Code Shield)</h3>
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
             码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。
           </p>
           <Link to="/shield" className="card-btn">进入系统 &rarr;</Link>
@@ -121,9 +121,9 @@ function Home() {
             <div className="card-icon" style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
               <Brain size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#f8fafc', fontWeight: 600 }}>模型网关 (ModelGate)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>模型网关 (ModelGate)</h3>
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
             大模型集成接入网关。支持多模型分流、调用量审计、提示词安全过滤以及 API key 分发管理。
           </p>
           <Link to="/modelgate" className="card-btn">进入系统 &rarr;</Link>
@@ -134,9 +134,9 @@ function Home() {
             <div className="card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
               <Network size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#f8fafc', fontWeight: 600 }}>接口管理系统 (ProtoHub)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>接口管理系统 (ProtoHub)</h3>
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
             接口与协议统一管理中心。提供 API 设计、Mock 服务联调、契约测试以及多协议数据网关服务。
           </p>
           <Link to="/protohub" className="card-btn">进入系统 &rarr;</Link>
@@ -226,7 +226,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <NavLink to="/" icon={LayoutDashboard} label="首页" />
-          <NavLink to="/shield" icon={Shield} label="代码安全 (Code Shield)" activePattern={/^\/shield/} />
+          <NavLink to="/shield" icon={Shield} label="代码质量 (Code Shield)" activePattern={/^\/shield/} />
           {location.pathname.startsWith('/shield') && shieldMenu.length > 0 && (
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
               {shieldMenu.map((item: any) => {
@@ -301,8 +301,8 @@ function PlaceholderView({ title, icon: Icon, color }: { title: string; icon: an
         <Icon size={40} />
       </div>
       <div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>{title}</h2>
-        <p style={{ fontSize: '1rem', color: '#94a3b8', maxWidth: '500px', lineHeight: 1.6 }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', margin: '0 0 0.5rem 0' }}>{title}</h2>
+        <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', maxWidth: '500px', lineHeight: 1.6 }}>
           此应用模块目前正在建设中。主门户已预留其微前端接入锚点，部署完成后将通过模块联邦技术无缝呈现于此。
         </p>
       </div>
@@ -319,9 +319,9 @@ export default function App() {
           <Route path="/shield/*" element={
             <ErrorBoundary>
               <Suspense fallback={
-                <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', color: '#94a3b8' }}>
+                <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', color: 'var(--text-secondary)' }}>
                   <div className="spinner"></div>
-                  <span style={{ fontSize: '0.95rem' }}>正在加载代码安全微应用...</span>
+                  <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
                 </div>
               }>
                 {/* @ts-ignore */}
