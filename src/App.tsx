@@ -159,11 +159,12 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   const portalFetch = (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('code_shield_token');
+    const finalUrl = url.startsWith('/api') ? `/shield${url}` : url;
     const headers = {
       ...options.headers,
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
-    return fetch(url, { ...options, headers });
+    return fetch(finalUrl, { ...options, headers });
   };
 
   React.useEffect(() => {
