@@ -283,21 +283,28 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <NavLink to="/shield" icon={Shield} label="代码质量 (Code Shield)" activePattern={/^\/shield/} />
           {location.pathname.startsWith('/shield') && shieldMenu.length > 0 && (
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-              {shieldMenu.map((item: any) => {
-                const fullPath = `/shield${item.path}`;
-                return (
-                  <Link
-                    key={item.path}
-                    to={fullPath}
-                    style={subNavLinkStyle(
-                      location.pathname === fullPath ||
-                      location.pathname.startsWith(fullPath + '/')
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {shieldMenu
+                .filter((item: any) => {
+                  if (item.path === '/config') {
+                    return user && !!user.is_admin;
+                  }
+                  return true;
+                })
+                .map((item: any) => {
+                  const fullPath = `/shield${item.path}`;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={fullPath}
+                      style={subNavLinkStyle(
+                        location.pathname === fullPath ||
+                        location.pathname.startsWith(fullPath + '/')
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
             </div>
           )}
           <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
