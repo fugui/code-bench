@@ -1,14 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
 
 :root {
-  --primary-color: #3b82f6;
-  --primary-hover: #2563eb;
-  
-  --bg-color: #0f172a;
-  --card-bg: #1e293b;
-  --border-color: #334155;
-  --text-color: #f8fafc;
-  --text-secondary: #94a3b8;
+  /* Namespaced variables to prevent micro-frontend clashes and circular references */
+  --portal-primary-color: #3b82f6;
+  --portal-primary-hover: #2563eb;
+  --portal-bg-color: #0f172a;
+  --portal-card-bg: #1e293b;
+  --portal-border-color: #334155;
+  --portal-text-color: #f8fafc;
+  --portal-text-secondary: #94a3b8;
+
+  /* Standardized variables mapped for this application */
+  --primary-color: var(--portal-primary-color);
+  --primary-hover: var(--portal-primary-hover);
+  --bg-color: var(--portal-bg-color);
+  --card-bg: var(--portal-card-bg);
+  --border-color: var(--portal-border-color);
+  --text-color: var(--portal-text-color);
+  --text-secondary: var(--portal-text-secondary);
 
   /* Legacy variable mappings for backward compatibility */
   --bg-dark: var(--bg-color);
@@ -18,11 +27,11 @@
 }
 
 :root.light-theme {
-  --bg-color: #f8fafc;
-  --card-bg: #ffffff;
-  --border-color: #cbd5e1;
-  --text-color: #0f172a;
-  --text-secondary: #475569;
+  --portal-bg-color: #f8fafc;
+  --portal-card-bg: #ffffff;
+  --portal-border-color: #cbd5e1;
+  --portal-text-color: #0f172a;
+  --portal-text-secondary: #475569;
 }
 
 body {
