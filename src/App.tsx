@@ -153,9 +153,21 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
   });
   const [user, setUser] = React.useState<any>(null);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
+  const [passwordForm, setPasswordForm] = React.useState({ oldPassword: '', newPassword: '' });
+
+  const portalFetch = (url: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('code_shield_token');
+    const headers = {
+      ...options.headers,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    return fetch(url, { ...options, headers });
+  };
 
   React.useEffect(() => {
-    fetch('/api/me')
+    portalFetch('/api/me')
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setUser(data); })
       .catch(() => {});
@@ -165,6 +177,34 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('code_shield_token');
     window.location.href = '/shield/login';
   };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await portalFetch('/api/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: passwordForm.oldPassword, new_password: passwordForm.newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('密码修改成功，即将退出登录并重新登录！');
+        setShowPasswordModal(false);
+        handleLogout();
+      } else {
+        alert(data.error || '修改密码失败');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('发生网络错误');
+    }
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = () => setShowDropdown(false);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -327,50 +367,73 @@ function MainLayout({ children }: { children: React.ReactNode }) {
             <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
 
             {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ 
-                  width: '36px', 
-                  height: '36px', 
-                  borderRadius: '50%', 
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
-                  color: 'white', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
-                }}>
-                  {(user.name || user.username).charAt(0).toUpperCase()}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{user.is_admin ? '管理员' : '普通用户'}</span>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
                 <button
-                  onClick={handleLogout}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#ef4444',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0.25rem',
-                    borderRadius: '4px',
-                    marginLeft: '0.5rem',
-                    transition: 'all 0.2s'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(!showDropdown);
                   }}
-                  title="退出登录"
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'transparent',
+                    border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px',
+                    transition: 'background-color 0.2s', outline: 'none'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  <div style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '50%', 
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
+                    color: 'white', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
+                  }}>
+                    {(user.name || user.username).charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{user.is_admin ? '管理员' : '普通用户'}</span>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.25rem', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                    <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
+
+                {showDropdown && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '180px',
+                    background: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border-color)',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100
+                  }}>
+                    <div style={{ padding: '0.5rem' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setShowPasswordModal(true); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        修改密码
+                      </button>
+                      <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }}></div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        退出登录
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <Link 
@@ -392,6 +455,28 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {showPasswordModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ width: '400px', maxWidth: '90%', padding: '2rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-color)' }}>修改密码</h3>
+            <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)' }}>当前密码</label>
+                <input required type="password" value={passwordForm.oldPassword} onChange={e => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)' }}>新密码</label>
+                <input required type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                <button type="button" onClick={() => setShowPasswordModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem' }}>取消</button>
+                <button type="submit" className="btn" style={{ padding: '0.5rem 1.5rem', border: 'none', background: 'var(--primary-color)', color: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>确认修改</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
