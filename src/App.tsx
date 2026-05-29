@@ -250,36 +250,83 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <NavLink to="/protohub" icon={Network} label="接口管理系统 (ProtoHub)" activePattern={/^\/protohub/} />
         </nav>
 
-        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div style={{ 
+          padding: '1rem', 
+          margin: '0 1rem 1.5rem 1rem', 
+          borderRadius: '12px', 
+          background: 'rgba(59, 130, 246, 0.03)', 
+          border: '1px solid var(--border-color)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          gap: '0.5rem',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-              U
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '10px', 
+              background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
+              color: 'white', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontWeight: 700,
+              fontSize: '1rem',
+              boxShadow: '0 4px 8px rgba(59, 130, 246, 0.2)',
+              flexShrink: 0
+            }}>
+              管
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>cndev-user</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', letterSpacing: '0.2px' }}>cndev-user</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                <span style={{ 
+                  fontSize: '0.65rem', 
+                  padding: '0.1rem 0.35rem', 
+                  borderRadius: '4px', 
+                  background: 'rgba(59, 130, 246, 0.1)', 
+                  color: 'var(--primary-color)', 
+                  fontWeight: 600 
+                }}>
+                  管理员
+                </span>
+              </div>
             </div>
           </div>
+
           <button 
             onClick={toggleTheme} 
             style={{ 
-              background: 'rgba(255, 255, 255, 0.05)', 
+              background: 'var(--card-bg)', 
               border: '1px solid var(--border-color)', 
               borderRadius: '8px', 
-              width: '34px', 
-              height: '34px', 
+              width: '36px', 
+              height: '36px', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
               cursor: 'pointer', 
               color: 'var(--text-color)',
-              transition: 'all 0.2s' 
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' 
             }}
             title={theme === 'dark' ? "切换为明亮模式" : "切换为暗黑模式"}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+              e.currentTarget.style.borderColor = 'var(--primary-color)';
+              e.currentTarget.style.color = 'var(--primary-color)';
+              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.color = 'var(--text-color)';
+              e.currentTarget.style.background = 'var(--card-bg)';
+            }}
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </aside>
