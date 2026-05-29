@@ -399,7 +399,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   </div>
                   <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{user.is_admin ? '管理员' : '普通用户'}</span>
+                    {user.is_admin && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>
+                    )}
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.25rem', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                     <polyline points="6 9 12 15 18 9"></polyline>
