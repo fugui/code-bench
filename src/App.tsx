@@ -167,11 +167,17 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     return fetch(finalUrl, { ...options, headers });
   };
 
-  React.useEffect(() => {
+  const loadUser = () => {
     portalFetch('/api/me')
       .then(res => res.ok ? res.json() : null)
-      .then(data => { if (data) setUser(data); })
-      .catch(() => {});
+      .then(data => { if (data) setUser(data); else setUser(null); })
+      .catch(() => setUser(null));
+  };
+
+  React.useEffect(() => {
+    loadUser();
+    window.addEventListener('auth-change', loadUser);
+    return () => window.removeEventListener('auth-change', loadUser);
   }, []);
 
   const handleLogout = () => {
