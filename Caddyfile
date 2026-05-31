@@ -7,7 +7,7 @@
     # ────────────────────────────────────────────────────────
     # 提示：此处支持通过环境变量 SHIELD_BACKEND 动态覆盖代理目标（例如容器部署时设为 shield-server:8080）
     # 缺省时默认回退到本地的 localhost:8080 端口
-    @shield_proxy path /shield/assets/* /shield/api/*
+    @shield_proxy path /shield/assets/* /shield/api/* /shield/public/*
     handle @shield_proxy {
         reverse_proxy {$SHIELD_BACKEND:localhost:8080}
     }
