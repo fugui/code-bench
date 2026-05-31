@@ -149,6 +149,7 @@ function Home() {
 function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
+  const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
   });
@@ -232,23 +233,28 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     // @ts-ignore
     import('shield/menu')
       .then(mod => {
-        // Robust module resolution checking all compiled shapes (named, default, or unwrapped array)
-        const items = mod && (mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null));
-        if (items && Array.isArray(items)) {
-          setShieldMenu(items);
-        } else {
-          throw new Error("Invalid menu structure resolved");
+        // Robust module resolution checking both grouped and flat lists
+        if (mod) {
+          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+            setShieldMenuGroups(mod.menuGroups);
+          }
+          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+          if (items && Array.isArray(items)) {
+            setShieldMenu(items);
+          }
         }
       })
       .catch(err => {
         console.warn("Failed to dynamically load shield menu, using robust fallback:", err);
-        // Fallback static menu for resilience
+        // Fallback static menu for resilience matching new layout paths
         setShieldMenu([
-          { path: '/tasks', label: '任务中心' },
-          { path: '/issues', label: '问题清单' },
-          { path: '/opensource', label: '开源管理' },
-          { path: '/teams', label: '团队管理' },
-          { path: '/config', label: '系统管理' }
+          { path: '/reports', label: '报告概览' },
+          { path: '/analysis/ut', label: '测试有效性' },
+          { path: '/admin/scan', label: '扫描任务', adminOnly: true },
+          { path: '/admin/task-types', label: '任务类型', adminOnly: true },
+          { path: '/admin/teams', label: '团队与代码仓', adminOnly: true },
+          { path: '/admin/users', label: '用户管理', adminOnly: true },
+          { path: '/admin/activity', label: '执行日志', adminOnly: true }
         ]);
       });
   }, []);
@@ -287,30 +293,77 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <NavLink to="/" icon={LayoutDashboard} label="首页" />
           <NavLink to="/shield" icon={Shield} label="代码质量 (Code Shield)" activePattern={/^\/shield/} />
-          {location.pathname.startsWith('/shield') && shieldMenu.length > 0 && (
-            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-              {shieldMenu
-                .filter((item: any) => {
-                  if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
-                    return user && !!user.is_admin;
-                  }
-                  return true;
-                })
-                .map((item: any) => {
-                  const fullPath = `/shield${item.path}`;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={fullPath}
-                      style={subNavLinkStyle(
-                        location.pathname === fullPath ||
-                        location.pathname.startsWith(fullPath + '/')
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+          {location.pathname.startsWith('/shield') && (shieldMenuGroups.length > 0 || shieldMenu.length > 0) && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              {shieldMenuGroups.length > 0 ? (
+                // Grouped Menu Layout
+                shieldMenuGroups
+                  .filter((group: any) => {
+                    if (group.adminOnly) {
+                      return user && !!user.is_admin;
+                    }
+                    return true;
+                  })
+                  .map((group: any) => {
+                    const visibleItems = (group.items || []).filter((item: any) => {
+                      if (item.adminOnly) {
+                        return user && !!user.is_admin;
+                      }
+                      return true;
+                    });
+
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {group.title}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                          {visibleItems.map((item: any) => {
+                            const fullPath = `/shield${item.path}`;
+                            return (
+                              <Link
+                                key={item.path}
+                                to={fullPath}
+                                style={subNavLinkStyle(
+                                  location.pathname === fullPath ||
+                                  location.pathname.startsWith(fullPath + '/')
+                                )}
+                              >
+                                {item.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                // Flat Menu Fallback Layout
+                shieldMenu
+                  .filter((item: any) => {
+                    if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
+                      return user && !!user.is_admin;
+                    }
+                    return true;
+                  })
+                  .map((item: any) => {
+                    const fullPath = `/shield${item.path}`;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={fullPath}
+                        style={subNavLinkStyle(
+                          location.pathname === fullPath ||
+                          location.pathname.startsWith(fullPath + '/')
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })
+              )}
             </div>
           )}
           <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
