@@ -291,7 +291,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
               {shieldMenu
                 .filter((item: any) => {
-                  if (item.path === '/config') {
+                  if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
                     return user && !!user.is_admin;
                   }
                   return true;
@@ -333,11 +333,14 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
             {(() => {
               if (location.pathname === '/') return '首页';
-              if (location.pathname.startsWith('/shield/tasks')) return '任务中心';
-              if (location.pathname.startsWith('/shield/issues')) return '问题清单';
-              if (location.pathname.startsWith('/shield/opensource')) return '开源管理';
-              if (location.pathname.startsWith('/shield/teams')) return '团队组织架构与代码仓配置';
-              if (location.pathname.startsWith('/shield/config')) return '系统管理';
+              if (location.pathname.startsWith('/shield/reports') || location.pathname.startsWith('/shield/tasks')) return '报告中心';
+              if (location.pathname.startsWith('/shield/analysis/ut') || location.pathname.startsWith('/shield/issues')) return '测试有效性分析';
+              if (location.pathname.startsWith('/shield/admin/scan')) return '扫描任务管理';
+              if (location.pathname.startsWith('/shield/admin/task-types')) return '任务类型管理';
+              if (location.pathname.startsWith('/shield/admin/teams') || location.pathname.startsWith('/shield/teams')) return '团队与代码仓管理';
+              if (location.pathname.startsWith('/shield/admin/users')) return '用户管理';
+              if (location.pathname.startsWith('/shield/admin/activity')) return '执行日志';
+              if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/protohub')) return '接口管理系统 (ProtoHub)';
               return '开发者综合工作台';
