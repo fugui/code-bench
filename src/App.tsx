@@ -366,8 +366,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
-          <NavLink to="/modelgate" icon={Brain} label="大模型网关 (ModelGate)" activePattern={/^\/modelgate/} />
-          <NavLink to="/protohub" icon={Network} label="接口管理系统 (ProtoHub)" activePattern={/^\/protohub/} />
         </nav>
       </aside>
 
