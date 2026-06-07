@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon } from 'lucide-react';
+import Login from './Login';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
@@ -148,31 +149,52 @@ function Home() {
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
   });
   const [user, setUser] = React.useState<any>(null);
+  const [loadingUser, setLoadingUser] = React.useState(true);
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [passwordForm, setPasswordForm] = React.useState({ oldPassword: '', newPassword: '' });
 
   const portalFetch = (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('code_shield_token');
-    const finalUrl = url.startsWith('/api') ? `/shield${url}` : url;
     const headers = {
       ...options.headers,
+      'X-Portal-Request': 'true',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
-    return fetch(finalUrl, { ...options, headers });
+    return fetch(url, { ...options, headers });
   };
 
   const loadUser = () => {
+    const token = localStorage.getItem('code_shield_token');
+    if (!token) {
+      setUser(null);
+      setLoadingUser(false);
+      return;
+    }
     portalFetch('/api/me')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => { if (data) setUser(data); else setUser(null); })
-      .catch(() => setUser(null));
+      .then(res => {
+        if (res.status === 401) {
+          localStorage.removeItem('code_shield_token');
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      })
+      .then(data => {
+        if (data) setUser(data);
+        else setUser(null);
+        setLoadingUser(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setLoadingUser(false);
+      });
   };
 
   React.useEffect(() => {
@@ -183,7 +205,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     localStorage.removeItem('code_shield_token');
-    window.location.href = '/shield/login';
+    setUser(null);
+    window.dispatchEvent(new Event('auth-change'));
+    navigate('/', { replace: true });
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -259,9 +283,22 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  // Hide portal layout completely for nested sub-app login pages
-  if (location.pathname.endsWith('/login')) {
-    return <>{children}</>;
+  // Enforce authentication gate
+  if (loadingUser) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: '#64748b', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .spinner { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(59,130,246,0.2); border-top: 2px solid #3b82f6; animation: spin 0.8s linear infinite; }
+        `}</style>
+        <div className="spinner"></div>
+        <span style={{ marginLeft: '12px', fontSize: '0.95rem', fontWeight: 500 }}>正在验证身份...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login onLoginSuccess={loadUser} />;
   }
 
   const subNavLinkStyle = (isActive: boolean) => ({
