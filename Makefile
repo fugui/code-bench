@@ -8,10 +8,12 @@ install:
 	@echo "Installing Portal dependencies..."
 	cd frontend && ( [ -d node_modules ] || npm install )
 
-# 编译构建静态资产 (dist/)
+# 编译构建静态资产 (dist/) 与后端可执行文件
 build: install
 	@echo "Building code-bench Portal..."
 	cd frontend && npm run build
+	@echo "Building code-bench Go backend..."
+	go build -o code-bench-portal
 
 # 启动本地开发调试服务器
 dev: install
