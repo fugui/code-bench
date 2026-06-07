@@ -1,7 +1,10 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck } from 'lucide-react';
 import Login from './Login';
+import UserManagement from './pages/UserManagement';
+import TeamManagement from './pages/TeamManagement';
+import { ToastProvider } from './components/Toast';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
@@ -343,6 +346,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   })
                   .map((group: any) => {
                     const visibleItems = (group.items || []).filter((item: any) => {
+                      if (item.path === '/admin/teams' || item.path === '/admin/users') {
+                        return false;
+                      }
                       if (item.adminOnly) {
                         return user && !!user.is_admin;
                       }
@@ -380,6 +386,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 // Flat Menu Fallback Layout
                 shieldMenu
                   .filter((item: any) => {
+                    if (item.path === '/admin/teams' || item.path === '/admin/users') {
+                      return false;
+                    }
                     if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
                       return user && !!user.is_admin;
                     }
@@ -401,6 +410,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     );
                   })
               )}
+            </div>
+          )}
+          {user && user.is_admin && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
+                系统管理
+              </div>
+              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} />
+              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} />
             </div>
           )}
         </nav>
@@ -431,6 +449,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/protohub')) return '接口管理系统 (ProtoHub)';
+              if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
+              if (location.pathname.startsWith('/admin/users')) return '用户管理';
               return '开发者综合工作台';
             })()}
           </h1>
@@ -607,26 +627,31 @@ function PlaceholderView({ title, icon: Icon, color }: { title: string; icon: an
 export default function App() {
   return (
     <BrowserRouter>
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/shield/*" element={
-            <ErrorBoundary>
-              <Suspense fallback={
-                <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                  <div className="spinner"></div>
-                  <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
-                </div>
-              }>
-                {/* @ts-ignore */}
-                <ShieldApp isEmbedded={true} />
-              </Suspense>
-            </ErrorBoundary>
-          } />
-          <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
-          <Route path="/protohub/*" element={<PlaceholderView title="接口管理系统 (ProtoHub)" icon={Network} color="16, 185, 129" />} />
-        </Routes>
-      </MainLayout>
+      <ToastProvider>
+        <MainLayout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/admin/users" element={<UserManagement />} />
+            <Route path="/admin/teams" element={<TeamManagement />} />
+            <Route path="/admin/teams/:tab" element={<TeamManagement />} />
+            <Route path="/shield/*" element={
+              <ErrorBoundary>
+                <Suspense fallback={
+                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                    <div className="spinner"></div>
+                    <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
+                  </div>
+                }>
+                  {/* @ts-ignore */}
+                  <ShieldApp isEmbedded={true} />
+                </Suspense>
+              </ErrorBoundary>
+            } />
+            <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
+            <Route path="/protohub/*" element={<PlaceholderView title="接口管理系统 (ProtoHub)" icon={Network} color="16, 185, 129" />} />
+          </Routes>
+        </MainLayout>
+      </ToastProvider>
     </BrowserRouter>
   );
 }
