@@ -624,6 +624,31 @@ function PlaceholderView({ title, icon: Icon, color }: { title: string; icon: an
   );
 }
 
+function OAuthCallback() {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      localStorage.setItem('code_shield_token', token);
+      window.dispatchEvent(new Event('auth-change'));
+      navigate('/', { replace: true });
+    } else {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: '#64748b' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', margin: '0 auto 1rem', border: '3px solid rgba(59,130,246,0.2)', borderTop: '3px solid #3b82f6', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <span style={{ fontSize: '0.95rem' }}>正在完成登录凭证处理...</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -631,6 +656,7 @@ export default function App() {
         <MainLayout>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/oauth2/callback" element={<OAuthCallback />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/teams" element={<TeamManagement />} />
             <Route path="/admin/teams/:tab" element={<TeamManagement />} />

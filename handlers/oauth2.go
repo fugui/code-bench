@@ -373,8 +373,8 @@ func parseSSOEnglishName(val string) string {
 
 func buildFrontendCallbackURL(token, email string) string {
 	externalURL := strings.TrimRight(models.AppConfig.Server.ExternalURL, "/")
-	// Note: React-Router mounts code-shield under /shield, so redirect to micro-frontend callback route.
-	callbackPath := "/shield/oauth2/callback"
+	// Note: redirect to portal's own callback route
+	callbackPath := "/oauth2/callback"
 
 	params := url.Values{
 		"token": {token},
