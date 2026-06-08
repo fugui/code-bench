@@ -6,6 +6,31 @@ auth:
   jwt_secret: "YOUR_JWT_SECRET_KEY_HERE" # Unified shared secret, should be updated for production
   password_login_enabled: true
 
+  # ── OAuth2 / OIDC 单点登录配置 (SSO) ──
+  oauth2:
+    enabled: false                   # 是否启用 OAuth2 / OIDC 单点登录
+    client_id: "code-bench"          # 在 OAuth2 Provider 中注册的 Client ID
+    client_secret: ""                # Client Secret
+    auth_url: "https://sso.yourcompany.com/realms/main/protocol/openid-connect/auth"      # Authorization Endpoint
+    token_url: "https://sso.yourcompany.com/realms/main/protocol/openid-connect/token"     # Token Endpoint
+    userinfo_url: "https://sso.yourcompany.com/realms/main/protocol/openid-connect/userinfo" # UserInfo Endpoint
+    redirect_url: ""                 # 回调地址（留空则自动推导为 <external_url>/api/oauth2/callback）
+    scopes:
+      - "openid"
+      - "profile"
+      - "email"
+    admin_list:
+      - "admin@yourcompany.com"      # 管理员邮箱列表，匹配到的用户会自动同步为管理员
+    # ── 用户信息字段映射 ──
+    field_mapping:
+      username: "preferred_username"
+      email: "email"
+      name: "name"
+      employee_id: "employee_id"
+      unique_id: "unique_id"
+      employee_type: "employee_type"
+    dept_api_url: ""                 # 部门信息同步 API 地址（可选）
+
 sync:
   targets:
     - "http://127.0.0.1:8080"
