@@ -344,6 +344,16 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
+  const isPublicRoute = location.pathname.startsWith('/shield/public/');
+
+  if (isPublicRoute) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
+        {children}
+      </div>
+    );
+  }
+
   // Enforce authentication gate
   if (loadingUser) {
     return (
