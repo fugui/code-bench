@@ -681,6 +681,7 @@ function OAuthCallback() {
     if (token) {
       localStorage.setItem('code_shield_token', token);
       sessionStorage.removeItem('sso_error_flag');
+      sessionStorage.removeItem('dept_synced');
       window.dispatchEvent(new Event('auth-change'));
       navigate('/', { replace: true });
     } else {
