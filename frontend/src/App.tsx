@@ -163,6 +163,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [passwordForm, setPasswordForm] = React.useState({ oldPassword: '', newPassword: '' });
+  const authConfigRef = React.useRef<any>(null);
 
   const portalFetch = (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('code_shield_token');
@@ -190,8 +191,41 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         return res.ok ? res.json() : null;
       })
       .then(data => {
-        if (data) setUser(data);
-        else setUser(null);
+        if (data) {
+          setUser(data);
+
+          // 自动拉取并同步部门信息逻辑
+          const activeConfig = authConfigRef.current;
+          if (activeConfig?.dept_api_url && !data.department_id && !sessionStorage.getItem('dept_synced')) {
+            sessionStorage.setItem('dept_synced', 'true');
+            console.log('[MainLayout] Syncing user department from api:', activeConfig.dept_api_url);
+            fetch(activeConfig.dept_api_url)
+              .then(res => res.json())
+              .then(deptData => {
+                const deptName = deptData?.data?.department;
+                if (deptName) {
+                  console.log('[MainLayout] Found department:', deptName, ', sending update to portal...');
+                  portalFetch('/api/me/department', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ department: deptName })
+                  })
+                  .then(updateRes => {
+                    if (updateRes.ok) {
+                      console.log('[MainLayout] Department sync successful');
+                      loadUser(); // 重新加载用户状态以刷新界面上的部门显示
+                    }
+                  })
+                  .catch(err => console.error('[MainLayout] Failed to update user department:', err));
+                } else {
+                  console.warn('[MainLayout] Department field empty in API response:', deptData);
+                }
+              })
+              .catch(err => console.error('[MainLayout] Failed to fetch department from API:', err));
+          }
+        } else {
+          setUser(null);
+        }
         setLoadingUser(false);
       })
       .catch(() => {
@@ -202,6 +236,19 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     loadUser();
+
+    // 拉取 auth/config 以缓存 dept_api_url
+    fetch('/api/auth/config', { headers: { 'X-Portal-Request': 'true' } })
+      .then(res => res.json())
+      .then(configData => {
+        authConfigRef.current = configData;
+        // 如果在此之前 loadUser 已经执行完，且 user 已经拿到但未绑定部门，手动触发一次拉取
+        if (localStorage.getItem('code_shield_token')) {
+          loadUser();
+        }
+      })
+      .catch(err => console.error('Failed to load auth config in portal:', err));
+
     window.addEventListener('auth-change', loadUser);
     return () => window.removeEventListener('auth-change', loadUser);
   }, []);
@@ -209,6 +256,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     localStorage.removeItem('code_shield_token');
     sessionStorage.removeItem('sso_error_flag');
+    sessionStorage.removeItem('dept_synced');
     setUser(null);
     window.dispatchEvent(new Event('auth-change'));
     navigate('/', { replace: true });
