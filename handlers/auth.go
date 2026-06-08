@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -72,6 +73,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 		if tokenString == "" {
+			log.Println("[AuthMiddleware] Authorization header missing")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
 			c.Abort()
 			return
@@ -83,6 +85,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		claims, err := ParseToken(tokenString)
 		if err != nil {
+			log.Printf("[AuthMiddleware] Token verification failed: %v", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			c.Abort()
 			return
@@ -90,12 +93,14 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		var user models.User
 		if err := database.DB.Preload("Department").First(&user, claims.UserID).Error; err != nil {
+			log.Printf("[AuthMiddleware] User ID %d not found in database: %v", claims.UserID, err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 			c.Abort()
 			return
 		}
 
 		if !user.IsActive {
+			log.Printf("[AuthMiddleware] User ID %d (%s) is inactive", user.ID, user.Email)
 			c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
 			c.Abort()
 			return

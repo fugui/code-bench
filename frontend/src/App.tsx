@@ -176,25 +176,36 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   const loadUser = () => {
     const token = localStorage.getItem('code_shield_token');
+    console.log('[MainLayout] loadUser triggered. Token length:', token ? token.length : 0);
     if (!token) {
+      console.log('[MainLayout] No token found in localStorage, setting user to null');
       setUser(null);
       setLoadingUser(false);
       return;
     }
+    console.log('[MainLayout] Token exists, fetching /api/me ...');
     portalFetch('/api/me')
       .then(res => {
+        console.log('[MainLayout] /api/me response status:', res.status);
         if (res.status === 401) {
+          console.warn('[MainLayout] /api/me returned 401, clearing token!');
           localStorage.removeItem('code_shield_token');
           return null;
         }
         return res.ok ? res.json() : null;
       })
       .then(data => {
-        if (data) setUser(data);
-        else setUser(null);
+        if (data) {
+          console.log('[MainLayout] Successfully loaded user profile:', data.email || data.username);
+          setUser(data);
+        } else {
+          console.log('[MainLayout] Failed to parse user data, setting user to null');
+          setUser(null);
+        }
         setLoadingUser(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[MainLayout] Error fetching /api/me:', err);
         setUser(null);
         setLoadingUser(false);
       });
@@ -628,14 +639,19 @@ function PlaceholderView({ title, icon: Icon, color }: { title: string; icon: an
 function OAuthCallback() {
   const navigate = useNavigate();
   React.useEffect(() => {
+    console.log('[OAuthCallback Component] Mounted. URL Search:', window.location.search);
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (token) {
+      console.log('[OAuthCallback Component] Extracted token from URL, setting in localStorage...');
       localStorage.setItem('code_shield_token', token);
       sessionStorage.removeItem('sso_error_flag');
+      console.log('[OAuthCallback Component] Dispatched auth-change event');
       window.dispatchEvent(new Event('auth-change'));
+      console.log('[OAuthCallback Component] Navigating back to "/" ...');
       navigate('/', { replace: true });
     } else {
+      console.warn('[OAuthCallback Component] No token found in URL, redirecting to "/"');
       navigate('/', { replace: true });
     }
   }, [navigate]);
