@@ -199,9 +199,18 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           if (activeConfig?.dept_api_url && !data.department_id && !sessionStorage.getItem('dept_synced')) {
             sessionStorage.setItem('dept_synced', 'true');
             console.log('[MainLayout] Syncing user department from api:', activeConfig.dept_api_url);
-            fetch(activeConfig.dept_api_url)
-              .then(res => res.json())
+            fetch(activeConfig.dept_api_url, { credentials: 'include' })
+              .then(res => {
+                if (res.status === 403) {
+                  const loginUrl = res.headers.get('x-login-url');
+                  const service = res.headers.get('x-login-service');
+                  const appid = res.headers.get('x-login-appid');
+                  console.warn(`[MainLayout] Department sync API returned 403 Forbidden. Auth gateway info: url=${loginUrl}, service=${service}, appid=${appid}`);
+                }
+                return res.ok ? res.json() : null;
+              })
               .then(deptData => {
+                if (!deptData) return;
                 const deptName = deptData?.data?.department;
                 if (deptName) {
                   console.log('[MainLayout] Found department:', deptName, ', sending update to portal...');
