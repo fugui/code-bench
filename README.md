@@ -1,5 +1,7 @@
 # CodeBench 开发者综合工作台 (Portal)
 
+> **当前版本**：`v0.1.0`
+
 CodeBench 是面向研发效能与安全管理的一站式综合工作台主应用容器。项目采用微前端（Micro-frontends） Host 架构进行设计，聚合了包括代码质量管理（Code Shield）、大模型网关（ModelGate）以及接口联调管理（ProtoHub）等子系统模块。
 
 后端使用 Go 语言搭建，提供轻量的高并发微前端集成环境、统一认证中心及请求转发网关（Gateway）。
