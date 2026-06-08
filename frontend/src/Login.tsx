@@ -26,9 +26,12 @@ function Login({ onLoginSuccess }: LoginProps) {
     const ssoError = params.get('sso_error');
     if (ssoError) {
       setError(ssoError);
+      sessionStorage.setItem('sso_error_flag', 'true');
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
+
+    const hasSsoError = ssoError || sessionStorage.getItem('sso_error_flag') === 'true';
 
     fetch('/api/auth/config', {
       headers: { 'X-Portal-Request': 'true' }
@@ -37,7 +40,7 @@ function Login({ onLoginSuccess }: LoginProps) {
       .then((data: AuthConfig) => {
         setAuthConfig(data);
         // If only SSO is enabled and there is no error, redirect automatically
-        if (data.oauth2_enabled && !data.password_login_enabled && !ssoError) {
+        if (data.oauth2_enabled && !data.password_login_enabled && !hasSsoError) {
           window.location.href = '/api/oauth2/authorize';
         } else if (!data.oauth2_enabled && data.password_login_enabled) {
           setShowPasswordForm(true);
@@ -51,6 +54,7 @@ function Login({ onLoginSuccess }: LoginProps) {
   }, []);
 
   const handleSSOLogin = () => {
+    sessionStorage.removeItem('sso_error_flag');
     window.location.href = '/api/oauth2/authorize';
   };
 

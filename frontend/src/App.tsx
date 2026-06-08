@@ -208,6 +208,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     localStorage.removeItem('code_shield_token');
+    sessionStorage.removeItem('sso_error_flag');
     setUser(null);
     window.dispatchEvent(new Event('auth-change'));
     navigate('/', { replace: true });
@@ -631,6 +632,7 @@ function OAuthCallback() {
     const token = params.get('token');
     if (token) {
       localStorage.setItem('code_shield_token', token);
+      sessionStorage.removeItem('sso_error_flag');
       window.dispatchEvent(new Event('auth-change'));
       navigate('/', { replace: true });
     } else {

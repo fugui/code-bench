@@ -388,7 +388,7 @@ func buildFrontendCallbackURL(token, email string) string {
 
 func redirectToLoginWithError(c *gin.Context, errorMsg string) {
 	externalURL := strings.TrimRight(models.AppConfig.Server.ExternalURL, "/")
-	// Note: redirect back to shield login page.
-	loginURL := externalURL + "/shield/login?sso_error=" + url.QueryEscape(errorMsg)
+	// Note: redirect back to portal login page with query param
+	loginURL := externalURL + "/?sso_error=" + url.QueryEscape(errorMsg)
 	c.Redirect(http.StatusFound, loginURL)
 }
