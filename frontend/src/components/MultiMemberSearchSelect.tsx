@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AUTH_TOKEN_KEY } from '../config';
 
 interface User {
   id: number;
@@ -18,6 +19,15 @@ interface MultiMemberSearchSelectProps {
 }
 
 export default function MultiMemberSearchSelect({ value = [], onChange, style, maxSelections = 20 }: MultiMemberSearchSelectProps) {
+  const authFetch = (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
+      }
+    });
+  };
   const [query, setQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
   const [results, setResults] = useState<User[]>([]);
@@ -54,7 +64,7 @@ export default function MultiMemberSearchSelect({ value = [], onChange, style, m
   // Optionally fetch fully resolved members on mount if value is not empty (async cleanup)
   useEffect(() => {
     if (value && value.length > 0) {
-      fetch('/api/users?pageSize=1000')
+      authFetch('/api/users?pageSize=1000')
         .then(res => res.json())
         .then(data => {
           const list: User[] = data.items || [];
@@ -81,7 +91,7 @@ export default function MultiMemberSearchSelect({ value = [], onChange, style, m
   const doSearch = (q: string) => {
     setLoading(true);
     const url = q.trim() ? `/api/users?search=${encodeURIComponent(q)}&pageSize=20` : '/api/users?pageSize=20';
-    fetch(url)
+    authFetch(url)
       .then(res => res.json())
       .then(data => setResults(data.items || []))
       .catch(() => setResults([]))

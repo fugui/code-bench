@@ -100,10 +100,15 @@ function UserManagement() {
       })
       .catch(err => console.error('Failed to fetch auth config:', err));
 
-    fetch('/api/departments')
+    fetch('/api/departments', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
+    })
       .then(res => res.json())
-      .then(data => setDepartments(data || []))
-      .catch(err => console.error('Failed to fetch departments:', err));
+      .then(data => setDepartments(Array.isArray(data) ? data : []))
+      .catch(err => {
+        console.error('Failed to fetch departments:', err);
+        setDepartments([]);
+      });
   }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {

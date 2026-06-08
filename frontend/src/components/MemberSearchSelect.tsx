@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AUTH_TOKEN_KEY } from '../config';
 
 interface User {
   id: number;
@@ -21,6 +22,15 @@ interface MemberSearchSelectProps {
  * Uses /api/users?search=xxx for server-side filtering.
  */
 function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps) {
+  const authFetch = (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
+      }
+    });
+  };
   const [query, setQuery] = useState('');
   const [displayText, setDisplayText] = useState('');
   const [results, setResults] = useState<User[]>([]);
@@ -34,7 +44,7 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
     if (value && !displayText) {
       const isIdOnly = /^\d+$/.test(value.toString());
       const queryParam = isIdOnly ? `id=${value}` : `search=${encodeURIComponent(value.toString())}`;
-      fetch(`/api/users?${queryParam}&pageSize=5`)
+      authFetch(`/api/users?${queryParam}&pageSize=5`)
         .then(res => res.json())
         .then(data => {
           const list: User[] = data.items || [];
@@ -65,7 +75,7 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
   const doSearch = (q: string) => {
     if (!q.trim()) {
       setLoading(true);
-      fetch('/api/users?pageSize=20')
+      authFetch('/api/users?pageSize=20')
         .then(res => res.json())
         .then(data => setResults(data.items || []))
         .catch(() => setResults([]))
@@ -73,7 +83,7 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
       return;
     }
     setLoading(true);
-    fetch(`/api/users?search=${encodeURIComponent(q)}&pageSize=20`)
+    authFetch(`/api/users?search=${encodeURIComponent(q)}&pageSize=20`)
       .then(res => res.json())
       .then(data => setResults(data.items || []))
       .catch(() => setResults([]))

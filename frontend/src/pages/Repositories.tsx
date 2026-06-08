@@ -3,12 +3,22 @@ import { useToast } from '../components/Toast';
 import { sshToHttps } from '../utils/urlUtils';
 import MemberSearchSelect from '../components/MemberSearchSelect';
 import MultiMemberSearchSelect from '../components/MultiMemberSearchSelect';
+import { AUTH_TOKEN_KEY } from '../config';
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', fontSize: '0.875rem', transition: 'border-color 0.2s' };
 const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '0.375rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 500 };
 
 function Repositories() {
   const { showToast } = useToast();
+  const repoFetch = (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
+      }
+    });
+  };
   const [repos, setRepos] = useState<any[]>([]);
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null);
   const [editingRepoId, setEditingRepoId] = useState<number | null>(null);
@@ -31,7 +41,7 @@ function Repositories() {
   }, [page, filterTeam, filterServiceGroup, filterOwner]);
 
   useEffect(() => {
-    fetch('/api/departments')
+    repoFetch('/api/departments')
       .then(res => res.json())
       .then(data => {
         const list = Array.isArray(data) ? data : (data.items || []);
@@ -41,7 +51,7 @@ function Repositories() {
         }
       })
       .catch(console.error);
-    fetch('/api/users?pageSize=1000')
+    repoFetch('/api/users?pageSize=1000')
       .then(res => res.json())
       .then(data => {
         const list = Array.isArray(data) ? data : (data.items || []);
@@ -62,7 +72,7 @@ function Repositories() {
     if (filterServiceGroup) params.append('service_group', filterServiceGroup);
     if (filterOwner) params.append('owner', filterOwner);
 
-    fetch(`/api/repos?${params.toString()}`)
+    repoFetch(`/api/repos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         setRepos(data.items || []);
@@ -112,7 +122,7 @@ function Repositories() {
   };
 
   const handleAddRepo = () => {
-    fetch('/api/repos', {
+    repoFetch('/api/repos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -141,7 +151,7 @@ function Repositories() {
   };
 
   const handleEditRepo = () => {
-    fetch(`/api/repos/${editingRepoId}`, {
+    repoFetch(`/api/repos/${editingRepoId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -172,7 +182,7 @@ function Repositories() {
   const handleDeleteRepo = async (id: number, name: string) => {
     if (window.confirm(`确定要删除代码仓 "${name}" 吗？此操作不可恢复。`)) {
       try {
-        const res = await fetch(`/api/repos/${id}`, { method: 'DELETE' });
+        const res = await repoFetch(`/api/repos/${id}`, { method: 'DELETE' });
         if (res.ok) {
           fetchRepos();
           showToast('成功删除代码仓', 'success');
@@ -193,7 +203,7 @@ function Repositories() {
     const data = new FormData();
     data.append('file', file);
 
-    fetch('/api/repos/import', {
+    repoFetch('/api/repos/import', {
       method: 'POST',
       body: data,
     })
@@ -241,7 +251,7 @@ function Repositories() {
             className="btn" 
             style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
             onClick={() => {
-              fetch('/api/repos/export')
+              repoFetch('/api/repos/export')
                 .then(res => res.blob())
                 .then(blob => {
                   const url = URL.createObjectURL(blob);

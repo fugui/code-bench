@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import MemberSearchSelect from '../components/MemberSearchSelect';
+import { AUTH_TOKEN_KEY } from '../config';
 
 function TeamsTab() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -9,16 +10,28 @@ function TeamsTab() {
   const [formData, setFormData] = useState({ name: '', leader_id: '' as string | number });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const repoFetch = (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
+      }
+    });
+  };
 
   useEffect(() => {
     fetchTeams();
   }, []);
 
   const fetchTeams = () => {
-    fetch('/api/departments')
+    repoFetch('/api/departments')
       .then(res => res.json())
-      .then(data => setTeams(data || []))
-      .catch(console.error);
+      .then(data => setTeams(Array.isArray(data) ? data : []))
+      .catch(err => {
+        console.error(err);
+        setTeams([]);
+      });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,7 +39,7 @@ function TeamsTab() {
     const url = editingId ? `/api/departments/${editingId}` : '/api/departments';
     const method = editingId ? 'PATCH' : 'POST';
 
-    fetch(url, {
+    repoFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -47,7 +60,7 @@ function TeamsTab() {
 
   const handleDelete = (id: number, name: string) => {
     if (window.confirm(`确认删除部门 "${name}" 吗？`)) {
-      fetch(`/api/departments/${id}`, { method: 'DELETE' })
+      repoFetch(`/api/departments/${id}`, { method: 'DELETE' })
         .then(res => {
           if (res.ok) {
             showToast('部门已删除', 'success');
@@ -79,7 +92,7 @@ function TeamsTab() {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/departments/import', {
+    repoFetch('/api/departments/import', {
       method: 'POST',
       body: formData,
     })
@@ -124,7 +137,7 @@ function TeamsTab() {
             className="btn" 
             style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
             onClick={() => {
-              fetch('/api/departments/export')
+              repoFetch('/api/departments/export')
                 .then(res => res.blob())
                 .then(blob => {
                   const url = URL.createObjectURL(blob);
