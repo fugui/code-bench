@@ -1,6 +1,7 @@
 server:
   port: ":8000"
   gin_log: true
+  external_url: "http://127.0.0.1:8000" # 生产环境部署时必须配置为外部可访问的基准域名（如 http://code.cndev.net，含协议，末尾无斜杠）
 
 auth:
   jwt_secret: "YOUR_JWT_SECRET_KEY_HERE" # Unified shared secret, should be updated for production
