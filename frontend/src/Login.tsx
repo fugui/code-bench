@@ -19,50 +19,32 @@ function Login({ onLoginSuccess }: LoginProps) {
   const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  // Fetch auth config to determine available login methods
   useEffect(() => {
-    console.log('[Login Component] Mounted. URL Search:', window.location.search);
     const params = new URLSearchParams(window.location.search);
     const ssoError = params.get('sso_error');
     if (ssoError) {
-      console.log('[Login Component] Found sso_error in URL:', ssoError);
       setError(ssoError);
       sessionStorage.setItem('sso_error_flag', 'true');
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
-      console.log('[Login Component] URL cleared. sso_error_flag set in sessionStorage.');
     }
 
-    const ssoErrorFlag = sessionStorage.getItem('sso_error_flag');
-    console.log('[Login Component] Current sessionStorage sso_error_flag:', ssoErrorFlag);
-    const hasSsoError = ssoError || ssoErrorFlag === 'true';
+    const hasSsoError = ssoError || sessionStorage.getItem('sso_error_flag') === 'true';
 
-    console.log('[Login Component] Fetching /api/auth/config ...');
     fetch('/api/auth/config', {
       headers: { 'X-Portal-Request': 'true' }
     })
       .then(res => res.json())
       .then((data: AuthConfig) => {
-        console.log('[Login Component] Received auth config:', data);
         setAuthConfig(data);
-        console.log('[Login Component] Decision factors:', {
-          oauth2_enabled: data.oauth2_enabled,
-          password_login_enabled: data.password_login_enabled,
-          hasSsoError: hasSsoError
-        });
         // If only SSO is enabled and there is no error, redirect automatically
         if (data.oauth2_enabled && !data.password_login_enabled && !hasSsoError) {
-          console.log('[Login Component] Redirecting automatically to SSO authorize endpoint...');
           window.location.href = '/api/oauth2/authorize';
-        } else {
-          console.log('[Login Component] No automatic redirect. Displaying manual login options.');
-          if (!data.oauth2_enabled && data.password_login_enabled) {
-            setShowPasswordForm(true);
-          }
+        } else if (!data.oauth2_enabled && data.password_login_enabled) {
+          setShowPasswordForm(true);
         }
       })
-      .catch((err) => {
-        console.error('[Login Component] Failed to fetch auth config:', err);
+      .catch(() => {
         // Fallback: assume password login only
         setAuthConfig({ oauth2_enabled: false, password_login_enabled: true });
         setShowPasswordForm(true);
