@@ -96,6 +96,7 @@ func main() {
 		apiProtected.GET("/me", handlers.GetMe)
 		apiProtected.PATCH("/password", handlers.UpdatePassword)
 		apiProtected.POST("/me/department", handlers.UpdateMyDepartment)
+		apiProtected.GET("/me/department-proxy", handlers.GetMyDepartmentProxy)
 
 		// Department APIs
 		apiProtected.GET("/departments", handlers.GetDepartments)

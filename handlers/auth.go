@@ -229,3 +229,45 @@ func UpdatePassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
+
+func GetMyDepartmentProxy(c *gin.Context) {
+	deptURL := models.AppConfig.Auth.OAuth2.DeptAPIURL
+	if deptURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "dept_api_url is not configured"})
+		return
+	}
+
+	// 1. 创建发往外部接口的请求
+	req, err := http.NewRequest("GET", deptURL, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create proxy request"})
+		return
+	}
+
+	// 2. 将前端发来的所有 Cookie 透传过去
+	for _, cookie := range c.Request.Cookies() {
+		req.AddCookie(cookie)
+	}
+
+	// 3. 执行请求
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to reach department API: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	// 4. 将 Response Header 里的特殊网关头部透传发回前端（如网关暴露的 x-login-url 等）
+	for k, vv := range resp.Header {
+		if strings.HasPrefix(strings.ToLower(k), "x-login") {
+			for _, v := range vv {
+				c.Header(k, v)
+			}
+		}
+	}
+
+	// 5. 将结果直接透传回给前端
+	c.DataFromReader(resp.StatusCode, resp.ContentLength, resp.Header.Get("Content-Type"), resp.Body, nil)
+}
+

@@ -198,8 +198,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           const activeConfig = authConfigRef.current;
           if (activeConfig?.dept_api_url && !data.department_id && !sessionStorage.getItem('dept_synced')) {
             sessionStorage.setItem('dept_synced', 'true');
-            console.log('[MainLayout] Syncing user department from api:', activeConfig.dept_api_url);
-            fetch(activeConfig.dept_api_url, { credentials: 'include' })
+            console.log('[MainLayout] Syncing user department from api via proxy:', activeConfig.dept_api_url);
+            portalFetch('/api/me/department-proxy')
               .then(res => {
                 if (res.status === 403) {
                   const loginUrl = res.headers.get('x-login-url');
