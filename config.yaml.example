@@ -1,0 +1,15 @@
+server:
+  port: ":8000"
+  gin_log: true
+
+auth:
+  jwt_secret: "YOUR_JWT_SECRET_KEY_HERE" # Unified shared secret, should be updated for production
+  password_login_enabled: true
+
+sync:
+  targets:
+    - "http://127.0.0.1:8080"
+
+gateways:
+  shield: "http://127.0.0.1:8080"
+  # proto: "http://127.0.0.1:8081" # 预留未来扩展的微服务
