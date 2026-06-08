@@ -312,7 +312,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
+  if (!user && location.pathname !== '/oauth2/callback') {
     return <Login onLoginSuccess={loadUser} />;
   }
 
