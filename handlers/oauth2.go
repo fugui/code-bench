@@ -150,7 +150,7 @@ func OAuth2Callback(c *gin.Context) {
 		if !allowed {
 			log.Printf("[OAuth2] Email domain not allowed: %s", email)
 			logRejectedEmail(email)
-			redirectToLoginWithError(c, "您的邮箱域名未被授权访问该系统")
+			redirectToLoginWithError(c, "访问受限，请联系系统管理员。")
 			return
 		}
 	}
