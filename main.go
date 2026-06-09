@@ -64,7 +64,9 @@ func main() {
 			if strings.HasPrefix(path, "/"+p+"/api") || 
 			   strings.HasPrefix(path, "/"+p+"/assets") || 
 			   strings.HasSuffix(path, "remoteEntry.js") {
-				log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, path, p)
+				if models.AppConfig.Server.GinLog {
+					log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, path, p)
+				}
 				proxy.ServeHTTP(c.Writer, c.Request)
 			} else {
 				// Serve the portal's index.html to allow portal's frontend routing & unified authentication
