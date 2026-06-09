@@ -42,7 +42,7 @@ type Repository struct {
 	URL            string         `gorm:"not null" json:"url"`
 	OwnerID        uint           `json:"owner_id"`
 	Owner          User           `gorm:"foreignKey:OwnerID" json:"owner"`
-	Branch         string         `gorm:"default:main" json:"branch"`
+	Branch         string         `gorm:"default:master" json:"branch"`
 	ServiceGroup   string         `gorm:"size:30" json:"service_group"`
 	RelatedMembers datatypes.JSON `json:"related_members"` // Related members IDs/employee IDs
 	IsActive       bool           `gorm:"default:true" json:"is_active"`

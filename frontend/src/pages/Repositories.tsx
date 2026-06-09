@@ -8,6 +8,30 @@ import { AUTH_TOKEN_KEY } from '../config';
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', fontSize: '0.875rem', transition: 'border-color 0.2s' };
 const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '0.375rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 500 };
 
+const getRepoNameFromUrl = (url: string) => {
+  if (!url) return '';
+  let trimmed = url.trim().replace(/\/+$/, '');
+  let lastSegment = trimmed.split(/[/: ]+/).pop();
+  if (!lastSegment) return '';
+  if (lastSegment.toLowerCase().endsWith('.git')) {
+    lastSegment = lastSegment.slice(0, -4);
+  }
+  return lastSegment;
+};
+
+const getServiceGroupFromUrl = (url: string) => {
+  if (!url) return '';
+  let trimmed = url.trim().replace(/\/+$/, '');
+  let segments = trimmed.split(/[/: ]+/);
+  if (segments.length >= 2) {
+    let secondLast = segments[segments.length - 2];
+    if (secondLast && secondLast !== 'http' && secondLast !== 'https' && !secondLast.includes('@')) {
+      return secondLast.toUpperCase();
+    }
+  }
+  return '';
+};
+
 function Repositories() {
   const { showToast } = useToast();
   const repoFetch = (url: string, options: RequestInit = {}) => {
@@ -22,7 +46,7 @@ function Repositories() {
   const [repos, setRepos] = useState<any[]>([]);
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null);
   const [editingRepoId, setEditingRepoId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: '', url: '', owner_id: '' as string | number, branch: 'main', department_id: 0, service_group: '', related_members: [] as string[] });
+  const [formData, setFormData] = useState({ name: '', url: '', owner_id: '' as string | number, branch: 'master', department_id: 0, service_group: '', related_members: [] as string[] });
   const [teams, setTeams] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [filterTeam, setFilterTeam] = useState<string>('');
@@ -88,7 +112,7 @@ function Repositories() {
   };
 
   const openAddDrawer = () => {
-    setFormData({ name: '', url: '', owner_id: members.length > 0 ? members[0].id : '', branch: 'main', department_id: teams.length > 0 ? teams[0].id : 0, service_group: '', related_members: [] });
+    setFormData({ name: '', url: '', owner_id: members.length > 0 ? members[0].id : '', branch: 'master', department_id: teams.length > 0 ? teams[0].id : 0, service_group: '', related_members: [] });
     setEditingRepoId(null);
     setDrawerMode('add');
   };
@@ -98,7 +122,7 @@ function Repositories() {
       name: repo.name || '',
       url: repo.url || '',
       owner_id: repo.owner_id || '',
-      branch: repo.branch || 'main',
+      branch: repo.branch || 'master',
       department_id: repo.department_id || (teams.length > 0 ? teams[0].id : 0),
       service_group: repo.service_group || '',
       related_members: Array.isArray(repo.related_members) ? repo.related_members : []
@@ -177,6 +201,33 @@ function Repositories() {
       console.error(err);
       showToast('网络错误，更新失败', 'error');
     });
+  };
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    const autoName = getRepoNameFromUrl(newUrl);
+    const autoServiceGroup = getServiceGroupFromUrl(newUrl);
+    setFormData(prev => ({
+      ...prev,
+      url: newUrl,
+      name: autoName || prev.name,
+      service_group: autoServiceGroup || prev.service_group
+    }));
+  };
+
+  const handleOwnerChange = (id: number | '', selectedUser?: any) => {
+    let deptId = 0;
+    if (selectedUser) {
+      deptId = selectedUser.department_id || selectedUser.department?.id || 0;
+    } else {
+      const found = members.find(m => m.id === id);
+      deptId = found?.department_id || found?.department?.id || 0;
+    }
+    setFormData(prev => ({
+      ...prev,
+      owner_id: id,
+      department_id: deptId || prev.department_id
+    }));
   };
 
   const handleDeleteRepo = async (id: number, name: string) => {
@@ -416,7 +467,7 @@ function Repositories() {
             <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <label style={labelStyle}>代码仓地址 (URL)</label>
-                <input required type="text" placeholder="https://... 或 git@host:path/repo.git" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} style={inputStyle} />
+                <input required type="text" placeholder="https://... 或 git@host:path/repo.git" value={formData.url} onChange={handleUrlChange} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>代码仓名称</label>
@@ -424,7 +475,7 @@ function Repositories() {
               </div>
               <div>
                 <label style={labelStyle}>项目责任人</label>
-                <MemberSearchSelect value={formData.owner_id} onChange={id => setFormData({...formData, owner_id: id})} />
+                <MemberSearchSelect value={formData.owner_id} onChange={handleOwnerChange} />
               </div>
               <div>
                 <label style={labelStyle}>相关人员 (最多20人，分析结果将抄送给他们)</label>

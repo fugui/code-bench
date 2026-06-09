@@ -13,7 +13,7 @@ interface User {
 
 interface MemberSearchSelectProps {
   value: number | string | '';
-  onChange: (userId: number | '') => void;
+  onChange: (userId: number | '', selectedUser?: User) => void;
   style?: React.CSSProperties;
 }
 
@@ -105,7 +105,7 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
   };
 
   const handleSelect = (user: User) => {
-    onChange(user.id);
+    onChange(user.id, user);
     setDisplayText(`${user.name} (${user.employee_id || user.id})`);
     setQuery('');
     setShowDropdown(false);

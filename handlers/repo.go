@@ -307,7 +307,7 @@ func ImportRepos(c *gin.Context) {
 			continue
 		}
 		if branch == "" {
-			branch = "main"
+			branch = "master"
 		}
 
 		var user models.User
