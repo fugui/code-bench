@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -148,6 +149,7 @@ func OAuth2Callback(c *gin.Context) {
 		}
 		if !allowed {
 			log.Printf("[OAuth2] Email domain not allowed: %s", email)
+			logRejectedEmail(email)
 			redirectToLoginWithError(c, "您的邮箱域名未被授权访问该系统")
 			return
 		}
@@ -415,4 +417,18 @@ func redirectToLoginWithError(c *gin.Context, errorMsg string) {
 	// Note: redirect back to portal login page with query param
 	loginURL := externalURL + "/?sso_error=" + url.QueryEscape(errorMsg)
 	c.Redirect(http.StatusFound, loginURL)
+}
+
+func logRejectedEmail(email string) {
+	f, err := os.OpenFile("sso_reject.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Printf("[OAuth2] Failed to open sso_reject.log: %v", err)
+		return
+	}
+	defer f.Close()
+
+	logLine := fmt.Sprintf("%s - Rejected Email: %s\n", time.Now().Format(time.RFC3339), email)
+	if _, err := f.WriteString(logLine); err != nil {
+		log.Printf("[OAuth2] Failed to write to sso_reject.log: %v", err)
+	}
 }
