@@ -58,8 +58,6 @@ func BroadcastSync(action string, path string, id uint, data interface{}) {
 
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("[Sync] Target %s returned status %d", targetURL, resp.StatusCode)
-			} else {
-				log.Printf("[Sync] Successfully synced %s (%s ID:%d) to %s", action, path, id, targetURL)
 			}
 		}
 	}()
