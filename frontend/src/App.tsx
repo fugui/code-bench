@@ -156,7 +156,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('portal_theme') as 'dark' | 'light') || 'dark';
+    return (localStorage.getItem('code-theme') as 'dark' | 'light') || 'light';
   });
   const [user, setUser] = React.useState<any>(null);
   const [loadingUser, setLoadingUser] = React.useState(true);
@@ -306,7 +306,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove('light-theme');
     }
-    localStorage.setItem('portal_theme', theme);
+    localStorage.setItem('code-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
