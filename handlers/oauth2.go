@@ -129,6 +129,30 @@ func OAuth2Callback(c *gin.Context) {
 		return
 	}
 
+	// 校验邮箱后缀白名单
+	if len(oauth2Cfg.AllowedEmailDomains) > 0 {
+		allowed := false
+		emailLower := strings.ToLower(email)
+		for _, domain := range oauth2Cfg.AllowedEmailDomains {
+			domain = strings.ToLower(strings.TrimSpace(domain))
+			if domain == "" {
+				continue
+			}
+			if !strings.HasPrefix(domain, "@") {
+				domain = "@" + domain
+			}
+			if strings.HasSuffix(emailLower, domain) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			log.Printf("[OAuth2] Email domain not allowed: %s", email)
+			redirectToLoginWithError(c, "您的邮箱域名未被授权访问该系统")
+			return
+		}
+	}
+
 	isAdmin := false
 	for _, adminEmail := range oauth2Cfg.AdminList {
 		if strings.EqualFold(strings.TrimSpace(adminEmail), strings.TrimSpace(email)) {

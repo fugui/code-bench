@@ -21,17 +21,18 @@ type FieldMappingConfig struct {
 }
 
 type OAuth2Config struct {
-	Enabled      bool               `yaml:"enabled"`
-	ClientID     string             `yaml:"client_id"`
-	ClientSecret string             `yaml:"client_secret"`
-	AuthURL      string             `yaml:"auth_url"`
-	TokenURL     string             `yaml:"token_url"`
-	UserInfoURL  string             `yaml:"userinfo_url"`
-	RedirectURL  string             `yaml:"redirect_url"`
-	Scopes       []string           `yaml:"scopes"`
-	AdminList    []string           `yaml:"admin_list"`
-	FieldMapping FieldMappingConfig `yaml:"field_mapping"`
-	DeptAPIURL   string             `yaml:"dept_api_url"`
+	Enabled             bool               `yaml:"enabled"`
+	ClientID            string             `yaml:"client_id"`
+	ClientSecret        string             `yaml:"client_secret"`
+	AuthURL             string             `yaml:"auth_url"`
+	TokenURL            string             `yaml:"token_url"`
+	UserInfoURL         string             `yaml:"userinfo_url"`
+	RedirectURL         string             `yaml:"redirect_url"`
+	Scopes              []string           `yaml:"scopes"`
+	AdminList           []string           `yaml:"admin_list"`
+	AllowedEmailDomains []string           `yaml:"allowed_email_domains"`
+	FieldMapping        FieldMappingConfig `yaml:"field_mapping"`
+	DeptAPIURL          string             `yaml:"dept_api_url"`
 }
 
 type SyncConfig struct {

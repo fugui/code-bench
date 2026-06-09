@@ -22,6 +22,9 @@ auth:
       - "email"
     admin_list:
       - "admin@yourcompany.com"      # 管理员邮箱列表，匹配到的用户会自动同步为管理员
+    allowed_email_domains:           # 允许通过 SSO 登录的邮箱后缀白名单，留空表示不限制域名限制
+      - "@microsoft.com"
+      - "@apple.com"
     # ── 用户信息字段映射 ──
     field_mapping:
       username: "preferred_username"
