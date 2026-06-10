@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { appNavigatePath } from '../config';
 import TeamsTab from './TeamsTab';
 import Repositories from './Repositories';
+import ArchitectureTab from './ArchitectureTab';
 
-type TeamTab = 'departments' | 'repositories';
+type TeamTab = 'departments' | 'repositories' | 'architecture';
 
 function TeamManagement() {
   const { tab } = useParams<{ tab: TeamTab }>();
@@ -37,11 +38,15 @@ function TeamManagement() {
         <button onClick={() => setActiveTab('repositories')} style={tabStyle('repositories')}>
           代码仓管理
         </button>
+        <button onClick={() => setActiveTab('architecture')} style={tabStyle('architecture')}>
+          架构元素
+        </button>
       </div>
 
       <div style={{ minHeight: '500px' }}>
         {activeTab === 'departments' && <TeamsTab />}
         {activeTab === 'repositories' && <Repositories />}
+        {activeTab === 'architecture' && <ArchitectureTab />}
       </div>
     </div>
   );

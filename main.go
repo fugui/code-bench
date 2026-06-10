@@ -128,6 +128,12 @@ func main() {
 		apiProtected.DELETE("/repos/:id", handlers.DeleteRepo)
 		apiProtected.POST("/repos/import", handlers.ImportRepos)
 		apiProtected.GET("/repos/export", handlers.ExportRepos)
+
+		// Architecture Element APIs
+		apiProtected.GET("/arch-elements", handlers.GetArchElements)
+		apiProtected.POST("/arch-elements", handlers.CreateArchElement)
+		apiProtected.PATCH("/arch-elements/:id", handlers.UpdateArchElement)
+		apiProtected.DELETE("/arch-elements/:id", handlers.DeleteArchElement)
 	}
 
 	// 7. Serve frontend static files

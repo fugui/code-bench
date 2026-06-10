@@ -39,6 +39,7 @@ func InitDB() {
 		&models.User{},
 		&models.Department{},
 		&models.Repository{},
+		&models.ArchitectureElement{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)

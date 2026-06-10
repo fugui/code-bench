@@ -49,3 +49,22 @@ type Repository struct {
 	LastCommitHash string         `json:"last_commit_hash"`
 	CreatedAt      time.Time      `json:"created_at"`
 }
+
+type ArchitectureElement struct {
+	ID           uint                 `gorm:"primaryKey" json:"id"`
+	Identifier   string               `gorm:"not null" json:"identifier"`
+	NameCn       string               `gorm:"not null" json:"name_cn"`
+	NameEn       string               `gorm:"not null" json:"name_en"`
+	Type         string               `gorm:"not null" json:"type"` // "subsystem" | "group" | "module"
+	ParentID     *uint                `json:"parent_id"`
+	Parent       *ArchitectureElement `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
+	OwnerID      *uint                `json:"owner_id"`
+	Owner        *User                `gorm:"foreignKey:OwnerID" json:"owner,omitempty"`
+	RepoID       *uint                `json:"repo_id"`
+	Repo         *Repository          `gorm:"foreignKey:RepoID" json:"repo,omitempty"`
+	Subdirectory string               `gorm:"default:''" json:"subdirectory"`
+	Description  string               `gorm:"default:''" json:"description"`
+	CreatedAt    time.Time            `json:"created_at"`
+	UpdatedAt    time.Time            `json:"updated_at"`
+}
+
