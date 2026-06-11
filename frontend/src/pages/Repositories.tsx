@@ -91,6 +91,7 @@ function Repositories() {
       .then(data => {
         const list = Array.isArray(data) ? data : [];
         const subs = list.filter((el: any) => el.type === 'subsystem');
+        subs.sort((a: any, b: any) => (a.name_cn || '').localeCompare(b.name_cn || ''));
         setSubsystems(subs);
       })
       .catch(console.error);
