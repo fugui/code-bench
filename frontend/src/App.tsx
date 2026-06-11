@@ -71,14 +71,14 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function NavLink({ to, icon: Icon, label, activePattern }: { to: string; icon: any; label: string; activePattern?: RegExp }) {
+function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string; icon: any; label: string; activePattern?: RegExp; onClick?: (e: React.MouseEvent) => void }) {
   const location = useLocation();
   const isActive = activePattern 
     ? activePattern.test(location.pathname) 
     : location.pathname === to;
 
   return (
-    <Link to={to} style={{
+    <Link to={to} onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem',
       borderRadius: '10px', textDecoration: 'none',
       color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
@@ -159,6 +159,35 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
   const [protoMenu, setProtoMenu] = React.useState<any[]>([]);
   const [protoMenuGroups, setProtoMenuGroups] = React.useState<any[]>([]);
+  const [shieldMenuCollapsed, setShieldMenuCollapsed] = React.useState(true);
+  const [protoMenuCollapsed, setProtoMenuCollapsed] = React.useState(true);
+  const prevModuleRef = React.useRef<string>('');
+
+  React.useEffect(() => {
+    const getModule = (path: string) => {
+      if (path.startsWith('/shield')) return 'shield';
+      if (path.startsWith('/proto')) return 'proto';
+      return 'other';
+    };
+
+    const currentModule = getModule(location.pathname);
+    const prevModule = prevModuleRef.current;
+
+    if (currentModule !== prevModule) {
+      if (currentModule === 'shield') {
+        setShieldMenuCollapsed(false);
+        setProtoMenuCollapsed(true);
+      } else if (currentModule === 'proto') {
+        setProtoMenuCollapsed(false);
+        setShieldMenuCollapsed(true);
+      } else {
+        setShieldMenuCollapsed(true);
+        setProtoMenuCollapsed(true);
+      }
+      prevModuleRef.current = currentModule;
+    }
+  }, [location.pathname]);
+
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('code-theme') as 'dark' | 'light') || 'light';
   });
@@ -424,9 +453,23 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" />
-          <NavLink to="/shield" icon={Shield} label="代码质量 (Code Shield)" activePattern={/^\/shield/} />
-          {location.pathname.startsWith('/shield') && (shieldMenuGroups.length > 0 || shieldMenu.length > 0) && (
+          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
+          <NavLink 
+            to="/shield" 
+            icon={Shield} 
+            label="代码质量 (Code Shield)" 
+            activePattern={/^\/shield/} 
+            onClick={(e) => {
+              if (location.pathname.startsWith('/shield')) {
+                e.preventDefault();
+                setShieldMenuCollapsed(!shieldMenuCollapsed);
+              } else {
+                setShieldMenuCollapsed(false);
+                setProtoMenuCollapsed(true);
+              }
+            }}
+          />
+          {location.pathname.startsWith('/shield') && !shieldMenuCollapsed && (shieldMenuGroups.length > 0 || shieldMenu.length > 0) && (
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
               {shieldMenuGroups.length > 0 ? (
                 // Grouped Menu Layout
@@ -505,8 +548,22 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
-          <NavLink to="/proto" icon={Network} label="接口管理系统 (Proto)" activePattern={/^\/proto/} />
-          {location.pathname.startsWith('/proto') && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
+          <NavLink 
+            to="/proto" 
+            icon={Network} 
+            label="接口管理系统 (Proto)" 
+            activePattern={/^\/proto/} 
+            onClick={(e) => {
+              if (location.pathname.startsWith('/proto')) {
+                e.preventDefault();
+                setProtoMenuCollapsed(!protoMenuCollapsed);
+              } else {
+                setProtoMenuCollapsed(false);
+                setShieldMenuCollapsed(true);
+              }
+            }}
+          />
+          {location.pathname.startsWith('/proto') && !protoMenuCollapsed && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
             <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
               {protoMenuGroups.length > 0 ? (
                 protoMenuGroups
@@ -582,8 +639,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
-              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} />
-              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} />
+              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
+              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
             </div>
           )}
         </nav>
