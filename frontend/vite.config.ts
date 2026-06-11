@@ -10,6 +10,7 @@ export default defineConfig({
       name: 'portal',
       remotes: {
         shield: '/shield/assets/remoteEntry.js',
+        proto: '/proto/assets/remoteEntry.js',
       },
       shared: ['react', 'react-dom', 'react-router-dom']
     })
@@ -23,6 +24,10 @@ export default defineConfig({
       // Local dev proxy to redirect subpath requests to running sub-apps
       '/shield': {
         target: 'http://localhost:5174',
+        changeOrigin: true,
+      },
+      '/proto': {
+        target: 'http://localhost:5175',
         changeOrigin: true,
       },
       // Backend API proxy (forwarding /api calls to the backend server)

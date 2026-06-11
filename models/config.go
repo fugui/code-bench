@@ -158,4 +158,7 @@ func applyDefaults() {
 		}
 		AppConfig.Gateways["shield"] = shieldTargetURL
 	}
+	if _, ok := AppConfig.Gateways["proto"]; !ok {
+		AppConfig.Gateways["proto"] = "http://127.0.0.1:8081"
+	}
 }

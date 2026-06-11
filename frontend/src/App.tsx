@@ -97,6 +97,8 @@ function NavLink({ to, icon: Icon, label, activePattern }: { to: string; icon: a
 // Lazy loading remote App from module federation
 // @ts-ignore
 const ShieldApp = React.lazy(() => import('shield/App'));
+// @ts-ignore
+const ProtoApp = React.lazy(() => import('proto/App'));
 
 function Home() {
   return (
@@ -138,12 +140,12 @@ function Home() {
             <div className="card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
               <Network size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>接口管理系统 (ProtoHub)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>接口管理系统 (Proto)</h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
             接口与协议统一管理中心。提供 API 设计、Mock 服务联调、契约测试以及多协议数据网关服务。
           </p>
-          <Link to="/protohub" className="card-btn">进入系统 &rarr;</Link>
+          <Link to="/proto" className="card-btn">进入系统 &rarr;</Link>
         </div>
       </div>
     </div>
@@ -155,6 +157,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
+  const [protoMenu, setProtoMenu] = React.useState<any[]>([]);
+  const [protoMenuGroups, setProtoMenuGroups] = React.useState<any[]>([]);
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('code-theme') as 'dark' | 'light') || 'light';
   });
@@ -342,6 +346,27 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           { path: '/admin/activity', label: '执行日志', adminOnly: true }
         ]);
       });
+
+    // Dynamically load remote menu metadata from code-proto micro-frontend
+    // @ts-ignore
+    import('proto/menu')
+      .then(mod => {
+        if (mod) {
+          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+            setProtoMenuGroups(mod.menuGroups);
+          }
+          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+          if (items && Array.isArray(items)) {
+            setProtoMenu(items);
+          }
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to dynamically load proto menu, using robust fallback:", err);
+        setProtoMenu([
+          { path: '/mr', label: 'MR 推送事件' }
+        ]);
+      });
   }, []);
 
   const isPublicRoute = location.pathname.startsWith('/shield/public/');
@@ -480,6 +505,78 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
+          <NavLink to="/proto" icon={Network} label="接口管理系统 (Proto)" activePattern={/^\/proto/} />
+          {location.pathname.startsWith('/proto') && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              {protoMenuGroups.length > 0 ? (
+                protoMenuGroups
+                  .filter((group: any) => {
+                    if (group.adminOnly) {
+                      return user && !!user.is_admin;
+                    }
+                    return true;
+                  })
+                  .map((group: any) => {
+                    const visibleItems = (group.items || []).filter((item: any) => {
+                      if (item.adminOnly) {
+                        return user && !!user.is_admin;
+                      }
+                      return true;
+                    });
+
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {group.title}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                          {visibleItems.map((item: any) => {
+                            const fullPath = `/proto${item.path}`;
+                            return (
+                              <Link
+                                key={item.path}
+                                to={fullPath}
+                                style={subNavLinkStyle(
+                                  location.pathname === fullPath ||
+                                  location.pathname.startsWith(fullPath + '/')
+                                )}
+                              >
+                                {item.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                protoMenu
+                  .filter((item: any) => {
+                    if (item.adminOnly) {
+                      return user && !!user.is_admin;
+                    }
+                    return true;
+                  })
+                  .map((item: any) => {
+                    const fullPath = `/proto${item.path}`;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={fullPath}
+                        style={subNavLinkStyle(
+                          location.pathname === fullPath ||
+                          location.pathname.startsWith(fullPath + '/')
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })
+              )}
+            </div>
+          )}
           {user && user.is_admin && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
@@ -516,7 +613,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/admin/activity')) return '执行日志';
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
-              if (location.pathname.startsWith('/protohub')) return '接口管理系统 (ProtoHub)';
+              if (location.pathname.startsWith('/proto')) return '接口管理系统 (Proto)';
               if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (location.pathname.startsWith('/admin/users')) return '用户管理';
               return '开发者综合工作台';
@@ -744,7 +841,19 @@ export default function App() {
               </ErrorBoundary>
             } />
             <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
-            <Route path="/protohub/*" element={<PlaceholderView title="接口管理系统 (ProtoHub)" icon={Network} color="16, 185, 129" />} />
+            <Route path="/proto/*" element={
+              <ErrorBoundary>
+                <Suspense fallback={
+                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                    <div className="spinner"></div>
+                    <span style={{ fontSize: '0.95rem' }}>正在加载接口管理微应用...</span>
+                  </div>
+                }>
+                  {/* @ts-ignore */}
+                  <ProtoApp isEmbedded={true} />
+                </Suspense>
+              </ErrorBoundary>
+            } />
           </Routes>
         </MainLayout>
       </ToastProvider>
