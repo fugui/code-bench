@@ -52,6 +52,7 @@ function Repositories() {
   const [filterTeam, setFilterTeam] = useState<string>('');
   const [filterServiceGroup, setFilterServiceGroup] = useState<string>('');
   const [filterOwner, setFilterOwner] = useState<string>('');
+  const [subsystems, setSubsystems] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination state
@@ -83,6 +84,14 @@ function Repositories() {
         if (list.length > 0) {
           setFormData(prev => ({ ...prev, owner_id: prev.owner_id === '' ? list[0].id : prev.owner_id }));
         }
+      })
+      .catch(console.error);
+    repoFetch('/api/arch-elements')
+      .then(res => res.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : [];
+        const subs = list.filter((el: any) => el.type === 'subsystem');
+        setSubsystems(subs);
       })
       .catch(console.error);
   }, []);
@@ -325,7 +334,12 @@ function Repositories() {
           <option value="">全部部门</option>
           {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <input type="text" placeholder="按服务组过滤..." value={filterServiceGroup} onChange={e => handleFilterChange(setFilterServiceGroup, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
+        <select value={filterServiceGroup} onChange={e => handleFilterChange(setFilterServiceGroup, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)', cursor: 'pointer' }}>
+          <option value="">全部子系统</option>
+          {subsystems.map(sub => (
+            <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+          ))}
+        </select>
         <input type="text" placeholder="按责任人过滤..." value={filterOwner} onChange={e => handleFilterChange(setFilterOwner, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
       </div>
 
@@ -337,7 +351,7 @@ function Repositories() {
               <th>归属部门</th>
               <th>负责人</th>
               <th>分支</th>
-              <th>服务组</th>
+              <th>子系统</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -495,8 +509,13 @@ function Repositories() {
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>服务组 (最长30字符)</label>
-                <input required type="text" maxLength={30} value={formData.service_group} onChange={e => setFormData({...formData, service_group: e.target.value})} style={inputStyle} />
+                <label style={labelStyle}>归属子系统</label>
+                <select required value={formData.service_group} onChange={e => setFormData({...formData, service_group: e.target.value})} style={inputStyle}>
+                  <option value="">-- 请选择归属子系统 --</option>
+                  {subsystems.map(sub => (
+                    <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Spacer to push button to bottom */}
