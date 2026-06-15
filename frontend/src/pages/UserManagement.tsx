@@ -18,10 +18,6 @@ function UserManagement() {
   const [pageSize, setPageSize] = useState(25);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  // SSO and login type visibility config
-  const [passwordLoginEnabled, setPasswordLoginEnabled] = useState(true);
-
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,21 +32,21 @@ function UserManagement() {
       headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` },
       body: form
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) showToast(`导入失败: ${data.error}`, 'error');
-      else {
-        showToast(data.message || '导入成功', 'success');
-        fetchUsers(page, pageSize);
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      showToast('网络或发生未知错误', 'error');
-    })
-    .finally(() => {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    });
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) showToast(`导入失败: ${data.error}`, 'error');
+        else {
+          showToast(data.message || '导入成功', 'success');
+          fetchUsers(page, pageSize);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast('网络或发生未知错误', 'error');
+      })
+      .finally(() => {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      });
   };
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,15 +87,6 @@ function UserManagement() {
   }, [page, pageSize, searchQuery, filterDept]);
 
   useEffect(() => {
-    fetch('/api/auth/config')
-      .then(res => res.json())
-      .then((data: any) => {
-        if (data && typeof data.password_login_enabled === 'boolean') {
-          setPasswordLoginEnabled(data.password_login_enabled);
-        }
-      })
-      .catch(err => console.error('Failed to fetch auth config:', err));
-
     fetch('/api/departments', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
     })
@@ -121,7 +108,7 @@ function UserManagement() {
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
         },
@@ -202,7 +189,7 @@ function UserManagement() {
     try {
       const res = await fetch(`/api/users/${id}/status`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
         },
@@ -243,15 +230,15 @@ function UserManagement() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <input 
-            type="text" 
-            placeholder="搜索姓名、工号、邮箱..." 
-            value={searchQuery} 
+          <input
+            type="text"
+            placeholder="搜索姓名、工号、邮箱..."
+            value={searchQuery}
             onChange={e => {
               setSearchQuery(e.target.value);
               setPage(1);
-            }} 
-            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', width: '220px', background: 'var(--bg-color)', color: 'var(--text-color)' }} 
+            }}
+            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', width: '220px', background: 'var(--bg-color)', color: 'var(--text-color)' }}
           />
           <select
             value={filterDept}
@@ -318,20 +305,20 @@ function UserManagement() {
                   <td style={{ padding: '1rem' }}>{u.employee_id || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</span>}</td>
                   <td style={{ padding: '1rem' }}>{u.department?.name || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</span>}</td>
                   <td style={{ padding: '1rem' }}>
-                    {u.reg_method === 'sso' ? 
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600 }}>SSO 单点</span> : 
+                    {u.reg_method === 'sso' ?
+                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600 }}>SSO 单点</span> :
                       u.reg_method === 'imported' ?
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(107,114,128,0.1)', color: '#6b7280', fontSize: '0.75rem', fontWeight: 600 }}>被动导入</span> :
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>本地录入</span>}
+                        <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(107,114,128,0.1)', color: '#6b7280', fontSize: '0.75rem', fontWeight: 600 }}>被动导入</span> :
+                        <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>本地录入</span>}
                   </td>
                   <td style={{ padding: '1rem' }}>
-                    {u.is_admin ? 
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>管理员</span> : 
+                    {u.is_admin ?
+                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>管理员</span> :
                       <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'var(--bg-color)', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>普通骨干</span>}
                   </td>
                   <td style={{ padding: '1rem' }}>
-                    {u.is_active ? 
-                      <span style={{ color: 'var(--success-color)', fontSize: '0.875rem', fontWeight: 500 }}>正常使用</span> : 
+                    {u.is_active ?
+                      <span style={{ color: 'var(--success-color)', fontSize: '0.875rem', fontWeight: 500 }}>正常使用</span> :
                       <span style={{ color: 'var(--danger-color)', fontSize: '0.875rem', fontWeight: 500 }}>已被禁用</span>}
                   </td>
                   <td style={{ padding: '1rem', fontSize: '0.8125rem', color: '#64748b', lineHeight: '1.4' }}>
@@ -348,7 +335,7 @@ function UserManagement() {
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.08)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                     </button>
                     <button
                       title={u.is_active ? '封禁用户' : '解封用户'}
@@ -358,9 +345,9 @@ function UserManagement() {
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       {u.is_active ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
                       ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
                       )}
                     </button>
                     <button
@@ -370,7 +357,7 @@ function UserManagement() {
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                     </button>
                   </td>
                 </tr>
@@ -401,7 +388,7 @@ function UserManagement() {
             >
               上一页
             </button>
-            
+
             {/* Page numbers */}
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum = page;
@@ -477,31 +464,31 @@ function UserManagement() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>真实姓名</label>
-                  <input required value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} placeholder="如: 张三" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input required value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} placeholder="如: 张三" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>员工工号</label>
-                  <input value={newUserForm.employee_id} onChange={e => setNewUserForm({...newUserForm, employee_id: e.target.value})} placeholder="如: 00124" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input value={newUserForm.employee_id} onChange={e => setNewUserForm({ ...newUserForm, employee_id: e.target.value })} placeholder="如: 00124" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>登录邮箱账号</label>
-                  <input required type="email" value={newUserForm.email} onChange={e => setNewUserForm({...newUserForm, email: e.target.value})} placeholder="如: zhangsan@company.com" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input required type="email" value={newUserForm.email} onChange={e => setNewUserForm({ ...newUserForm, email: e.target.value })} placeholder="如: zhangsan@company.com" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>初始密码</label>
-                  <input required type="password" value={newUserForm.password} onChange={e => setNewUserForm({...newUserForm, password: e.target.value})} placeholder="不少于6位" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input required type="password" value={newUserForm.password} onChange={e => setNewUserForm({ ...newUserForm, password: e.target.value })} placeholder="不少于6位" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>员工类型</label>
-                  <input value={newUserForm.employee_type} onChange={e => setNewUserForm({...newUserForm, employee_type: e.target.value})} placeholder="如: 正式员工" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input value={newUserForm.employee_type} onChange={e => setNewUserForm({ ...newUserForm, employee_type: e.target.value })} placeholder="如: 正式员工" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>所属部门</label>
-                  <select required value={newUserForm.department_id} onChange={e => setNewUserForm({...newUserForm, department_id: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
+                  <select required value={newUserForm.department_id} onChange={e => setNewUserForm({ ...newUserForm, department_id: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
                     <option value="">请选择部门</option>
                     {departments.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
@@ -510,7 +497,7 @@ function UserManagement() {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input type="checkbox" id="isAdmin" checked={newUserForm.is_admin} onChange={e => setNewUserForm({...newUserForm, is_admin: e.target.checked})} />
+                <input type="checkbox" id="isAdmin" checked={newUserForm.is_admin} onChange={e => setNewUserForm({ ...newUserForm, is_admin: e.target.checked })} />
                 <label htmlFor="isAdmin" style={{ fontSize: '0.875rem', color: 'var(--text-color)' }}>设为管理员</label>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
@@ -529,26 +516,26 @@ function UserManagement() {
             <form onSubmit={handleSaveEditUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>登录邮箱</label>
-                <input required type="email" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} placeholder="如: zhangsan@company.com" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                <input required type="email" value={editUserForm.email} onChange={e => setEditUserForm({ ...editUserForm, email: e.target.value })} placeholder="如: zhangsan@company.com" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>真实姓名</label>
-                  <input required value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} placeholder="如: 张三" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input required value={editUserForm.name} onChange={e => setEditUserForm({ ...editUserForm, name: e.target.value })} placeholder="如: 张三" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>员工工号</label>
-                  <input value={editUserForm.employee_id} onChange={e => setEditUserForm({...editUserForm, employee_id: e.target.value})} placeholder="如: 00124" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input value={editUserForm.employee_id} onChange={e => setEditUserForm({ ...editUserForm, employee_id: e.target.value })} placeholder="如: 00124" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>员工类型</label>
-                  <input value={editUserForm.employee_type} onChange={e => setEditUserForm({...editUserForm, employee_type: e.target.value})} placeholder="如: 正式员工" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                  <input value={editUserForm.employee_type} onChange={e => setEditUserForm({ ...editUserForm, employee_type: e.target.value })} placeholder="如: 正式员工" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>所属部门</label>
-                  <select required value={editUserForm.department_id} onChange={e => setEditUserForm({...editUserForm, department_id: e.target.value})} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
+                  <select required value={editUserForm.department_id} onChange={e => setEditUserForm({ ...editUserForm, department_id: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
                     <option value="">请选择部门</option>
                     {departments.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
@@ -558,10 +545,10 @@ function UserManagement() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>重置密码 <span style={{ color: '#94a3b8', fontWeight: 400 }}>(留空表示不修改)</span></label>
-                <input type="password" value={editUserForm.password} onChange={e => setEditUserForm({...editUserForm, password: e.target.value})} placeholder="输入新密码" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
+                <input type="password" value={editUserForm.password} onChange={e => setEditUserForm({ ...editUserForm, password: e.target.value })} placeholder="输入新密码" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input type="checkbox" id="editIsAdmin" checked={editUserForm.is_admin} onChange={e => setEditUserForm({...editUserForm, is_admin: e.target.checked})} />
+                <input type="checkbox" id="editIsAdmin" checked={editUserForm.is_admin} onChange={e => setEditUserForm({ ...editUserForm, is_admin: e.target.checked })} />
                 <label htmlFor="editIsAdmin" style={{ fontSize: '0.875rem', color: 'var(--text-color)' }}>设为管理员</label>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
