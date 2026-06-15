@@ -159,7 +159,7 @@ function TeamsTab() {
         <table className="table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>序号</th>
               <th>部门名称</th>
               <th>部门人数</th>
               <th>代码仓数</th>
@@ -170,9 +170,9 @@ function TeamsTab() {
           <tbody>
             {teams.length === 0 ? (
               <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>暂未录入任何部门</td></tr>
-            ) : teams.map(t => (
+            ) : teams.map((t, idx) => (
               <tr key={t.id}>
-                <td style={{ fontWeight: 500 }}>{t.id}</td>
+                <td style={{ fontWeight: 500 }}>{idx + 1}</td>
                 <td>{t.name}</td>
                 <td>{t.user_count || 0} 人</td>
                 <td>{t.repo_count || 0} 个</td>
