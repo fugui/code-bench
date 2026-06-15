@@ -268,9 +268,7 @@ function UserManagement() {
           </select>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          {passwordLoginEnabled && (
-            <button className="btn" onClick={() => setIsUserModalOpen(true)}>+ 分配新系统账号</button>
-          )}
+          <button className="btn" onClick={() => setIsUserModalOpen(true)}>+ 分配新系统账号</button>
           <button className="btn" style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }} onClick={() => fileInputRef.current?.click()}>批量导入</button>
           <button className="btn" style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }} onClick={() => {
             fetch('/api/users/export', {
