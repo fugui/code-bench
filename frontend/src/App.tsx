@@ -548,91 +548,95 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
-          <NavLink 
-            to="/proto" 
-            icon={Network} 
-            label="接口管理系统 (Proto)" 
-            activePattern={/^\/proto/} 
-            onClick={(e) => {
-              if (location.pathname.startsWith('/proto')) {
-                e.preventDefault();
-                setProtoMenuCollapsed(!protoMenuCollapsed);
-              } else {
-                setProtoMenuCollapsed(false);
-                setShieldMenuCollapsed(true);
-              }
-            }}
-          />
-          {location.pathname.startsWith('/proto') && !protoMenuCollapsed && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
-            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-              {protoMenuGroups.length > 0 ? (
-                protoMenuGroups
-                  .filter((group: any) => {
-                    if (group.adminOnly) {
-                      return user && !!user.is_admin;
-                    }
-                    return true;
-                  })
-                  .map((group: any) => {
-                    const visibleItems = (group.items || []).filter((item: any) => {
-                      if (item.adminOnly) {
-                        return user && !!user.is_admin;
-                      }
-                      return true;
-                    });
+          {user && user.is_admin && (
+            <>
+              <NavLink 
+                to="/proto" 
+                icon={Network} 
+                label="接口管理系统 (Proto)" 
+                activePattern={/^\/proto/} 
+                onClick={(e) => {
+                  if (location.pathname.startsWith('/proto')) {
+                    e.preventDefault();
+                    setProtoMenuCollapsed(!protoMenuCollapsed);
+                  } else {
+                    setProtoMenuCollapsed(false);
+                    setShieldMenuCollapsed(true);
+                  }
+                }}
+              />
+              {location.pathname.startsWith('/proto') && !protoMenuCollapsed && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
+                <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  {protoMenuGroups.length > 0 ? (
+                    protoMenuGroups
+                      .filter((group: any) => {
+                        if (group.adminOnly) {
+                          return user && !!user.is_admin;
+                        }
+                        return true;
+                      })
+                      .map((group: any) => {
+                        const visibleItems = (group.items || []).filter((item: any) => {
+                          if (item.adminOnly) {
+                            return user && !!user.is_admin;
+                          }
+                          return true;
+                        });
 
-                    if (visibleItems.length === 0) return null;
+                        if (visibleItems.length === 0) return null;
 
-                    return (
-                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {group.title}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                          {visibleItems.map((item: any) => {
-                            const fullPath = `/proto${item.path}`;
-                            return (
-                              <Link
-                                key={item.path}
-                                to={fullPath}
-                                style={subNavLinkStyle(
-                                  location.pathname === fullPath ||
-                                  location.pathname.startsWith(fullPath + '/')
-                                )}
-                              >
-                                {item.label}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-              ) : (
-                protoMenu
-                  .filter((item: any) => {
-                    if (item.adminOnly) {
-                      return user && !!user.is_admin;
-                    }
-                    return true;
-                  })
-                  .map((item: any) => {
-                    const fullPath = `/proto${item.path}`;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={fullPath}
-                        style={subNavLinkStyle(
-                          location.pathname === fullPath ||
-                          location.pathname.startsWith(fullPath + '/')
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    );
-                  })
+                        return (
+                          <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {group.title}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                              {visibleItems.map((item: any) => {
+                                const fullPath = `/proto${item.path}`;
+                                return (
+                                  <Link
+                                    key={item.path}
+                                    to={fullPath}
+                                    style={subNavLinkStyle(
+                                      location.pathname === fullPath ||
+                                      location.pathname.startsWith(fullPath + '/')
+                                    )}
+                                  >
+                                    {item.label}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    protoMenu
+                      .filter((item: any) => {
+                        if (item.adminOnly) {
+                          return user && !!user.is_admin;
+                        }
+                        return true;
+                      })
+                      .map((item: any) => {
+                        const fullPath = `/proto${item.path}`;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={fullPath}
+                            style={subNavLinkStyle(
+                              location.pathname === fullPath ||
+                              location.pathname.startsWith(fullPath + '/')
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
           {user && user.is_admin && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
