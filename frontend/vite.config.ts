@@ -11,6 +11,7 @@ export default defineConfig({
       remotes: {
         shield: '/shield/assets/remoteEntry.js',
         proto: '/proto/assets/remoteEntry.js',
+        pipeline: '/pipeline/assets/remoteEntry.js',
       },
       shared: ['react', 'react-dom', 'react-router-dom']
     })
@@ -28,6 +29,10 @@ export default defineConfig({
       },
       '/proto': {
         target: 'http://localhost:5175',
+        changeOrigin: true,
+      },
+      '/pipeline': {
+        target: 'http://localhost:5176',
         changeOrigin: true,
       },
       // Backend API proxy (forwarding /api calls to the backend server)

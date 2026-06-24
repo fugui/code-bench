@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
@@ -99,6 +99,8 @@ function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string
 const ShieldApp = React.lazy(() => import('shield/App'));
 // @ts-ignore
 const ProtoApp = React.lazy(() => import('proto/App'));
+// @ts-ignore
+const PipelineApp = React.lazy(() => import('pipeline/App'));
 
 function Home() {
   return (
@@ -159,14 +161,18 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
   const [protoMenu, setProtoMenu] = React.useState<any[]>([]);
   const [protoMenuGroups, setProtoMenuGroups] = React.useState<any[]>([]);
+  const [pipelineMenu, setPipelineMenu] = React.useState<any[]>([]);
+  const [pipelineMenuGroups, setPipelineMenuGroups] = React.useState<any[]>([]);
   const [shieldMenuCollapsed, setShieldMenuCollapsed] = React.useState(true);
   const [protoMenuCollapsed, setProtoMenuCollapsed] = React.useState(true);
+  const [pipelineMenuCollapsed, setPipelineMenuCollapsed] = React.useState(true);
   const prevModuleRef = React.useRef<string>('');
 
   React.useEffect(() => {
     const getModule = (path: string) => {
       if (path.startsWith('/shield')) return 'shield';
       if (path.startsWith('/proto')) return 'proto';
+      if (path.startsWith('/pipeline')) return 'pipeline';
       return 'other';
     };
 
@@ -177,12 +183,19 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       if (currentModule === 'shield') {
         setShieldMenuCollapsed(false);
         setProtoMenuCollapsed(true);
+        setPipelineMenuCollapsed(true);
       } else if (currentModule === 'proto') {
         setProtoMenuCollapsed(false);
         setShieldMenuCollapsed(true);
+        setPipelineMenuCollapsed(true);
+      } else if (currentModule === 'pipeline') {
+        setPipelineMenuCollapsed(false);
+        setShieldMenuCollapsed(true);
+        setProtoMenuCollapsed(true);
       } else {
         setShieldMenuCollapsed(true);
         setProtoMenuCollapsed(true);
+        setPipelineMenuCollapsed(true);
       }
       prevModuleRef.current = currentModule;
     }
@@ -345,7 +358,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
-
   React.useEffect(() => {
     // Dynamically load remote menu metadata from code-shield micro-frontend
     // @ts-ignore
@@ -394,6 +406,29 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         console.warn("Failed to dynamically load proto menu, using robust fallback:", err);
         setProtoMenu([
           { path: '/mr', label: 'MR 推送事件' }
+        ]);
+      });
+
+    // Dynamically load remote menu metadata from code-pipeline micro-frontend
+    // @ts-ignore
+    import('pipeline/menu')
+      .then(mod => {
+        if (mod) {
+          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+            setPipelineMenuGroups(mod.menuGroups);
+          }
+          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+          if (items && Array.isArray(items)) {
+            setPipelineMenu(items);
+          }
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to dynamically load pipeline menu, using robust fallback:", err);
+        setPipelineMenu([
+          { path: '/', label: '控制中心' },
+          { path: '/repos', label: '仓库配置' },
+          { path: '/history', label: '执行历史' }
         ]);
       });
   }, []);
@@ -453,7 +488,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
+          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
           <NavLink 
             to="/shield" 
             icon={Shield} 
@@ -466,6 +501,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               } else {
                 setShieldMenuCollapsed(false);
                 setProtoMenuCollapsed(true);
+                setPipelineMenuCollapsed(true);
               }
             }}
           />
@@ -548,6 +584,68 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
+          <NavLink 
+            to="/pipeline" 
+            icon={Activity} 
+            label="持续构建流水线" 
+            activePattern={/^\/pipeline/} 
+            onClick={(e) => {
+              if (location.pathname.startsWith('/pipeline')) {
+                e.preventDefault();
+                setPipelineMenuCollapsed(!pipelineMenuCollapsed);
+              } else {
+                setPipelineMenuCollapsed(false);
+                setShieldMenuCollapsed(true);
+                setProtoMenuCollapsed(true);
+              }
+            }}
+          />
+          {location.pathname.startsWith('/pipeline') && !pipelineMenuCollapsed && (pipelineMenuGroups.length > 0 || pipelineMenu.length > 0) && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              {pipelineMenuGroups.length > 0 ? (
+                pipelineMenuGroups.map((group: any) => (
+                  <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {group.title}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                      {group.items.map((item: any) => {
+                        const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={fullPath}
+                            style={subNavLinkStyle(
+                              location.pathname === fullPath ||
+                              location.pathname.startsWith(fullPath + '/')
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                pipelineMenu.map((item: any) => {
+                  const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={fullPath}
+                      style={subNavLinkStyle(
+                        location.pathname === fullPath ||
+                        location.pathname.startsWith(fullPath + '/')
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          )}
           {user && user.is_admin && (
             <>
               <NavLink 
@@ -562,6 +660,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   } else {
                     setProtoMenuCollapsed(false);
                     setShieldMenuCollapsed(true);
+                    setPipelineMenuCollapsed(true);
                   }
                 }}
               />
@@ -643,8 +742,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
-              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
-              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); }} />
+              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
+              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
             </div>
           )}
         </nav>
@@ -675,6 +774,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/proto')) return '接口管理系统 (Proto)';
+              if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
               if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (location.pathname.startsWith('/admin/users')) return '用户管理';
               return '开发者综合工作台';
@@ -902,6 +1002,19 @@ export default function App() {
               </ErrorBoundary>
             } />
             <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
+            <Route path="/pipeline/*" element={
+              <ErrorBoundary>
+                <Suspense fallback={
+                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                    <div className="spinner"></div>
+                    <span style={{ fontSize: '0.95rem' }}>正在加载流水线微应用...</span>
+                  </div>
+                }>
+                  {/* @ts-ignore */}
+                  <PipelineApp isEmbedded={true} />
+                </Suspense>
+              </ErrorBoundary>
+            } />
             <Route path="/proto/*" element={
               <ErrorBoundary>
                 <Suspense fallback={

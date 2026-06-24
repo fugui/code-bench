@@ -41,4 +41,5 @@ sync:
 
 gateways:
   shield: "http://127.0.0.1:8080"
-  # proto: "http://127.0.0.1:8081" # 预留未来扩展的微服务
+  proto: "http://127.0.0.1:8081"
+  pipeline: "http://127.0.0.1:8082"
