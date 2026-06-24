@@ -587,7 +587,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <NavLink 
             to="/pipeline" 
             icon={Activity} 
-            label="持续构建流水线" 
+            label="持续构建(Code Pipeline)" 
             activePattern={/^\/pipeline/} 
             onClick={(e) => {
               if (location.pathname.startsWith('/pipeline')) {
