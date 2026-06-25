@@ -426,7 +426,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       .catch(err => {
         console.warn("Failed to dynamically load pipeline menu, using robust fallback:", err);
         setPipelineMenu([
-          { path: '/', label: '控制中心' },
+          { path: '/dashboard', label: '控制中心' },
           { path: '/repos', label: '仓库配置' },
           { path: '/history', label: '执行历史' }
         ]);
@@ -613,14 +613,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
                           {group.items.map((item: any) => {
                             const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                            const isDashboard = item.path === '/' || item.path === '/dashboard';
+                            const isActive = isDashboard
+                              ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                              : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
                             return (
                               <Link
                                 key={item.path}
                                 to={fullPath}
-                                style={subNavLinkStyle(
-                                  location.pathname === fullPath ||
-                                  location.pathname.startsWith(fullPath + '/')
-                                )}
+                                style={subNavLinkStyle(isActive)}
                               >
                                 {item.label}
                               </Link>
@@ -632,14 +633,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   ) : (
                     pipelineMenu.map((item: any) => {
                       const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                      const isDashboard = item.path === '/' || item.path === '/dashboard';
+                      const isActive = isDashboard
+                        ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                        : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
                       return (
                         <Link
                           key={item.path}
                           to={fullPath}
-                          style={subNavLinkStyle(
-                            location.pathname === fullPath ||
-                            location.pathname.startsWith(fullPath + '/')
-                          )}
+                          style={subNavLinkStyle(isActive)}
                         >
                           {item.label}
                         </Link>
