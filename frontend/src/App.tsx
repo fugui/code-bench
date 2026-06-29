@@ -427,8 +427,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         console.warn("Failed to dynamically load pipeline menu, using robust fallback:", err);
         setPipelineMenu([
           { path: '/dashboard', label: '控制中心' },
-          { path: '/repos', label: '仓库配置' },
-          { path: '/history', label: '执行历史' }
+          { path: '/repos', label: '仓库配置' }
         ]);
       });
   }, []);
@@ -995,7 +994,7 @@ export default function App() {
             <Route path="/admin/teams" element={<TeamManagement />} />
             <Route path="/admin/teams/:tab" element={<TeamManagement />} />
             <Route path="/shield/*" element={
-              <ErrorBoundary>
+              <ErrorBoundary key="shield-eb">
                 <Suspense fallback={
                   <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
                     <div className="spinner"></div>
@@ -1009,7 +1008,7 @@ export default function App() {
             } />
             <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
             <Route path="/pipeline/*" element={
-              <ErrorBoundary>
+              <ErrorBoundary key="pipeline-eb">
                 <Suspense fallback={
                   <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
                     <div className="spinner"></div>
@@ -1022,7 +1021,7 @@ export default function App() {
               </ErrorBoundary>
             } />
             <Route path="/proto/*" element={
-              <ErrorBoundary>
+              <ErrorBoundary key="proto-eb">
                 <Suspense fallback={
                   <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
                     <div className="spinner"></div>
