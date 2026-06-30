@@ -48,6 +48,7 @@ type Repository struct {
 	IsActive       bool           `gorm:"default:true" json:"is_active"`
 	LastCommitHash string         `json:"last_commit_hash"`
 	ProjectID      string         `gorm:"default:''" json:"project_id"`
+	HTTPURL        string         `gorm:"default:''" json:"http_url"`
 	CreatedAt      time.Time      `json:"created_at"`
 }
 

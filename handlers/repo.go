@@ -93,23 +93,23 @@ func extractRepoPath(repoURL string) string {
 	return strings.Trim(pathPart, "/")
 }
 
-// fetchProjectIDRemote 调用三方接口获取 Project ID
-func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, error) {
+// fetchRepoDetailRemote 调用三方接口获取代码仓详情（ID、SSH URL、HTTP URL）
+func fetchRepoDetailRemote(repoURL string, headers map[string]string) (string, string, string, error) {
 	apiURL := models.AppConfig.Sync.RepoDetailURL
 	if apiURL == "" {
-		return "", fmt.Errorf("repo_detail_url not configured")
+		return "", "", "", fmt.Errorf("repo_detail_url not configured")
 	}
 
 	repoPath := extractRepoPath(repoURL)
 	if repoPath == "" {
-		return "", fmt.Errorf("invalid repository URL: %s", repoURL)
+		return "", "", "", fmt.Errorf("invalid repository URL: %s", repoURL)
 	}
 
 	reqURL := fmt.Sprintf("%s?path=%s", apiURL, url.QueryEscape(repoPath))
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
 	for k, v := range headers {
@@ -119,28 +119,31 @@ func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, er
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("remote API returned status code: %d", resp.StatusCode)
+		return "", "", "", fmt.Errorf("remote API returned status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
+	// 响应数据中 { "id", "ssh_url_to_repo", "http_url_to_repo"}
 	var result struct {
-		ID int `json:"id"`
+		ID            int    `json:"id"`
+		SSHURLToRepo  string `json:"ssh_url_to_repo"`
+		HTTPURLToRepo string `json:"http_url_to_repo"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Printf("[ProjectIDSync] JSON unmarshal failed. URL: %s, Response Body: %s, Error: %v", reqURL, string(body), err)
-		return "", fmt.Errorf("failed to parse JSON response: %w", err)
+		return "", "", "", fmt.Errorf("failed to parse JSON response: %w", err)
 	}
 
-	return strconv.Itoa(result.ID), nil
+	return strconv.Itoa(result.ID), result.SSHURLToRepo, result.HTTPURLToRepo, nil
 }
 
 func GetRepos(c *gin.Context) {
@@ -195,16 +198,25 @@ func GetRepos(c *gin.Context) {
 					projectIDSyncSem <- struct{}{}
 					defer func() { <-projectIDSyncSem }()
 
-					projectID, err := fetchProjectIDRemote(repoURL, headers)
+					projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
 					if err != nil {
-						log.Printf("[ProjectIDSync] Failed to fetch project ID for repo %d: %v", repoID, err)
+						log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
 						return
 					}
 					if projectID != "" {
-						if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Update("project_id", projectID).Error; err != nil {
-							log.Printf("[ProjectIDSync] Failed to update project_id in db for repo %d: %v", repoID, err)
+						updates := map[string]interface{}{
+							"project_id": projectID,
+						}
+						if sshURL != "" {
+							updates["url"] = sshURL
+						}
+						if httpURL != "" {
+							updates["http_url"] = httpURL
+						}
+						if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(updates).Error; err != nil {
+							log.Printf("[ProjectIDSync] Failed to update repo details in db for repo %d: %v", repoID, err)
 						} else {
-							log.Printf("[ProjectIDSync] Successfully updated project_id %s for repo %d", projectID, repoID)
+							log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
 							var updatedRepo models.Repository
 							if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
 								BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
@@ -285,6 +297,7 @@ func UpdateRepo(c *gin.Context) {
 		ServiceGroup   *string   `json:"service_group"`
 		RelatedMembers *[]string `json:"related_members"`
 		ProjectID      *string   `json:"project_id"`
+		HTTPURL        *string   `json:"http_url"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -314,6 +327,9 @@ func UpdateRepo(c *gin.Context) {
 	}
 	if input.ProjectID != nil {
 		updates["project_id"] = *input.ProjectID
+	}
+	if input.HTTPURL != nil {
+		updates["http_url"] = *input.HTTPURL
 	}
 	if input.RelatedMembers != nil {
 		if len(*input.RelatedMembers) == 0 {
