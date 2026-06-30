@@ -189,7 +189,7 @@ func GetRepos(c *gin.Context) {
 	// 异步更新空 project_id
 	headers := prepareRequestHeaders(c)
 	for _, r := range repos {
-		if r.ProjectID == "" {
+		if r.ProjectID == "" || r.HTTPURL == "" {
 			if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
 				go func(repoID uint, repoURL string) {
 					defer syncingProjectIDs.Delete(repoID)
