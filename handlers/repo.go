@@ -136,6 +136,7 @@ func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, er
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
+		log.Printf("[ProjectIDSync] JSON unmarshal failed. URL: %s, Response Body: %s, Error: %v", reqURL, string(body), err)
 		return "", fmt.Errorf("failed to parse JSON response: %w", err)
 	}
 
