@@ -76,6 +76,23 @@ func formatURLToHTTPS(rawURL string) string {
 	return "https://" + rawURL
 }
 
+// extractRepoPath 提取不含协议、host 与末尾 .git 的仓库路径
+func extractRepoPath(repoURL string) string {
+	httpsURL := formatURLToHTTPS(repoURL)
+	if httpsURL == "" {
+		return ""
+	}
+
+	pathPart := strings.TrimPrefix(httpsURL, "https://")
+	firstSlash := strings.Index(pathPart, "/")
+	if firstSlash == -1 {
+		return ""
+	}
+	pathPart = pathPart[firstSlash+1:]
+	pathPart = strings.TrimSuffix(pathPart, ".git")
+	return strings.Trim(pathPart, "/")
+}
+
 // fetchProjectIDRemote 调用三方接口获取 Project ID
 func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, error) {
 	apiURL := models.AppConfig.Sync.RepoDetailURL
@@ -83,8 +100,12 @@ func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, er
 		return "", fmt.Errorf("repo_detail_url not configured")
 	}
 
-	formattedURL := formatURLToHTTPS(repoURL)
-	reqURL := fmt.Sprintf("%s?url=%s", apiURL, url.QueryEscape(formattedURL))
+	repoPath := extractRepoPath(repoURL)
+	if repoPath == "" {
+		return "", fmt.Errorf("invalid repository URL: %s", repoURL)
+	}
+
+	reqURL := fmt.Sprintf("%s?path=%s", apiURL, url.QueryEscape(repoPath))
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
