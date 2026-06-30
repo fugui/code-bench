@@ -8,8 +8,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 	"unicode/utf8"
 
 	"code-bench/database"
@@ -20,6 +24,102 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
+
+var syncingProjectIDs sync.Map
+var projectIDSyncSem = make(chan struct{}, 5)
+
+// prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header
+func prepareRequestHeaders(c *gin.Context) map[string]string {
+	headers := make(map[string]string)
+	if cookie := c.GetHeader("Cookie"); cookie != "" {
+		headers["Cookie"] = cookie
+	}
+	cftk := c.GetHeader("cftk")
+	if cftk == "" {
+		cftk, _ = c.Cookie("prod_cftk")
+	}
+	if cftk != "" {
+		headers["cftk"] = cftk
+	}
+	headers["x-requested-with"] = "XMLHttpRequest"
+	return headers
+}
+
+// formatURLToHTTPS 转换代码仓 URL 到 HTTPS 格式
+func formatURLToHTTPS(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return ""
+	}
+
+	rawURL = strings.TrimPrefix(rawURL, "ssh://")
+
+	if strings.Contains(rawURL, "git@") {
+		parts := strings.SplitN(rawURL, "git@", 2)
+		afterGit := parts[1]
+
+		// 匹配第一个 ":"，如果它后面跟着的不是数字，就把它换成 "/"
+		reg := regexp.MustCompile(`:([^0-9])`)
+		afterGit = reg.ReplaceAllString(afterGit, "/$1")
+
+		return "https://" + afterGit
+	}
+
+	if strings.HasPrefix(rawURL, "http://") {
+		return "https://" + strings.TrimPrefix(rawURL, "http://")
+	}
+
+	if strings.HasPrefix(rawURL, "https://") {
+		return rawURL
+	}
+
+	return "https://" + rawURL
+}
+
+// fetchProjectIDRemote 调用三方接口获取 Project ID
+func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, error) {
+	apiURL := models.AppConfig.ThirdParty.RepoProjectIDURL
+	if apiURL == "" {
+		return "", fmt.Errorf("repo_project_id_url not configured")
+	}
+
+	formattedURL := formatURLToHTTPS(repoURL)
+	reqURL := fmt.Sprintf("%s?url=%s", apiURL, url.QueryEscape(formattedURL))
+
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("remote API returned status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to parse JSON response: %w", err)
+	}
+
+	return result.ID, nil
+}
 
 func GetRepos(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -60,6 +160,39 @@ func GetRepos(c *gin.Context) {
 	var repos []models.Repository
 	offset := (page - 1) * pageSize
 	query.Preload("Department").Preload("Owner").Offset(offset).Limit(pageSize).Find(&repos)
+
+	// 异步更新空 project_id
+	headers := prepareRequestHeaders(c)
+	for _, r := range repos {
+		if r.ProjectID == "" {
+			if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
+				go func(repoID uint, repoURL string) {
+					defer syncingProjectIDs.Delete(repoID)
+
+					// 申请并发名额（通道缓冲上限 5）
+					projectIDSyncSem <- struct{}{}
+					defer func() { <-projectIDSyncSem }()
+
+					projectID, err := fetchProjectIDRemote(repoURL, headers)
+					if err != nil {
+						log.Printf("[ProjectIDSync] Failed to fetch project ID for repo %d: %v", repoID, err)
+						return
+					}
+					if projectID != "" {
+						if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Update("project_id", projectID).Error; err != nil {
+							log.Printf("[ProjectIDSync] Failed to update project_id in db for repo %d: %v", repoID, err)
+						} else {
+							log.Printf("[ProjectIDSync] Successfully updated project_id %s for repo %d", projectID, repoID)
+							var updatedRepo models.Repository
+							if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
+								BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
+							}
+						}
+					}
+				}(r.ID, r.URL)
+			}
+		}
+	}
 
 	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
 
@@ -129,6 +262,7 @@ func UpdateRepo(c *gin.Context) {
 		TeamID         *uint     `json:"team_id"`
 		ServiceGroup   *string   `json:"service_group"`
 		RelatedMembers *[]string `json:"related_members"`
+		ProjectID      *string   `json:"project_id"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -155,6 +289,9 @@ func UpdateRepo(c *gin.Context) {
 	}
 	if input.ServiceGroup != nil {
 		updates["service_group"] = *input.ServiceGroup
+	}
+	if input.ProjectID != nil {
+		updates["project_id"] = *input.ProjectID
 	}
 	if input.RelatedMembers != nil {
 		if len(*input.RelatedMembers) == 0 {

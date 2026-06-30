@@ -46,7 +46,7 @@ function Repositories() {
   const [repos, setRepos] = useState<any[]>([]);
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null);
   const [editingRepoId, setEditingRepoId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: '', url: '', owner_id: '' as string | number, branch: 'master', department_id: 0, service_group: '', related_members: [] as string[] });
+  const [formData, setFormData] = useState({ name: '', url: '', owner_id: '' as string | number, branch: 'master', department_id: 0, service_group: '', project_id: '', related_members: [] as string[] });
   const [teams, setTeams] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [filterTeam, setFilterTeam] = useState<string>('');
@@ -122,7 +122,7 @@ function Repositories() {
   };
 
   const openAddDrawer = () => {
-    setFormData({ name: '', url: '', owner_id: members.length > 0 ? members[0].id : '', branch: 'master', department_id: teams.length > 0 ? teams[0].id : 0, service_group: '', related_members: [] });
+    setFormData({ name: '', url: '', owner_id: members.length > 0 ? members[0].id : '', branch: 'master', department_id: teams.length > 0 ? teams[0].id : 0, service_group: '', project_id: '', related_members: [] });
     setEditingRepoId(null);
     setDrawerMode('add');
   };
@@ -135,6 +135,7 @@ function Repositories() {
       branch: repo.branch || 'master',
       department_id: repo.department_id || (teams.length > 0 ? teams[0].id : 0),
       service_group: repo.service_group || '',
+      project_id: repo.project_id || '',
       related_members: Array.isArray(repo.related_members) ? repo.related_members : []
     });
     setEditingRepoId(repo.id);
@@ -166,6 +167,7 @@ function Repositories() {
         branch: formData.branch,
         department_id: Number(formData.department_id),
         service_group: formData.service_group,
+        project_id: formData.project_id || undefined,
         related_members: formData.related_members
       })
     })
@@ -195,6 +197,7 @@ function Repositories() {
         branch: formData.branch,
         department_id: Number(formData.department_id),
         service_group: formData.service_group,
+        project_id: formData.project_id,
         related_members: formData.related_members
       })
     })
@@ -373,6 +376,7 @@ function Repositories() {
                       title={repo.url}
                     >
                       {repo.name}
+                      {repo.project_id && <span style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.3rem', fontWeight: 'normal' }}>(ID: {repo.project_id})</span>}
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
                         <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
                         <polyline points="15 3 21 3 21 9"/>

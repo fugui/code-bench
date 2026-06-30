@@ -58,12 +58,12 @@ func main() {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(target)
 		p := prefix // local copy for closure
-		r.Any("/" + p + "/*path", func(c *gin.Context) {
+		r.Any("/"+p+"/*path", func(c *gin.Context) {
 			path := c.Request.URL.Path
 			// Only proxy API requests, static assets, or module federation entry files
-			if strings.HasPrefix(path, "/"+p+"/api") || 
-			   strings.HasPrefix(path, "/"+p+"/assets") || 
-			   strings.HasSuffix(path, "remoteEntry.js") {
+			if strings.HasPrefix(path, "/"+p+"/api") ||
+				strings.HasPrefix(path, "/"+p+"/assets") ||
+				strings.HasSuffix(path, "remoteEntry.js") {
 				if models.AppConfig.Server.GinLog {
 					log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, path, p)
 				}

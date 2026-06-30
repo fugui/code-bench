@@ -55,8 +55,11 @@ type Config struct {
 		PasswordLoginEnabled bool         `yaml:"password_login_enabled"`
 		OAuth2               OAuth2Config `yaml:"oauth2"`
 	} `yaml:"auth"`
-	Sync     SyncConfig        `yaml:"sync"`
-	Gateways map[string]string `yaml:"gateways"`
+	Sync       SyncConfig        `yaml:"sync"`
+	Gateways   map[string]string `yaml:"gateways"`
+	ThirdParty struct {
+		RepoProjectIDURL string `yaml:"repo_project_id_url"`
+	} `yaml:"thirdparty"`
 }
 
 var AppConfig Config

@@ -40,7 +40,7 @@ func BroadcastSync(action string, path string, id uint, data interface{}) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		for _, target := range targets {
 			targetURL := strings.TrimRight(target, "/") + path
-			
+
 			req, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(payloadBytes))
 			if err != nil {
 				log.Printf("[Sync] Failed to create sync request for %s: %v", targetURL, err)
@@ -48,7 +48,7 @@ func BroadcastSync(action string, path string, id uint, data interface{}) {
 			}
 			req.Header.Set("Content-Type", "application/json")
 			// Add a simple shared authorization token or secret if desired, for now simple post
-			
+
 			resp, err := client.Do(req)
 			if err != nil {
 				log.Printf("[Sync] Failed to send sync payload to %s: %v", targetURL, err)

@@ -30,7 +30,7 @@ func getJWTSecret() []byte {
 func GenerateToken(user models.User) (string, error) {
 	secret := getJWTSecret()
 	expirationTime := time.Now().Add(24 * time.Hour)
-	
+
 	username := user.Email
 	if username == "" {
 		username = user.Name
@@ -270,4 +270,3 @@ func GetMyDepartmentProxy(c *gin.Context) {
 	// 5. 将结果直接透传回给前端
 	c.DataFromReader(resp.StatusCode, resp.ContentLength, resp.Header.Get("Content-Type"), resp.Body, nil)
 }
-
