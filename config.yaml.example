@@ -38,11 +38,9 @@ auth:
 sync:
   targets:
     - "http://127.0.0.1:8080"
+  repo_detail_url: "http://192.168.56.18:8080/api/external/project-id"
 
 gateways:
   shield: "http://127.0.0.1:8080"
   proto: "http://127.0.0.1:8081"
   pipeline: "http://127.0.0.1:8082"
-
-thirdparty:
-  repo_project_id_url: "http://192.168.56.18:8080/api/external/project-id"

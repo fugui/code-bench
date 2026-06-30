@@ -78,9 +78,9 @@ func formatURLToHTTPS(rawURL string) string {
 
 // fetchProjectIDRemote 调用三方接口获取 Project ID
 func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, error) {
-	apiURL := models.AppConfig.ThirdParty.RepoProjectIDURL
+	apiURL := models.AppConfig.Sync.RepoDetailURL
 	if apiURL == "" {
-		return "", fmt.Errorf("repo_project_id_url not configured")
+		return "", fmt.Errorf("repo_detail_url not configured")
 	}
 
 	formattedURL := formatURLToHTTPS(repoURL)

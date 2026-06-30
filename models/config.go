@@ -36,7 +36,8 @@ type OAuth2Config struct {
 }
 
 type SyncConfig struct {
-	Targets []string `yaml:"targets"` // Endpoints to sync to, e.g. ["http://127.0.0.1:8080"]
+	Targets       []string `yaml:"targets"` // Endpoints to sync to, e.g. ["http://127.0.0.1:8080"]
+	RepoDetailURL string   `yaml:"repo_detail_url"`
 }
 
 type Config struct {
@@ -55,11 +56,8 @@ type Config struct {
 		PasswordLoginEnabled bool         `yaml:"password_login_enabled"`
 		OAuth2               OAuth2Config `yaml:"oauth2"`
 	} `yaml:"auth"`
-	Sync       SyncConfig        `yaml:"sync"`
-	Gateways   map[string]string `yaml:"gateways"`
-	ThirdParty struct {
-		RepoProjectIDURL string `yaml:"repo_project_id_url"`
-	} `yaml:"thirdparty"`
+	Sync     SyncConfig        `yaml:"sync"`
+	Gateways map[string]string `yaml:"gateways"`
 }
 
 var AppConfig Config
