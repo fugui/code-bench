@@ -133,14 +133,14 @@ func fetchProjectIDRemote(repoURL string, headers map[string]string) (string, er
 	}
 
 	var result struct {
-		ID string `json:"id"`
+		ID int `json:"id"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Printf("[ProjectIDSync] JSON unmarshal failed. URL: %s, Response Body: %s, Error: %v", reqURL, string(body), err)
 		return "", fmt.Errorf("failed to parse JSON response: %w", err)
 	}
 
-	return result.ID, nil
+	return strconv.Itoa(result.ID), nil
 }
 
 func GetRepos(c *gin.Context) {
