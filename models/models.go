@@ -39,16 +39,16 @@ type Repository struct {
 	DepartmentID   uint           `json:"department_id"`
 	Department     Department     `gorm:"foreignKey:DepartmentID" json:"department"`
 	Name           string         `gorm:"uniqueIndex;not null" json:"name"`
-	URL            string         `gorm:"not null" json:"url"`
+	ProjectID      string         `gorm:"default:''" json:"project_id"` // 三方系统中的项目 ID (用于 API 交互)
+	URL            string         `gorm:"not null" json:"url"`          // 仓库 SSH URL 克隆地址
+	HTTPURL        string         `gorm:"default:''" json:"http_url"`   // 仓库 HTTP/HTTPS URL 访问地址
 	OwnerID        uint           `json:"owner_id"`
 	Owner          User           `gorm:"foreignKey:OwnerID" json:"owner"`
-	Branch         string         `gorm:"default:master" json:"branch"`
-	ServiceGroup   string         `gorm:"size:30" json:"service_group"`
-	RelatedMembers datatypes.JSON `json:"related_members"` // Related members IDs/employee IDs
-	IsActive       bool           `gorm:"default:true" json:"is_active"`
-	LastCommitHash string         `json:"last_commit_hash"`
-	ProjectID      string         `gorm:"default:''" json:"project_id"`
-	HTTPURL        string         `gorm:"default:''" json:"http_url"`
+	Branch         string         `gorm:"default:master" json:"branch"`  // 主干分支 (默认 master)
+	ServiceGroup   string         `gorm:"size:30" json:"service_group"`  // 归属子系统 (如模块分组)
+	RelatedMembers datatypes.JSON `json:"related_members"`               // 相关人员 ID 列表 (分析结果将抄送给他们)
+	IsActive       bool           `gorm:"default:true" json:"is_active"` // 是否启用
+	LastCommitHash string         `json:"last_commit_hash"`              // 最后一次同步提交的 hash 值
 	CreatedAt      time.Time      `json:"created_at"`
 }
 
