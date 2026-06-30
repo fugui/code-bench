@@ -29,7 +29,7 @@ func getJWTSecret() []byte {
 
 func GenerateToken(user models.User) (string, error) {
 	secret := getJWTSecret()
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(6 * time.Hour)
 
 	username := user.Email
 	if username == "" {
