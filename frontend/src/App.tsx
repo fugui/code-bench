@@ -107,7 +107,7 @@ function Home() {
     <div style={{ padding: '2.5rem' }}>
       <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '800px' }}>
-        这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量、大模型网关、接口集成等核心业务系统。
+        这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量、持续构建、接口集成等核心业务系统。
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -127,14 +127,14 @@ function Home() {
         <div className="portal-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <div className="card-icon" style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-              <Brain size={24} />
+              <Activity size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>模型网关 (ModelGate)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>持续构建 (Code Pipeline)</h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            大模型集成接入网关。支持多模型分流、调用量审计、提示词安全过滤以及 API key 分发管理。
+            自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。
           </p>
-          <Link to="/modelgate" className="card-btn">进入系统 &rarr;</Link>
+          <Link to="/pipeline" className="card-btn">进入系统 &rarr;</Link>
         </div>
 
         <div className="portal-card">
