@@ -15,11 +15,12 @@ import (
 )
 
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	IsAdmin  bool   `json:"is_admin"`
+	UserID     uint   `json:"user_id"`
+	Username   string `json:"username"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	EmployeeID string `json:"employee_id"`
+	IsAdmin    bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
@@ -37,11 +38,12 @@ func GenerateToken(user models.User) (string, error) {
 	}
 
 	claims := &Claims{
-		UserID:   user.ID,
-		Username: username,
-		Email:    user.Email,
-		Name:     user.Name,
-		IsAdmin:  user.IsAdmin,
+		UserID:     user.ID,
+		Username:   username,
+		Email:      user.Email,
+		Name:       user.Name,
+		EmployeeID: user.EmployeeID,
+		IsAdmin:    user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
