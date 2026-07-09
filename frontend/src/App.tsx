@@ -1047,33 +1047,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {user && !showFeedbackModal && (
-        <button
-          onClick={() => { setShowFeedbackModal(true); setFeedbackTab('create'); }}
-          style={{
-            position: 'fixed', bottom: '2rem', right: '2rem', width: '52px', height: '52px',
-            borderRadius: '50%', background: 'rgba(59, 130, 246, 0.75)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 999,
-            boxShadow: '0 8px 32px rgba(59, 130, 246, 0.3)', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            outline: 'none'
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)';
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.9)';
-            e.currentTarget.style.boxShadow = '0 12px 40px rgba(59, 130, 246, 0.5)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.75)';
-            e.currentTarget.style.boxShadow = '0 8px 32px rgba(59, 130, 246, 0.3)';
-          }}
-          title="产品改进建议反馈"
-        >
-          <MessageSquare size={22} />
-        </button>
-      )}
-
       {showFeedbackModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowFeedbackModal(false)}>
           <div className="glass-card" style={{ width: '600px', maxWidth: '95%', padding: '2rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '85vh', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
