@@ -139,7 +139,7 @@ function Home() {
     <div style={{ padding: '2.5rem' }}>
       <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '800px' }}>
-        这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量、持续构建、接口集成等核心业务系统。
+        这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量检测、持续构建流水线以及产品数据管理等核心业务系统。
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -172,14 +172,14 @@ function Home() {
         <div className="portal-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <div className="card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-              <Network size={24} />
+              <ClipboardList size={24} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>接口管理系统 (Proto)</h3>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>产品数据管理 (PDM)</h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            接口与协议统一管理中心。提供 API 设计、Mock 服务联调、契约测试以及多协议数据网关服务。
+            规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
           </p>
-          <Link to="/proto" className="card-btn">进入系统 &rarr;</Link>
+          <Link to="/pdm" className="card-btn">进入系统 &rarr;</Link>
         </div>
       </div>
     </div>
@@ -540,26 +540,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         ]);
       });
 
-    // Dynamically load remote menu metadata from code-proto micro-frontend
-    // @ts-ignore
-    import('proto/menu')
-      .then(mod => {
-        if (mod) {
-          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-            setProtoMenuGroups(mod.menuGroups);
-          }
-          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-          if (items && Array.isArray(items)) {
-            setProtoMenu(items);
-          }
-        }
-      })
-      .catch(err => {
-        console.warn("Failed to dynamically load proto menu, using robust fallback:", err);
-        setProtoMenu([
-          { path: '/mr', label: 'MR 推送事件' }
-        ]);
-      });
+
 
     // Dynamically load remote menu metadata from code-pipeline micro-frontend
     // @ts-ignore
@@ -759,70 +740,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* 产品数据管理 (PDM) */}
-          <NavLink 
-            to="/pdm" 
-            icon={ClipboardList} 
-            label="产品数据管理 (PDM)" 
-            activePattern={/^\/pdm/} 
-            onClick={(e) => {
-              if (location.pathname.startsWith('/pdm')) {
-                e.preventDefault();
-                setPdmMenuCollapsed(!pdmMenuCollapsed);
-              } else {
-                setPdmMenuCollapsed(false);
-                setShieldMenuCollapsed(true);
-                setProtoMenuCollapsed(true);
-                setPipelineMenuCollapsed(true);
-              }
-            }}
-          />
-          {location.pathname.startsWith('/pdm') && !pdmMenuCollapsed && (pdmMenuGroups.length > 0 || pdmMenu.length > 0) && (
-            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-              {pdmMenuGroups.length > 0 ? (
-                pdmMenuGroups.map((group: any) => (
-                  <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {group.title}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                      {group.items.map((item: any) => {
-                        const fullPath = `/pdm${item.path}`;
-                        return (
-                          <Link
-                            key={item.path}
-                            to={fullPath}
-                            style={subNavLinkStyle(
-                              location.pathname === fullPath ||
-                              location.pathname.startsWith(fullPath + '/')
-                            )}
-                          >
-                            {item.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                pdmMenu.map((item: any) => {
-                  const fullPath = `/pdm${item.path}`;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={fullPath}
-                      style={subNavLinkStyle(
-                        location.pathname === fullPath ||
-                        location.pathname.startsWith(fullPath + '/')
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          )}
+
           {user && user.is_admin && (
             <>
               <NavLink 
@@ -892,80 +810,36 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </>
           )}
-          {user && user.is_admin && (
-            <>
-              <NavLink 
-                to="/proto" 
-                icon={Network} 
-                label="接口管理系统 (Proto)" 
-                activePattern={/^\/proto/} 
-                onClick={(e) => {
-                  if (location.pathname.startsWith('/proto')) {
-                    e.preventDefault();
-                    setProtoMenuCollapsed(!protoMenuCollapsed);
-                  } else {
-                    setProtoMenuCollapsed(false);
-                    setShieldMenuCollapsed(true);
-                    setPipelineMenuCollapsed(true);
-                    setPdmMenuCollapsed(true);
-                  }
-                }}
-              />
-              {location.pathname.startsWith('/proto') && !protoMenuCollapsed && (protoMenuGroups.length > 0 || protoMenu.length > 0) && (
-                <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                  {protoMenuGroups.length > 0 ? (
-                    protoMenuGroups
-                      .filter((group: any) => {
-                        if (group.adminOnly) {
-                          return user && !!user.is_admin;
-                        }
-                        return true;
-                      })
-                      .map((group: any) => {
-                        const visibleItems = (group.items || []).filter((item: any) => {
-                          if (item.adminOnly) {
-                            return user && !!user.is_admin;
-                          }
-                          return true;
-                        });
 
-                        if (visibleItems.length === 0) return null;
-
-                        return (
-                          <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              {group.title}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                              {visibleItems.map((item: any) => {
-                                const fullPath = `/proto${item.path}`;
-                                return (
-                                  <Link
-                                    key={item.path}
-                                    to={fullPath}
-                                    style={subNavLinkStyle(
-                                      location.pathname === fullPath ||
-                                      location.pathname.startsWith(fullPath + '/')
-                                    )}
-                                  >
-                                    {item.label}
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })
-                  ) : (
-                    protoMenu
-                      .filter((item: any) => {
-                        if (item.adminOnly) {
-                          return user && !!user.is_admin;
-                        }
-                        return true;
-                      })
-                      .map((item: any) => {
-                        const fullPath = `/proto${item.path}`;
+          {/* 产品数据管理 (PDM) */}
+          <NavLink 
+            to="/pdm" 
+            icon={ClipboardList} 
+            label="产品数据管理 (PDM)" 
+            activePattern={/^\/pdm/} 
+            onClick={(e) => {
+              if (location.pathname.startsWith('/pdm')) {
+                e.preventDefault();
+                setPdmMenuCollapsed(!pdmMenuCollapsed);
+              } else {
+                setPdmMenuCollapsed(false);
+                setShieldMenuCollapsed(true);
+                setProtoMenuCollapsed(true);
+                setPipelineMenuCollapsed(true);
+              }
+            }}
+          />
+          {location.pathname.startsWith('/pdm') && !pdmMenuCollapsed && (pdmMenuGroups.length > 0 || pdmMenu.length > 0) && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              {pdmMenuGroups.length > 0 ? (
+                pdmMenuGroups.map((group: any) => (
+                  <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {group.title}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                      {group.items.map((item: any) => {
+                        const fullPath = `/pdm${item.path}`;
                         return (
                           <Link
                             key={item.path}
@@ -978,11 +852,28 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                             {item.label}
                           </Link>
                         );
-                      })
-                  )}
-                </div>
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                pdmMenu.map((item: any) => {
+                  const fullPath = `/pdm${item.path}`;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={fullPath}
+                      style={subNavLinkStyle(
+                        location.pathname === fullPath ||
+                        location.pathname.startsWith(fullPath + '/')
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })
               )}
-            </>
+            </div>
           )}
           {user && user.is_admin && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
@@ -1025,7 +916,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/admin/activity')) return '执行日志';
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
-              if (location.pathname.startsWith('/proto')) return '接口管理系统 (Proto)';
               if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
               if (location.pathname.startsWith('/pdm/device-types')) return '设备类型管理';
               if (location.pathname.startsWith('/pdm/devices')) return '设备ID管理';
@@ -1257,7 +1147,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                       <option value="portal">综合门户工作台 (Portal)</option>
                       <option value="shield">代码质量卫士 (Code Shield)</option>
                       <option value="pipeline">持续构建流水线 (Code Pipeline)</option>
-                      <option value="proto">接口管理系统 (Proto)</option>
+                      <option value="pdm">产品数据管理 (PDM)</option>
                       <option value="other">其他建议与反馈</option>
                     </select>
                   </div>
@@ -1583,19 +1473,7 @@ export default function App() {
                 </Suspense>
               </ErrorBoundary>
             } />
-            <Route path="/proto/*" element={
-              <ErrorBoundary key="proto-eb">
-                <Suspense fallback={
-                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                    <div className="spinner"></div>
-                    <span style={{ fontSize: '0.95rem' }}>正在加载接口管理微应用...</span>
-                  </div>
-                }>
-                  {/* @ts-ignore */}
-                  <ProtoApp isEmbedded={true} />
-                </Suspense>
-              </ErrorBoundary>
-            } />
+
             <Route path="/pdm/*" element={
               <ErrorBoundary key="pdm-eb">
                 <Suspense fallback={
