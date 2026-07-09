@@ -194,61 +194,66 @@ func GetRepos(c *gin.Context) {
 
 	// 异步更新空 project_id
 	headers := prepareRequestHeaders(c)
-	for _, r := range repos {
-		if r.ProjectID == "" || r.HTTPURL == "" {
-			// 过滤冷却期内的失败同步请求，避免高频重复调用
-			if val, ok := lastSyncFailedTimes.Load(r.ID); ok {
-				if lastFailed, ok := val.(time.Time); ok {
-					if time.Since(lastFailed) < 10*time.Minute {
-						continue
+	hasAuth := headers["Cookie"] != "" || headers["cftk"] != ""
+
+	if hasAuth {
+		for _, r := range repos {
+			if r.ProjectID == "" || r.HTTPURL == "" {
+				// 过滤冷却期内的失败同步请求，避免高频重复调用
+				if val, ok := lastSyncFailedTimes.Load(r.ID); ok {
+					if lastFailed, ok := val.(time.Time); ok {
+						if time.Since(lastFailed) < 10*time.Minute {
+							continue
+						}
 					}
 				}
-			}
 
-			if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
-				go func(repoID uint, repoURL string) {
-					defer syncingProjectIDs.Delete(repoID)
+				if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
+					go func(repoID uint, repoURL string) {
+						defer syncingProjectIDs.Delete(repoID)
 
-					// 申请并发名额（通道缓冲上限 5）
-					projectIDSyncSem <- struct{}{}
-					defer func() { <-projectIDSyncSem }()
+						// 申请并发名额（通道缓冲上限 5）
+						projectIDSyncSem <- struct{}{}
+						defer func() { <-projectIDSyncSem }()
 
-					projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
-					if err != nil {
-						// 记录失败时间，进入 10 分钟冷却期
-						lastSyncFailedTimes.Store(repoID, time.Now())
+						projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
+						if err != nil {
+							// 记录失败时间，进入 10 分钟冷却期
+							lastSyncFailedTimes.Store(repoID, time.Now())
 
-						if strings.Contains(err.Error(), "repository not found") {
-							log.Printf("[ProjectIDSync] Repo %d (%s) not found in remote codehub", repoID, repoURL)
-						} else {
-							log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
+							if strings.Contains(err.Error(), "repository not found") {
+								log.Printf("[ProjectIDSync] Repo %d (%s) not found in remote codehub", repoID, repoURL)
+							} else {
+								log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
+							}
+							return
 						}
-						return
-					}
 
-					// 同步成功，清除冷却记录
-					lastSyncFailedTimes.Delete(repoID)
-					if projectID != "" {
-						updates := map[string]interface{}{
-							"project_id": projectID,
-						}
-						if sshURL != "" {
-							updates["url"] = sshURL
-						}
-						if httpURL != "" {
-							updates["http_url"] = httpURL
-						}
-						if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(updates).Error; err != nil {
-							log.Printf("[ProjectIDSync] Failed to update repo details in db for repo %d: %v", repoID, err)
-						} else {
-							log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
-							var updatedRepo models.Repository
-							if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
-								BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
+						// 同步成功，清除冷却记录
+						lastSyncFailedTimes.Delete(repoID)
+
+						if projectID != "" {
+							updates := map[string]interface{}{
+								"project_id": projectID,
+							}
+							if sshURL != "" {
+								updates["url"] = sshURL
+							}
+							if httpURL != "" {
+								updates["http_url"] = httpURL
+							}
+							if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(updates).Error; err != nil {
+								log.Printf("[ProjectIDSync] Failed to update repo details in db for repo %d: %v", repoID, err)
+							} else {
+								log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
+								var updatedRepo models.Repository
+								if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
+									BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
+								}
 							}
 						}
-					}
-				}(r.ID, r.URL)
+					}(r.ID, r.URL)
+				}
 			}
 		}
 	}
