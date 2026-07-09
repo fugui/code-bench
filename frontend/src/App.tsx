@@ -623,7 +623,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+        <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
           <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
           <NavLink 
             to="/shield" 
