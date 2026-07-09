@@ -177,7 +177,7 @@ function Home() {
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>产品数据管理 (PDM)</h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            规范物理产品大类与机器ID档案。支持按规则下拉过滤、机器ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
+            规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
           </p>
           <Link to="/pdm" className="card-btn">进入系统 &rarr;</Link>
         </div>
@@ -569,8 +569,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       .catch(err => {
         console.warn("Failed to dynamically load pdm menu, using fallback:", err);
         setPdmMenu([
-          { path: '/device-types', label: '机器类型管理' },
-          { path: '/devices', label: '机器ID管理' }
+          { path: '/device-types', label: '设备类型管理' },
+          { path: '/devices', label: '设备ID管理' }
         ]);
       });
   }, []);
@@ -902,8 +902,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
-              if (location.pathname.startsWith('/pdm/device-types')) return '机器类型管理';
-              if (location.pathname.startsWith('/pdm/devices')) return '机器ID管理';
+              if (location.pathname.startsWith('/pdm/device-types')) return '设备类型管理';
+              if (location.pathname.startsWith('/pdm/devices')) return '设备ID管理';
               if (location.pathname.startsWith('/pdm')) return '产品数据管理 (PDM)';
               if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (location.pathname.startsWith('/admin/users')) return '用户管理';
