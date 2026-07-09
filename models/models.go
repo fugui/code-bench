@@ -69,3 +69,16 @@ type ArchitectureElement struct {
 	CreatedAt    time.Time            `json:"created_at"`
 	UpdatedAt    time.Time            `json:"updated_at"`
 }
+
+type Feedback struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index;not null" json:"user_id"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Module    string    `gorm:"size:50;not null" json:"module"`          // 所涉模块："portal", "shield", "pipeline", "proto", "other"
+	Title     string    `gorm:"size:255;not null" json:"title"`          // 反馈简述/标题
+	Content   string    `gorm:"type:text;not null" json:"content"`       // 具体反馈内容建议
+	Status    string    `gorm:"size:30;default:'pending'" json:"status"` // 处理状态："pending" (待处理), "processing" (处理中), "resolved" (已采纳/已解决), "rejected" (暂不考虑)
+	Reply     string    `gorm:"type:text;default:''" json:"reply"`       // 管理员回复/采纳说明
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

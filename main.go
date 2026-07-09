@@ -134,6 +134,10 @@ func main() {
 		apiProtected.POST("/arch-elements", handlers.CreateArchElement)
 		apiProtected.PATCH("/arch-elements/:id", handlers.UpdateArchElement)
 		apiProtected.DELETE("/arch-elements/:id", handlers.DeleteArchElement)
+
+		// Feedback APIs
+		apiProtected.GET("/feedbacks", handlers.GetFeedbacks)
+		apiProtected.POST("/feedbacks", handlers.CreateFeedback)
 	}
 
 	// 7. Serve frontend static files
