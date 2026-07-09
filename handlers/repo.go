@@ -26,6 +26,7 @@ import (
 )
 
 var syncingProjectIDs sync.Map
+var lastSyncFailedTimes sync.Map
 var projectIDSyncSem = make(chan struct{}, 5)
 
 // prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header
@@ -132,6 +133,11 @@ func fetchRepoDetailRemote(repoURL string, headers map[string]string) (string, s
 		return "", "", "", err
 	}
 
+	trimmedBody := strings.TrimSpace(string(body))
+	if trimmedBody == "" || trimmedBody == "null" {
+		return "", "", "", fmt.Errorf("repository not found (empty response)")
+	}
+
 	// 响应数据中 { "id", "ssh_url_to_repo", "http_url_to_repo"}
 	var result struct {
 		ID            int    `json:"id"`
@@ -190,6 +196,15 @@ func GetRepos(c *gin.Context) {
 	headers := prepareRequestHeaders(c)
 	for _, r := range repos {
 		if r.ProjectID == "" || r.HTTPURL == "" {
+			// 过滤冷却期内的失败同步请求，避免高频重复调用
+			if val, ok := lastSyncFailedTimes.Load(r.ID); ok {
+				if lastFailed, ok := val.(time.Time); ok {
+					if time.Since(lastFailed) < 10*time.Minute {
+						continue
+					}
+				}
+			}
+
 			if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
 				go func(repoID uint, repoURL string) {
 					defer syncingProjectIDs.Delete(repoID)
@@ -200,9 +215,19 @@ func GetRepos(c *gin.Context) {
 
 					projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
 					if err != nil {
-						log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
+						// 记录失败时间，进入 10 分钟冷却期
+						lastSyncFailedTimes.Store(repoID, time.Now())
+
+						if strings.Contains(err.Error(), "repository not found") {
+							log.Printf("[ProjectIDSync] Repo %d (%s) not found in remote codehub", repoID, repoURL)
+						} else {
+							log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
+						}
 						return
 					}
+
+					// 同步成功，清除冷却记录
+					lastSyncFailedTimes.Delete(repoID)
 					if projectID != "" {
 						updates := map[string]interface{}{
 							"project_id": projectID,
