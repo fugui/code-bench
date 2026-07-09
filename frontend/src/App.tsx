@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Network, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, Loader2 } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, Loader2 } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
