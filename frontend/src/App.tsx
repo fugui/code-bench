@@ -249,7 +249,38 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [isFetchingFeedbacks, setIsFetchingFeedbacks] = React.useState(false);
   const [feedbackSuccessMessage, setFeedbackSuccessMessage] = React.useState('');
   const [feedbackErrorMessage, setFeedbackErrorMessage] = React.useState('');
+  const [editingFeedbackId, setEditingFeedbackId] = React.useState<number | null>(null);
+  const [replyStatus, setReplyStatus] = React.useState<string>('pending');
+  const [replyText, setReplyText] = React.useState<string>('');
+  const [isSubmittingReply, setIsSubmittingReply] = React.useState(false);
   const authConfigRef = React.useRef<any>(null);
+
+  const handleReplySubmit = async (feedbackId: number) => {
+    setIsSubmittingReply(true);
+    try {
+      const res = await portalFetch(`/api/feedbacks/${feedbackId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: replyStatus,
+          reply: replyText.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEditingFeedbackId(null);
+        setReplyText('');
+        fetchFeedbacks(feedbacksPage);
+      } else {
+        alert(data.error || '提交回复失败，请重试');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('网络错误，请稍后再试');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
 
   const fetchFeedbacks = React.useCallback((page: number = 1) => {
     setIsFetchingFeedbacks(true);
@@ -1234,10 +1265,17 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                               display: 'flex', flexDirection: 'column', gap: '0.75rem'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', background: 'rgba(59, 130, 246, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                {moduleCn}
-                              </span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', background: 'rgba(59, 130, 246, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                  {moduleCn}
+                                </span>
+                                {user && user.is_admin && item.user && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                    提报人: {item.user.name || item.user.username}
+                                  </span>
+                                )}
+                              </div>
                               <span style={{ fontSize: '0.75rem', fontWeight: 600, background: statusStyle.bg, color: statusStyle.color, padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                                 {statusStyle.text}
                               </span>
@@ -1248,11 +1286,72 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                               {item.content}
                             </p>
-                            {item.reply && (
-                              <div style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(59, 130, 246, 0.04)', borderLeft: '3px solid var(--primary-color)', borderRadius: '0 6px 6px 0', fontSize: '0.825rem', color: 'var(--text-color)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>官方答复：</span>
-                                <span style={{ lineHeight: 1.5 }}>{item.reply}</span>
+                            {editingFeedbackId === item.id ? (
+                              <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)' }}>处理状态:</span>
+                                  <select
+                                    value={replyStatus}
+                                    onChange={e => setReplyStatus(e.target.value)}
+                                    style={{ padding: '0.3rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', fontSize: '0.8rem', outline: 'none' }}
+                                  >
+                                    <option value="pending">待处理</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="resolved">已采纳/已解决</option>
+                                    <option value="rejected">暂不考虑</option>
+                                  </select>
+                                </div>
+                                <textarea
+                                  rows={3}
+                                  placeholder="请填写官方答复内容..."
+                                  value={replyText}
+                                  onChange={e => setReplyText(e.target.value)}
+                                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none', fontSize: '0.825rem', fontFamily: 'inherit', resize: 'vertical' }}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingFeedbackId(null)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                                  >
+                                    取消
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSubmittingReply}
+                                    onClick={() => handleReplySubmit(item.id)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 1rem', border: 'none', background: 'var(--primary-color)', color: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                                  >
+                                    {isSubmittingReply && (
+                                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid white', animation: 'spin 0.8s linear infinite' }} />
+                                    )}
+                                    {isSubmittingReply ? '保存中...' : '提交答复'}
+                                  </button>
+                                </div>
                               </div>
+                            ) : (
+                              <>
+                                {item.reply && (
+                                  <div style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(59, 130, 246, 0.04)', borderLeft: '3px solid var(--primary-color)', borderRadius: '0 6px 6px 0', fontSize: '0.825rem', color: 'var(--text-color)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>官方答复：</span>
+                                    <span style={{ lineHeight: 1.5 }}>{item.reply}</span>
+                                  </div>
+                                )}
+                                {user && user.is_admin && (
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                    <button
+                                      onClick={() => {
+                                        setEditingFeedbackId(item.id);
+                                        setReplyStatus(item.status || 'pending');
+                                        setReplyText(item.reply || '');
+                                      }}
+                                      style={{ background: 'rgba(59, 130, 246, 0.08)', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+                                    >
+                                      {item.reply ? '修改答复' : '处理/答复此反馈'}
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '0.25rem', textAlign: 'right' }}>
                               提交于 {new Date(item.created_at).toLocaleString()}

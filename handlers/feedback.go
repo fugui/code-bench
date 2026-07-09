@@ -146,3 +146,61 @@ func GetFeedbacks(c *gin.Context) {
 		"totalPages": totalPages,
 	})
 }
+
+// UpdateFeedback 管理员回复并处理反馈建议
+func UpdateFeedback(c *gin.Context) {
+	isAdminVal, _ := c.Get("isAdmin")
+	isAdmin, _ := isAdminVal.(bool)
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，仅管理员可回复反馈"})
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的反馈ID"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+		Reply  string `json:"reply"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效: " + err.Error()})
+		return
+	}
+
+	// 状态值合法性校验
+	validStatuses := map[string]bool{
+		"pending":    true,
+		"processing": true,
+		"resolved":   true,
+		"rejected":   true,
+	}
+	if !validStatuses[req.Status] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "不支持的反馈状态值"})
+		return
+	}
+
+	var feedback models.Feedback
+	if err := database.DB.First(&feedback, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "反馈建议未找到"})
+		return
+	}
+
+	feedback.Status = req.Status
+	feedback.Reply = req.Reply
+
+	if err := database.DB.Save(&feedback).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新反馈状态失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "反馈更新成功",
+	})
+}
+

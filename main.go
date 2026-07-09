@@ -138,6 +138,7 @@ func main() {
 		// Feedback APIs
 		apiProtected.GET("/feedbacks", handlers.GetFeedbacks)
 		apiProtected.POST("/feedbacks", handlers.CreateFeedback)
+		apiProtected.PATCH("/feedbacks/:id", handlers.UpdateFeedback)
 	}
 
 	// 7. Serve frontend static files
