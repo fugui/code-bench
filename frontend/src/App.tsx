@@ -177,7 +177,7 @@ function Home() {
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>产品数据管理 (PDM)</h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
+            规范物理产品大类与机器ID档案。支持按规则下拉过滤、机器ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
           </p>
           <Link to="/pdm" className="card-btn">进入系统 &rarr;</Link>
         </div>
@@ -191,14 +191,11 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
   const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
-  const [protoMenu, setProtoMenu] = React.useState<any[]>([]);
-  const [protoMenuGroups, setProtoMenuGroups] = React.useState<any[]>([]);
   const [pipelineMenu, setPipelineMenu] = React.useState<any[]>([]);
   const [pipelineMenuGroups, setPipelineMenuGroups] = React.useState<any[]>([]);
   const [pdmMenu, setPdmMenu] = React.useState<any[]>([]);
   const [pdmMenuGroups, setPdmMenuGroups] = React.useState<any[]>([]);
   const [shieldMenuCollapsed, setShieldMenuCollapsed] = React.useState(true);
-  const [protoMenuCollapsed, setProtoMenuCollapsed] = React.useState(true);
   const [pipelineMenuCollapsed, setPipelineMenuCollapsed] = React.useState(true);
   const [pdmMenuCollapsed, setPdmMenuCollapsed] = React.useState(true);
   const prevModuleRef = React.useRef<string>('');
@@ -218,27 +215,18 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     if (currentModule !== prevModule) {
       if (currentModule === 'shield') {
         setShieldMenuCollapsed(false);
-        setProtoMenuCollapsed(true);
-        setPipelineMenuCollapsed(true);
-        setPdmMenuCollapsed(true);
-      } else if (currentModule === 'proto') {
-        setProtoMenuCollapsed(false);
-        setShieldMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
         setPdmMenuCollapsed(true);
       } else if (currentModule === 'pipeline') {
         setPipelineMenuCollapsed(false);
         setShieldMenuCollapsed(true);
-        setProtoMenuCollapsed(true);
         setPdmMenuCollapsed(true);
       } else if (currentModule === 'pdm') {
         setPdmMenuCollapsed(false);
         setShieldMenuCollapsed(true);
-        setProtoMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
       } else {
         setShieldMenuCollapsed(true);
-        setProtoMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
         setPdmMenuCollapsed(true);
       }
@@ -581,8 +569,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       .catch(err => {
         console.warn("Failed to dynamically load pdm menu, using fallback:", err);
         setPdmMenu([
-          { path: '/device-types', label: '设备类型管理' },
-          { path: '/devices', label: '设备ID管理' }
+          { path: '/device-types', label: '机器类型管理' },
+          { path: '/devices', label: '机器ID管理' }
         ]);
       });
   }, []);
@@ -642,7 +630,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
           <NavLink 
             to="/shield" 
             icon={Shield} 
@@ -654,7 +642,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 setShieldMenuCollapsed(!shieldMenuCollapsed);
               } else {
                 setShieldMenuCollapsed(false);
-                setProtoMenuCollapsed(true);
                 setPipelineMenuCollapsed(true);
                 setPdmMenuCollapsed(true);
               }
@@ -755,7 +742,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   } else {
                     setPipelineMenuCollapsed(false);
                     setShieldMenuCollapsed(true);
-                    setProtoMenuCollapsed(true);
                     setPdmMenuCollapsed(true);
                   }
                 }}
@@ -824,7 +810,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               } else {
                 setPdmMenuCollapsed(false);
                 setShieldMenuCollapsed(true);
-                setProtoMenuCollapsed(true);
                 setPipelineMenuCollapsed(true);
               }
             }}
@@ -880,8 +865,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
-              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
             </div>
           )}
         </nav>
@@ -917,8 +902,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/shield/config')) return '管理中心';
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
-              if (location.pathname.startsWith('/pdm/device-types')) return '设备类型管理';
-              if (location.pathname.startsWith('/pdm/devices')) return '设备ID管理';
+              if (location.pathname.startsWith('/pdm/device-types')) return '机器类型管理';
+              if (location.pathname.startsWith('/pdm/devices')) return '机器ID管理';
               if (location.pathname.startsWith('/pdm')) return '产品数据管理 (PDM)';
               if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (location.pathname.startsWith('/admin/users')) return '用户管理';
