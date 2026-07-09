@@ -888,12 +888,12 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
             </div>
           )}
-          {user && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-              <SidebarActionButton icon={MessageSquare} label="改进建议反馈" onClick={() => { setShowFeedbackModal(true); setFeedbackTab('create'); }} />
-            </div>
-          )}
         </nav>
+        {user && (
+          <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+            <SidebarActionButton icon={MessageSquare} label="改进建议反馈" onClick={() => { setShowFeedbackModal(true); setFeedbackTab('create'); }} />
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}
