@@ -131,6 +131,8 @@ const ShieldApp = React.lazy(() => import('shield/App'));
 const ProtoApp = React.lazy(() => import('proto/App'));
 // @ts-ignore
 const PipelineApp = React.lazy(() => import('pipeline/App'));
+// @ts-ignore
+const PdmApp = React.lazy(() => import('pdm/App'));
 
 function Home() {
   return (
@@ -193,9 +195,12 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [protoMenuGroups, setProtoMenuGroups] = React.useState<any[]>([]);
   const [pipelineMenu, setPipelineMenu] = React.useState<any[]>([]);
   const [pipelineMenuGroups, setPipelineMenuGroups] = React.useState<any[]>([]);
+  const [pdmMenu, setPdmMenu] = React.useState<any[]>([]);
+  const [pdmMenuGroups, setPdmMenuGroups] = React.useState<any[]>([]);
   const [shieldMenuCollapsed, setShieldMenuCollapsed] = React.useState(true);
   const [protoMenuCollapsed, setProtoMenuCollapsed] = React.useState(true);
   const [pipelineMenuCollapsed, setPipelineMenuCollapsed] = React.useState(true);
+  const [pdmMenuCollapsed, setPdmMenuCollapsed] = React.useState(true);
   const prevModuleRef = React.useRef<string>('');
 
   React.useEffect(() => {
@@ -203,6 +208,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       if (path.startsWith('/shield')) return 'shield';
       if (path.startsWith('/proto')) return 'proto';
       if (path.startsWith('/pipeline')) return 'pipeline';
+      if (path.startsWith('/pdm')) return 'pdm';
       return 'other';
     };
 
@@ -214,18 +220,27 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         setShieldMenuCollapsed(false);
         setProtoMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
+        setPdmMenuCollapsed(true);
       } else if (currentModule === 'proto') {
         setProtoMenuCollapsed(false);
         setShieldMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
+        setPdmMenuCollapsed(true);
       } else if (currentModule === 'pipeline') {
         setPipelineMenuCollapsed(false);
         setShieldMenuCollapsed(true);
         setProtoMenuCollapsed(true);
+        setPdmMenuCollapsed(true);
+      } else if (currentModule === 'pdm') {
+        setPdmMenuCollapsed(false);
+        setShieldMenuCollapsed(true);
+        setProtoMenuCollapsed(true);
+        setPipelineMenuCollapsed(true);
       } else {
         setShieldMenuCollapsed(true);
         setProtoMenuCollapsed(true);
         setPipelineMenuCollapsed(true);
+        setPdmMenuCollapsed(true);
       }
       prevModuleRef.current = currentModule;
     }
@@ -567,6 +582,28 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           { path: '/repos', label: '仓库配置' }
         ]);
       });
+
+    // Dynamically load remote menu metadata from code-pdm micro-frontend
+    // @ts-ignore
+    import('pdm/menu')
+      .then(mod => {
+        if (mod) {
+          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+            setPdmMenuGroups(mod.menuGroups);
+          }
+          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+          if (items && Array.isArray(items)) {
+            setPdmMenu(items);
+          }
+        }
+      })
+      .catch(err => {
+        console.warn("Failed to dynamically load pdm menu, using fallback:", err);
+        setPdmMenu([
+          { path: '/device-types', label: '设备类型管理' },
+          { path: '/devices', label: '设备ID管理' }
+        ]);
+      });
   }, []);
 
   const isPublicRoute = location.pathname.startsWith('/shield/public/');
@@ -624,7 +661,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
+          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
           <NavLink 
             to="/shield" 
             icon={Shield} 
@@ -638,6 +675,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 setShieldMenuCollapsed(false);
                 setProtoMenuCollapsed(true);
                 setPipelineMenuCollapsed(true);
+                setPdmMenuCollapsed(true);
               }
             }}
           />
@@ -720,6 +758,71 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
+
+          {/* 产品数据管理 (PDM) */}
+          <NavLink 
+            to="/pdm" 
+            icon={ClipboardList} 
+            label="产品数据管理 (PDM)" 
+            activePattern={/^\/pdm/} 
+            onClick={(e) => {
+              if (location.pathname.startsWith('/pdm')) {
+                e.preventDefault();
+                setPdmMenuCollapsed(!pdmMenuCollapsed);
+              } else {
+                setPdmMenuCollapsed(false);
+                setShieldMenuCollapsed(true);
+                setProtoMenuCollapsed(true);
+                setPipelineMenuCollapsed(true);
+              }
+            }}
+          />
+          {location.pathname.startsWith('/pdm') && !pdmMenuCollapsed && (pdmMenuGroups.length > 0 || pdmMenu.length > 0) && (
+            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              {pdmMenuGroups.length > 0 ? (
+                pdmMenuGroups.map((group: any) => (
+                  <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {group.title}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                      {group.items.map((item: any) => {
+                        const fullPath = `/pdm${item.path}`;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={fullPath}
+                            style={subNavLinkStyle(
+                              location.pathname === fullPath ||
+                              location.pathname.startsWith(fullPath + '/')
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                pdmMenu.map((item: any) => {
+                  const fullPath = `/pdm${item.path}`;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={fullPath}
+                      style={subNavLinkStyle(
+                        location.pathname === fullPath ||
+                        location.pathname.startsWith(fullPath + '/')
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          )}
           {user && user.is_admin && (
             <>
               <NavLink 
@@ -735,6 +838,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     setPipelineMenuCollapsed(false);
                     setShieldMenuCollapsed(true);
                     setProtoMenuCollapsed(true);
+                    setPdmMenuCollapsed(true);
                   }
                 }}
               />
@@ -803,6 +907,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     setProtoMenuCollapsed(false);
                     setShieldMenuCollapsed(true);
                     setPipelineMenuCollapsed(true);
+                    setPdmMenuCollapsed(true);
                   }
                 }}
               />
@@ -884,8 +989,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
-              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
-              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); }} />
+              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setProtoMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
             </div>
           )}
         </nav>
@@ -922,6 +1027,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
               if (location.pathname.startsWith('/proto')) return '接口管理系统 (Proto)';
               if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
+              if (location.pathname.startsWith('/pdm/device-types')) return '设备类型管理';
+              if (location.pathname.startsWith('/pdm/devices')) return '设备ID管理';
+              if (location.pathname.startsWith('/pdm')) return '产品数据管理 (PDM)';
               if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (location.pathname.startsWith('/admin/users')) return '用户管理';
               return '开发者综合工作台';
@@ -1485,6 +1593,19 @@ export default function App() {
                 }>
                   {/* @ts-ignore */}
                   <ProtoApp isEmbedded={true} />
+                </Suspense>
+              </ErrorBoundary>
+            } />
+            <Route path="/pdm/*" element={
+              <ErrorBoundary key="pdm-eb">
+                <Suspense fallback={
+                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                    <div className="spinner"></div>
+                    <span style={{ fontSize: '0.95rem' }}>正在加载产品数据管理微应用...</span>
+                  </div>
+                }>
+                  {/* @ts-ignore */}
+                  <PdmApp isEmbedded={true} />
                 </Suspense>
               </ErrorBoundary>
             } />
