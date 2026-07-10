@@ -113,6 +113,18 @@ func GetFeedbacks(c *gin.Context) {
 		query = query.Where("module = ?", module)
 	}
 
+	// 按状态筛选
+	status := c.Query("status")
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// 排除特定状态
+	excludeStatus := c.Query("excludeStatus")
+	if excludeStatus != "" {
+		query = query.Where("status != ?", excludeStatus)
+	}
+
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "统计历史反馈失败"})
