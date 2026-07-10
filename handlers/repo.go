@@ -198,7 +198,7 @@ func GetRepos(c *gin.Context) {
 
 	if hasAuth {
 		for _, r := range repos {
-			if r.ProjectID == "" || r.HTTPURL == "" {
+			if r.ProjectID == "" {
 				// 过滤冷却期内的失败同步请求，避免高频重复调用
 				if val, ok := lastSyncFailedTimes.Load(r.ID); ok {
 					if lastFailed, ok := val.(time.Time); ok {
