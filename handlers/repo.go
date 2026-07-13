@@ -152,6 +152,67 @@ func fetchRepoDetailRemote(repoURL string, headers map[string]string) (string, s
 	return strconv.Itoa(result.ID), result.SSHURLToRepo, result.HTTPURLToRepo, nil
 }
 
+// SyncRepoProjectIDAsync 异步查询外部接口并更新数据库中的 project_id 和 URL 详情
+func SyncRepoProjectIDAsync(repoID uint, repoURL string, headers map[string]string) {
+	if _, loaded := syncingProjectIDs.LoadOrStore(repoID, true); loaded {
+		return
+	}
+
+	go func() {
+		defer syncingProjectIDs.Delete(repoID)
+
+		// 过滤冷却期内的失败同步请求，避免高频重复调用
+		if val, ok := lastSyncFailedTimes.Load(repoID); ok {
+			if lastFailed, ok := val.(time.Time); ok {
+				if time.Since(lastFailed) < 10*time.Minute {
+					return
+				}
+			}
+		}
+
+		// 申请并发名额（通道缓冲上限 5）
+		projectIDSyncSem <- struct{}{}
+		defer func() { <-projectIDSyncSem }()
+
+		projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
+		if err != nil {
+			// 记录失败时间，进入 10 分钟冷却期
+			lastSyncFailedTimes.Store(repoID, time.Now())
+
+			if strings.Contains(err.Error(), "repository not found") {
+				log.Printf("[ProjectIDSync] Repo %d (%s) not found in remote codehub", repoID, repoURL)
+			} else {
+				log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
+			}
+			return
+		}
+
+		// 同步成功，清除冷却记录
+		lastSyncFailedTimes.Delete(repoID)
+
+		if projectID != "" {
+			updates := map[string]interface{}{
+				"project_id": projectID,
+			}
+			if sshURL != "" {
+				updates["url"] = sshURL
+			}
+			if httpURL != "" {
+				updates["http_url"] = httpURL
+			}
+			if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(updates).Error; err != nil {
+				log.Printf("[ProjectIDSync] Failed to update repo details in db for repo %d: %v", repoID, err)
+			} else {
+				log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
+				var updatedRepo models.Repository
+				if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
+					BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
+				}
+			}
+		}
+	}()
+}
+
 func GetRepos(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "15"))
@@ -192,72 +253,6 @@ func GetRepos(c *gin.Context) {
 	offset := (page - 1) * pageSize
 	query.Preload("Department").Preload("Owner").Offset(offset).Limit(pageSize).Find(&repos)
 
-	// 异步更新空 project_id
-	headers := prepareRequestHeaders(c)
-	hasAuth := headers["Cookie"] != "" || headers["cftk"] != ""
-
-	if hasAuth {
-		for _, r := range repos {
-			if r.ProjectID == "" {
-				// 过滤冷却期内的失败同步请求，避免高频重复调用
-				if val, ok := lastSyncFailedTimes.Load(r.ID); ok {
-					if lastFailed, ok := val.(time.Time); ok {
-						if time.Since(lastFailed) < 10*time.Minute {
-							continue
-						}
-					}
-				}
-
-				if _, loaded := syncingProjectIDs.LoadOrStore(r.ID, true); !loaded {
-					go func(repoID uint, repoURL string) {
-						defer syncingProjectIDs.Delete(repoID)
-
-						// 申请并发名额（通道缓冲上限 5）
-						projectIDSyncSem <- struct{}{}
-						defer func() { <-projectIDSyncSem }()
-
-						projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
-						if err != nil {
-							// 记录失败时间，进入 10 分钟冷却期
-							lastSyncFailedTimes.Store(repoID, time.Now())
-
-							if strings.Contains(err.Error(), "repository not found") {
-								log.Printf("[ProjectIDSync] Repo %d (%s) not found in remote codehub", repoID, repoURL)
-							} else {
-								log.Printf("[ProjectIDSync] Failed to fetch repo details for repo %d: %v", repoID, err)
-							}
-							return
-						}
-
-						// 同步成功，清除冷却记录
-						lastSyncFailedTimes.Delete(repoID)
-
-						if projectID != "" {
-							updates := map[string]interface{}{
-								"project_id": projectID,
-							}
-							if sshURL != "" {
-								updates["url"] = sshURL
-							}
-							if httpURL != "" {
-								updates["http_url"] = httpURL
-							}
-							if err := database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(updates).Error; err != nil {
-								log.Printf("[ProjectIDSync] Failed to update repo details in db for repo %d: %v", repoID, err)
-							} else {
-								log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
-								var updatedRepo models.Repository
-								if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
-									BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
-								}
-							}
-						}
-					}(r.ID, r.URL)
-				}
-			}
-		}
-	}
-
 	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
 
 	c.JSON(http.StatusOK, gin.H{
@@ -275,6 +270,36 @@ func CreateRepo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	headers := prepareRequestHeaders(c)
+	apiURL := models.AppConfig.Sync.RepoDetailURL
+	if apiURL != "" {
+		projectID, sshURL, httpURL, err := fetchRepoDetailRemote(repo.URL, headers)
+		if err != nil {
+			// 如果明确是未找到仓库或 URL 不合法，进行强校验拦截
+			if strings.Contains(err.Error(), "repository not found") || strings.Contains(err.Error(), "invalid repository URL") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("无法在托管平台找到该代码仓，请检查 URL 是否正确。错误: %v", err)})
+				return
+			}
+			// 临时/环境网络错误判定
+			if repo.ProjectID == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("无法连接托管平台查询项目详情，请确认三方服务状态或稍后重试。错误: %v", err)})
+				return
+			}
+			log.Printf("[CreateRepo] Warning: Failed to query remote detail, but user provided project_id. Error: %v", err)
+		} else {
+			if projectID != "" {
+				repo.ProjectID = projectID
+			}
+			if sshURL != "" {
+				repo.URL = sshURL
+			}
+			if httpURL != "" {
+				repo.HTTPURL = httpURL
+			}
+		}
+	}
+
 	if err := database.DB.Create(&repo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -338,9 +363,55 @@ func UpdateRepo(c *gin.Context) {
 	if input.Name != nil {
 		updates["name"] = *input.Name
 	}
-	if input.URL != nil {
+
+	urlChanged := input.URL != nil && *input.URL != repo.URL
+	var syncSuccess bool
+
+	if urlChanged {
+		headers := prepareRequestHeaders(c)
+		apiURL := models.AppConfig.Sync.RepoDetailURL
+		if apiURL != "" {
+			projectID, sshURL, httpURL, err := fetchRepoDetailRemote(*input.URL, headers)
+			if err != nil {
+				// 如果明确是未找到仓库或 URL 不合法，进行强校验拦截
+				if strings.Contains(err.Error(), "repository not found") || strings.Contains(err.Error(), "invalid repository URL") {
+					c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("无法在托管平台找到该代码仓，请检查 URL 是否正确。错误: %v", err)})
+					return
+				}
+				// 判定是否有可用的 projectID 进行容灾
+				targetProjectID := ""
+				if input.ProjectID != nil {
+					targetProjectID = *input.ProjectID
+				} else {
+					targetProjectID = repo.ProjectID
+				}
+				if targetProjectID == "" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("修改 URL 时无法连接托管平台查询项目详情，且无可用 project_id，请稍后重试。错误: %v", err)})
+					return
+				}
+				log.Printf("[UpdateRepo] Warning: Failed to query remote detail for updated URL %s, but project_id is available. Error: %v", *input.URL, err)
+				updates["url"] = *input.URL
+			} else {
+				syncSuccess = true
+				if projectID != "" {
+					updates["project_id"] = projectID
+				}
+				if sshURL != "" {
+					updates["url"] = sshURL
+				} else {
+					updates["url"] = *input.URL
+				}
+				if httpURL != "" {
+					updates["http_url"] = httpURL
+				}
+			}
+		} else {
+			updates["url"] = *input.URL
+		}
+	} else if input.URL != nil {
 		updates["url"] = *input.URL
 	}
+
 	if input.OwnerID != nil {
 		updates["owner_id"] = *input.OwnerID
 	}
@@ -355,11 +426,15 @@ func UpdateRepo(c *gin.Context) {
 	if input.ServiceGroup != nil {
 		updates["service_group"] = *input.ServiceGroup
 	}
-	if input.ProjectID != nil {
-		updates["project_id"] = *input.ProjectID
-	}
-	if input.HTTPURL != nil {
-		updates["http_url"] = *input.HTTPURL
+
+	// 仅在 URL 未改变，或者 URL 改变但同步失败的情况下，才允许手动更新 project_id 和 http_url
+	if !syncSuccess {
+		if input.ProjectID != nil {
+			updates["project_id"] = *input.ProjectID
+		}
+		if input.HTTPURL != nil {
+			updates["http_url"] = *input.HTTPURL
+		}
 	}
 	if input.RelatedMembers != nil {
 		if len(*input.RelatedMembers) == 0 {
@@ -431,6 +506,8 @@ func ExportRepos(c *gin.Context) {
 }
 
 func ImportRepos(c *gin.Context) {
+	headers := prepareRequestHeaders(c)
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
@@ -577,6 +654,7 @@ func ImportRepos(c *gin.Context) {
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
+				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
 			}
 		} else {
 			repo.DepartmentID = dept.ID
@@ -587,6 +665,7 @@ func ImportRepos(c *gin.Context) {
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
+				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
 			}
 		}
 	}
