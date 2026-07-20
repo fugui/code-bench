@@ -148,6 +148,13 @@ func OAuth2Callback(c *gin.Context) {
 			}
 		}
 		if !allowed {
+			// 如果域名校验未通过，但数据库中已开通过该邮箱对应的账号，则予以放通
+			var count int64
+			if err := database.DB.Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err == nil && count > 0 {
+				allowed = true
+			}
+		}
+		if !allowed {
 			log.Printf("[OAuth2] Email domain not allowed: %s", email)
 			logRejectedEmail(email)
 			redirectToLoginWithError(c, "访问受限，请联系系统管理员。")
