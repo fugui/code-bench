@@ -646,26 +646,39 @@ func ImportRepos(c *gin.Context) {
 				DepartmentID: dept.ID,
 				Name:         repoName,
 				URL:          repoURL,
-				OwnerID:      user.ID,
 				Branch:       branch,
 				ServiceGroup: serviceGroup,
 				IsActive:     true,
+			}
+			if ownerResolved {
+				repo.OwnerID = user.ID
 			}
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
+			} else {
+				log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
 			}
 		} else {
+			oldURL := repo.URL
+			oldProjectID := repo.ProjectID
+
 			repo.DepartmentID = dept.ID
 			repo.URL = repoURL
-			repo.OwnerID = user.ID
+			if ownerResolved {
+				repo.OwnerID = user.ID
+			}
 			repo.Branch = branch
 			repo.ServiceGroup = serviceGroup
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
-				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
+				if oldURL != repoURL || oldProjectID == "" {
+					SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
+				}
+			} else {
+				log.Printf("Line %d: Failed to update repository %s: %v", lineNum+2, repoName, err)
 			}
 		}
 	}
