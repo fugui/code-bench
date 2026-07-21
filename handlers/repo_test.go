@@ -350,4 +350,3 @@ func TestImportReposWithDefaultDepartment(t *testing.T) {
 		t.Errorf("expected HTTPURL to be %q, got %q", expectedHTTPURL, importedRepo.HTTPURL)
 	}
 }
-

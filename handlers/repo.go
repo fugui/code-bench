@@ -714,9 +714,7 @@ func ImportRepos(c *gin.Context) {
 					var archElem models.ArchitectureElement
 					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
 						archElem.RepoID = &repo.ID
-						if database.DB.Save(&archElem).Error == nil {
-							BroadcastSync("upsert", "/api/sync/arch", archElem.ID, archElem)
-						}
+						database.DB.Save(&archElem)
 						repo.ServiceGroup = archElem.Identifier
 						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
 					}
@@ -749,9 +747,7 @@ func ImportRepos(c *gin.Context) {
 					var archElem models.ArchitectureElement
 					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
 						archElem.RepoID = &repo.ID
-						if database.DB.Save(&archElem).Error == nil {
-							BroadcastSync("upsert", "/api/sync/arch", archElem.ID, archElem)
-						}
+						database.DB.Save(&archElem)
 						repo.ServiceGroup = archElem.Identifier
 						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
 					}
