@@ -656,6 +656,13 @@ func ImportRepos(c *gin.Context) {
 			}
 		}
 
+		// 校验远端仓库是否存在，并拉取最新 ProjectID、HTTP URL 等
+		projectID, remoteSSHURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
+		if err != nil {
+			log.Printf("Line %d: Failed to check remote repository for URL %s: %v. Row skipped.", lineNum+2, repoURL, err)
+			continue
+		}
+
 		var repo models.Repository
 		if err := database.DB.Where("name = ?", repoName).First(&repo).Error; err != nil {
 			repo = models.Repository{
@@ -667,10 +674,18 @@ func ImportRepos(c *gin.Context) {
 				IsActive:     true,
 			}
 			repo.OwnerID = user.ID
+			if projectID != "" {
+				repo.ProjectID = projectID
+			}
+			if remoteSSHURL != "" {
+				repo.URL = remoteSSHURL
+			}
+			if httpURL != "" {
+				repo.HTTPURL = httpURL
+			}
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
-				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
 
 				// 匹配子系统架构元素并关联
 				if subsystem != "" {
@@ -688,20 +703,24 @@ func ImportRepos(c *gin.Context) {
 				log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
 			}
 		} else {
-			oldURL := repo.URL
-			oldProjectID := repo.ProjectID
-
 			repo.DepartmentID = dept.ID
-			repo.URL = repoURL
+			if remoteSSHURL != "" {
+				repo.URL = remoteSSHURL
+			} else {
+				repo.URL = repoURL
+			}
 			repo.OwnerID = user.ID
 			repo.Branch = branch
 			repo.ServiceGroup = subsystem
+			if projectID != "" {
+				repo.ProjectID = projectID
+			}
+			if httpURL != "" {
+				repo.HTTPURL = httpURL
+			}
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
-				if oldURL != repoURL || oldProjectID == "" {
-					SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
-				}
 
 				// 匹配子系统架构元素并关联
 				if subsystem != "" {

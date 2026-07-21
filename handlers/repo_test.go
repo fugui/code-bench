@@ -25,6 +25,20 @@ func TestImportRepos(t *testing.T) {
 	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
 	database.DB = db
 
+	// 启动 Mock CodeHub 服务
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10001,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
 	// 2. 初始化一些基础数据
 	// 创建一个用户做责任人
 	admin := models.User{
@@ -104,6 +118,15 @@ func TestImportRepos(t *testing.T) {
 	if updatedArch.RepoID == nil || *updatedArch.RepoID != 1 {
 		t.Errorf("expected ArchElement.RepoID to be 1, but got %v", updatedArch.RepoID)
 	}
+
+	// 额外校验：ProjectID & HTTPURL 是否正确填充
+	if updatedRepo.ProjectID != "10001" {
+		t.Errorf("expected ProjectID to be '10001', got %s", updatedRepo.ProjectID)
+	}
+	expectedHTTPURL := "https://example.com/test/test-repo.git"
+	if updatedRepo.HTTPURL != expectedHTTPURL {
+		t.Errorf("expected HTTPURL to be %q, got %q", expectedHTTPURL, updatedRepo.HTTPURL)
+	}
 }
 
 func TestGetReposFilterName(t *testing.T) {
@@ -172,6 +195,20 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
 	database.DB = db
 
+	// 启动 Mock CodeHub 服务
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10001,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
 	// 2. 初始化一些基础数据
 	admin := models.User{
 		ID:         1,
@@ -216,6 +253,15 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	if importedRepo.Name != expectedName {
 		t.Errorf("expected repo name to be %q, got %q", expectedName, importedRepo.Name)
 	}
+
+	// 额外校验：ProjectID & HTTPURL 是否正确填充
+	if importedRepo.ProjectID != "10001" {
+		t.Errorf("expected ProjectID to be '10001', got %s", importedRepo.ProjectID)
+	}
+	expectedHTTPURL := "https://example.com/test/auto-parse-repo-a.git"
+	if importedRepo.HTTPURL != expectedHTTPURL {
+		t.Errorf("expected HTTPURL to be %q, got %q", expectedHTTPURL, importedRepo.HTTPURL)
+	}
 }
 
 func TestImportReposWithDefaultDepartment(t *testing.T) {
@@ -226,6 +272,20 @@ func TestImportReposWithDefaultDepartment(t *testing.T) {
 	}
 	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
 	database.DB = db
+
+	// 启动 Mock CodeHub 服务
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10001,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
 
 	// 创建一个部门
 	dept := models.Department{
@@ -279,6 +339,15 @@ func TestImportReposWithDefaultDepartment(t *testing.T) {
 	// 验证该仓库是否被归入田主所属的部门 "研发部" (ID = 2)
 	if importedRepo.DepartmentID != dept.ID {
 		t.Errorf("expected DepartmentID to be %d, got %d", dept.ID, importedRepo.DepartmentID)
+	}
+
+	// 额外校验：ProjectID & HTTPURL 是否正确填充
+	if importedRepo.ProjectID != "10001" {
+		t.Errorf("expected ProjectID to be '10001', got %s", importedRepo.ProjectID)
+	}
+	expectedHTTPURL := "https://example.com/test/auto-dept-repo.git"
+	if importedRepo.HTTPURL != expectedHTTPURL {
+		t.Errorf("expected HTTPURL to be %q, got %q", expectedHTTPURL, importedRepo.HTTPURL)
 	}
 }
 
