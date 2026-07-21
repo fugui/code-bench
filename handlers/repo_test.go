@@ -21,7 +21,7 @@ func TestImportRepos(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}
-	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{})
+	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
 	database.DB = db
 
 	// 2. 初始化一些基础数据
@@ -33,6 +33,16 @@ func TestImportRepos(t *testing.T) {
 		Name:       "管理员",
 	}
 	db.Create(&admin)
+
+	// 创建一个架构元素，类型为 subsystem，英文标识符为 code-bench
+	archElem := models.ArchitectureElement{
+		ID:         1,
+		Identifier: "code-bench",
+		NameCn:     "代码度量",
+		NameEn:     "Code Bench",
+		Type:       "subsystem",
+	}
+	db.Create(&archElem)
 
 	// 创建一个已有仓库，OwnerID = 1
 	oldRepo := models.Repository{
@@ -46,8 +56,8 @@ func TestImportRepos(t *testing.T) {
 	}
 	db.Create(&oldRepo)
 
-	// 3. 构建包含空责任人的导入 CSV
-	csvContent := "代码仓,RepoURL,田主,分支,部门名称,服务组\n" +
+	// 3. 构建包含空责任人和子系统的导入 CSV
+	csvContent := "代码仓,RepoURL,田主,分支,部门名称,子系统\n" +
 		"test-repo,git@example.com:test/test-repo.git,,master,技术部,code-bench\n"
 
 	body := &bytes.Buffer{}
@@ -83,5 +93,14 @@ func TestImportRepos(t *testing.T) {
 	// 校验 Bug 1：空责任人未把原有的 OwnerID=1 覆盖为 0
 	if updatedRepo.OwnerID != 1 {
 		t.Errorf("expected OwnerID to remain 1, but got %d", updatedRepo.OwnerID)
+	}
+
+	// 校验架构元素关联：匹配到子系统 "code-bench" 并设置了双向关联
+	var updatedArch models.ArchitectureElement
+	if err := db.First(&updatedArch, 1).Error; err != nil {
+		t.Fatalf("failed to find arch element: %v", err)
+	}
+	if updatedArch.RepoID == nil || *updatedArch.RepoID != 1 {
+		t.Errorf("expected ArchElement.RepoID to be 1, but got %v", updatedArch.RepoID)
 	}
 }

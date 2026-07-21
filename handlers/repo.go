@@ -548,7 +548,7 @@ func ImportRepos(c *gin.Context) {
 		headerMap[cleanCol] = i
 	}
 
-	requiredHeaders := []string{"服务组", "田主", "代码仓", "RepoURL", "分支", "部门名称"}
+	requiredHeaders := []string{"子系统", "田主", "代码仓", "RepoURL", "分支", "部门名称"}
 	for _, req := range requiredHeaders {
 		if _, ok := headerMap[req]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Missing required column: %s", req)})
@@ -578,7 +578,7 @@ func ImportRepos(c *gin.Context) {
 			return ""
 		}
 
-		serviceGroup := getField("服务组")
+		subsystem := getField("子系统")
 		ownerName := getField("田主")
 		repoName := getField("代码仓")
 		repoURL := getField("RepoURL")
@@ -647,7 +647,7 @@ func ImportRepos(c *gin.Context) {
 				Name:         repoName,
 				URL:          repoURL,
 				Branch:       branch,
-				ServiceGroup: serviceGroup,
+				ServiceGroup: subsystem,
 				IsActive:     true,
 			}
 			if ownerResolved {
@@ -657,6 +657,19 @@ func ImportRepos(c *gin.Context) {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 				SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
+
+				// 匹配子系统架构元素并关联
+				if subsystem != "" {
+					var archElem models.ArchitectureElement
+					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
+						archElem.RepoID = &repo.ID
+						if database.DB.Save(&archElem).Error == nil {
+							BroadcastSync("upsert", "/api/sync/arch", archElem.ID, archElem)
+						}
+						repo.ServiceGroup = archElem.Identifier
+						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
+					}
+				}
 			} else {
 				log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
 			}
@@ -670,12 +683,25 @@ func ImportRepos(c *gin.Context) {
 				repo.OwnerID = user.ID
 			}
 			repo.Branch = branch
-			repo.ServiceGroup = serviceGroup
+			repo.ServiceGroup = subsystem
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 				if oldURL != repoURL || oldProjectID == "" {
 					SyncRepoProjectIDAsync(repo.ID, repo.URL, headers)
+				}
+
+				// 匹配子系统架构元素并关联
+				if subsystem != "" {
+					var archElem models.ArchitectureElement
+					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
+						archElem.RepoID = &repo.ID
+						if database.DB.Save(&archElem).Error == nil {
+							BroadcastSync("upsert", "/api/sync/arch", archElem.ID, archElem)
+						}
+						repo.ServiceGroup = archElem.Identifier
+						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
+					}
 				}
 			} else {
 				log.Printf("Line %d: Failed to update repository %s: %v", lineNum+2, repoName, err)
