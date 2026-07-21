@@ -526,8 +526,30 @@ func parseRepoNameFromURL(repoURL string) string {
 	}
 
 	// Separate Host and Path
-	if idx := strings.Index(path, ":"); idx != -1 && !strings.Contains(path[:idx], "/") {
-		path = path[idx+1:]
+	if idx := strings.Index(path, ":"); idx != -1 {
+		afterColon := path[idx+1:]
+		slashIdx := strings.Index(afterColon, "/")
+		if slashIdx != -1 {
+			isPort := true
+			portStr := afterColon[:slashIdx]
+			if len(portStr) == 0 {
+				isPort = false
+			}
+			for _, r := range portStr {
+				if r < '0' || r > '9' {
+					isPort = false
+					break
+				}
+			}
+			if isPort {
+				path = afterColon[slashIdx+1:]
+				return strings.Trim(path, "/")
+			}
+		}
+
+		if !strings.Contains(path[:idx], "/") {
+			path = path[idx+1:]
+		}
 	} else if idx := strings.Index(path, "/"); idx != -1 {
 		path = path[idx+1:]
 	}

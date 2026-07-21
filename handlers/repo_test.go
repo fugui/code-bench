@@ -218,9 +218,9 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	}
 	db.Create(&admin)
 
-	// 3. 构建包含空代码仓列和有效田主的导入 CSV
+	// 3. 构建包含空代码仓列和有效田主的导入 CSV，测试带端口号的 RepoURL
 	csvContentA := "RepoURL,田主,分支,部门名称,子系统\n" +
-		"git@example.com:test/auto-parse-repo-a.git,admin,master,技术部,code-bench\n"
+		"git@example.com:2222/test/auto-parse-repo-a.git,admin,master,技术部,code-bench\n"
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
