@@ -20,7 +20,6 @@ import (
 	"code-bench/models"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
@@ -579,7 +578,7 @@ func ImportRepos(c *gin.Context) {
 		headerMap[cleanCol] = i
 	}
 
-	requiredHeaders := []string{"子系统", "田主", "RepoURL", "分支", "部门名称"}
+	requiredHeaders := []string{"子系统", "田主", "RepoURL", "分支"}
 	for _, req := range requiredHeaders {
 		if _, ok := headerMap[req]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Missing required column: %s", req)})
@@ -592,8 +591,6 @@ func ImportRepos(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read CSV records"})
 		return
 	}
-
-	placeholderPassword, _ := bcrypt.GenerateFromPassword([]byte("imported-account-no-local-password"), bcrypt.DefaultCost)
 
 	successCount := 0
 	for lineNum, record := range records {
@@ -620,7 +617,7 @@ func ImportRepos(c *gin.Context) {
 			repoName = parseRepoNameFromURL(repoURL)
 		}
 
-		if repoName == "" || repoURL == "" || departmentName == "" {
+		if repoName == "" || repoURL == "" || ownerName == "" {
 			continue
 		}
 		if branch == "" {
@@ -628,50 +625,34 @@ func ImportRepos(c *gin.Context) {
 		}
 
 		var user models.User
-		ownerResolved := false
-		if ownerName != "" {
-			if err := database.DB.Where("employee_id = ? OR email = ? OR name = ?", ownerName, ownerName, ownerName).First(&user).Error; err == nil {
-				ownerResolved = true
-			}
-		}
-
-		if !ownerResolved && ownerName != "" {
-			email := ownerName
-			if !strings.Contains(email, "@") {
-				email = ownerName + "@imported.code-shield"
-			}
-			user = models.User{
-				EmployeeID: ownerName,
-				Name:       ownerName,
-				Email:      email,
-				Password:   string(placeholderPassword),
-				RegMethod:  "imported",
-				IsActive:   false,
-			}
-			if err := database.DB.Create(&user).Error; err == nil {
-				ownerResolved = true
-				BroadcastSync("upsert", "/api/sync/user", user.ID, user)
-			} else {
-				log.Printf("Line %d: Failed to auto-create user %s: %v", lineNum+2, ownerName, err)
-				continue
-			}
+		if err := database.DB.Where("employee_id = ? OR email = ? OR name = ?", ownerName, ownerName, ownerName).First(&user).Error; err != nil {
+			log.Printf("Line %d: Owner %s does not exist", lineNum+2, ownerName)
+			continue
 		}
 
 		var dept models.Department
-		if err := database.DB.Where("name = ?", departmentName).First(&dept).Error; err != nil {
-			var leaderID *uint
-			if ownerResolved {
-				leaderID = &user.ID
-			}
-			dept = models.Department{
-				Name:     departmentName,
-				LeaderID: leaderID,
-			}
-			if err := database.DB.Create(&dept).Error; err == nil {
-				BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
+		if departmentName == "" {
+			if user.DepartmentID != nil {
+				if err := database.DB.Where("id = ?", *user.DepartmentID).First(&dept).Error; err != nil {
+					log.Printf("Line %d: Failed to find department by owner's department_id %d: %v", lineNum+2, *user.DepartmentID, err)
+					continue
+				}
 			} else {
-				log.Printf("Line %d: Failed to create department %s: %v", lineNum+2, departmentName, err)
+				log.Printf("Line %d: Department name is empty and owner %s has no department associated", lineNum+2, ownerName)
 				continue
+			}
+		} else {
+			if err := database.DB.Where("name = ?", departmentName).First(&dept).Error; err != nil {
+				dept = models.Department{
+					Name:     departmentName,
+					LeaderID: &user.ID,
+				}
+				if err := database.DB.Create(&dept).Error; err == nil {
+					BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
+				} else {
+					log.Printf("Line %d: Failed to create department %s: %v", lineNum+2, departmentName, err)
+					continue
+				}
 			}
 		}
 
@@ -685,9 +666,7 @@ func ImportRepos(c *gin.Context) {
 				ServiceGroup: subsystem,
 				IsActive:     true,
 			}
-			if ownerResolved {
-				repo.OwnerID = user.ID
-			}
+			repo.OwnerID = user.ID
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
 				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
@@ -714,9 +693,7 @@ func ImportRepos(c *gin.Context) {
 
 			repo.DepartmentID = dept.ID
 			repo.URL = repoURL
-			if ownerResolved {
-				repo.OwnerID = user.ID
-			}
+			repo.OwnerID = user.ID
 			repo.Branch = branch
 			repo.ServiceGroup = subsystem
 			if err := database.DB.Save(&repo).Error; err == nil {

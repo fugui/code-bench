@@ -57,9 +57,9 @@ func TestImportRepos(t *testing.T) {
 	}
 	db.Create(&oldRepo)
 
-	// 3. 构建包含空责任人和子系统的导入 CSV
+	// 3. 构建包含田主和子系统的导入 CSV
 	csvContent := "代码仓,RepoURL,田主,分支,部门名称,子系统\n" +
-		"test-repo,git@example.com:test/test-repo.git,,master,技术部,code-bench\n"
+		"test-repo,git@example.com:test/test-repo.git,admin,master,技术部,code-bench\n"
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -91,9 +91,9 @@ func TestImportRepos(t *testing.T) {
 		t.Fatalf("failed to find repo: %v", err)
 	}
 
-	// 校验 Bug 1：空责任人未把原有的 OwnerID=1 覆盖为 0
+	// 校验责任人更新为对应用户 ID (1)
 	if updatedRepo.OwnerID != 1 {
-		t.Errorf("expected OwnerID to remain 1, but got %d", updatedRepo.OwnerID)
+		t.Errorf("expected OwnerID to be 1, but got %d", updatedRepo.OwnerID)
 	}
 
 	// 校验架构元素关联：匹配到子系统 "code-bench" 并设置了双向关联
@@ -181,9 +181,9 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	}
 	db.Create(&admin)
 
-	// 3. 构建包含空代码仓列和空值的导入 CSV
+	// 3. 构建包含空代码仓列和有效田主的导入 CSV
 	csvContentA := "RepoURL,田主,分支,部门名称,子系统\n" +
-		"git@example.com:test/auto-parse-repo-a.git,,master,技术部,code-bench\n"
+		"git@example.com:test/auto-parse-repo-a.git,admin,master,技术部,code-bench\n"
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -215,6 +215,70 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	expectedName := "test/auto-parse-repo-a"
 	if importedRepo.Name != expectedName {
 		t.Errorf("expected repo name to be %q, got %q", expectedName, importedRepo.Name)
+	}
+}
+
+func TestImportReposWithDefaultDepartment(t *testing.T) {
+	// 1. 初始化测试数据库 (内存 sqlite)
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
+	database.DB = db
+
+	// 创建一个部门
+	dept := models.Department{
+		ID:   2,
+		Name: "研发部",
+	}
+	db.Create(&dept)
+
+	// 创建一个属于该部门的用户
+	deptID := dept.ID
+	admin := models.User{
+		ID:           2,
+		EmployeeID:   "admin2",
+		Email:        "admin2@code-shield.com",
+		Name:         "管理员2",
+		DepartmentID: &deptID,
+	}
+	db.Create(&admin)
+
+	// 3. 构建包含空部门名称的导入 CSV
+	csvContent := "RepoURL,田主,分支,子系统\n" +
+		"git@example.com:test/auto-dept-repo.git,admin2,master,code-bench\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_dept.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContent))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var importedRepo models.Repository
+	if err := db.Where("url = ?", "git@example.com:test/auto-dept-repo.git").First(&importedRepo).Error; err != nil {
+		t.Fatalf("failed to find imported repo: %v", err)
+	}
+
+	// 验证该仓库是否被归入田主所属的部门 "研发部" (ID = 2)
+	if importedRepo.DepartmentID != dept.ID {
+		t.Errorf("expected DepartmentID to be %d, got %d", dept.ID, importedRepo.DepartmentID)
 	}
 }
 
