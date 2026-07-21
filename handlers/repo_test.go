@@ -162,3 +162,59 @@ func TestGetReposFilterName(t *testing.T) {
 		t.Errorf("expected returned repo name to be 'target-repo-1', but got %v", resp.Items)
 	}
 }
+
+func TestImportReposWithoutRepoName(t *testing.T) {
+	// 1. 初始化测试数据库 (内存 sqlite)
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
+	database.DB = db
+
+	// 2. 初始化一些基础数据
+	admin := models.User{
+		ID:         1,
+		EmployeeID: "admin",
+		Email:      "admin@code-shield.com",
+		Name:       "管理员",
+	}
+	db.Create(&admin)
+
+	// 3. 构建包含空代码仓列和空值的导入 CSV
+	csvContentA := "RepoURL,田主,分支,部门名称,子系统\n" +
+		"git@example.com:test/auto-parse-repo-a.git,,master,技术部,code-bench\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_a.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContentA))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var importedRepo models.Repository
+	if err := db.Where("url = ?", "git@example.com:test/auto-parse-repo-a.git").First(&importedRepo).Error; err != nil {
+		t.Fatalf("failed to find imported repo: %v", err)
+	}
+
+	expectedName := "test/auto-parse-repo-a"
+	if importedRepo.Name != expectedName {
+		t.Errorf("expected repo name to be %q, got %q", expectedName, importedRepo.Name)
+	}
+}
+

@@ -509,6 +509,33 @@ func ExportRepos(c *gin.Context) {
 	}
 }
 
+func parseRepoNameFromURL(repoURL string) string {
+	if repoURL == "" {
+		return ""
+	}
+
+	// Remove trailing .git
+	path := strings.TrimSuffix(repoURL, ".git")
+
+	// Remove common protocol prefixes
+	prefixes := []string{"git+ssh://", "ssh://", "https://", "http://"}
+	for _, pref := range prefixes {
+		if strings.HasPrefix(path, pref) {
+			path = strings.TrimPrefix(path, pref)
+			break
+		}
+	}
+
+	// Separate Host and Path
+	if idx := strings.Index(path, ":"); idx != -1 && !strings.Contains(path[:idx], "/") {
+		path = path[idx+1:]
+	} else if idx := strings.Index(path, "/"); idx != -1 {
+		path = path[idx+1:]
+	}
+
+	return strings.Trim(path, "/")
+}
+
 func ImportRepos(c *gin.Context) {
 	headers := prepareRequestHeaders(c)
 
@@ -552,7 +579,7 @@ func ImportRepos(c *gin.Context) {
 		headerMap[cleanCol] = i
 	}
 
-	requiredHeaders := []string{"子系统", "田主", "代码仓", "RepoURL", "分支", "部门名称"}
+	requiredHeaders := []string{"子系统", "田主", "RepoURL", "分支", "部门名称"}
 	for _, req := range requiredHeaders {
 		if _, ok := headerMap[req]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Missing required column: %s", req)})
@@ -588,6 +615,10 @@ func ImportRepos(c *gin.Context) {
 		repoURL := getField("RepoURL")
 		branch := getField("分支")
 		departmentName := getField("部门名称")
+
+		if repoName == "" && repoURL != "" {
+			repoName = parseRepoNameFromURL(repoURL)
+		}
 
 		if repoName == "" || repoURL == "" || departmentName == "" {
 			continue
