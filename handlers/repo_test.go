@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -102,5 +103,62 @@ func TestImportRepos(t *testing.T) {
 	}
 	if updatedArch.RepoID == nil || *updatedArch.RepoID != 1 {
 		t.Errorf("expected ArchElement.RepoID to be 1, but got %v", updatedArch.RepoID)
+	}
+}
+
+func TestGetReposFilterName(t *testing.T) {
+	// 1. 初始化测试数据库 (内存 sqlite)
+	db, err := gorm.Open(sqlite.Open("file::memory2:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	db.AutoMigrate(&models.Repository{})
+	database.DB = db
+
+	// 2. 插入测试仓库
+	repo1 := models.Repository{
+		ID:           1,
+		DepartmentID: 1,
+		Name:         "target-repo-1",
+		URL:          "git@example.com:test/target-repo-1.git",
+	}
+	repo2 := models.Repository{
+		ID:           2,
+		DepartmentID: 1,
+		Name:         "other-repo-2",
+		URL:          "git@example.com:test/other-repo-2.git",
+	}
+	db.Create(&repo1)
+	db.Create(&repo2)
+
+	// 3. 模拟 HTTP 请求，带有 ?name=target 过滤参数
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/api/repos?name=target", nil)
+	ctx.Request = req
+
+	// 4. 执行 GetRepos
+	GetRepos(ctx)
+
+	// 5. 校验返回值
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Items []models.Repository `json:"items"`
+		Total int64               `json:"total"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse JSON response: %v", err)
+	}
+
+	// 应当只返回名称匹配 "target" 的仓库 1，而不返回仓库 2
+	if resp.Total != 1 {
+		t.Errorf("expected total items to be 1, but got %d", resp.Total)
+	}
+	if len(resp.Items) != 1 || resp.Items[0].Name != "target-repo-1" {
+		t.Errorf("expected returned repo name to be 'target-repo-1', but got %v", resp.Items)
 	}
 }

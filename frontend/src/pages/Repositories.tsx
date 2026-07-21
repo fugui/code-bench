@@ -52,6 +52,7 @@ function Repositories() {
   const [filterTeam, setFilterTeam] = useState<string>('');
   const [filterServiceGroup, setFilterServiceGroup] = useState<string>('');
   const [filterOwner, setFilterOwner] = useState<string>('');
+  const [filterName, setFilterName] = useState<string>('');
   const [subsystems, setSubsystems] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -63,7 +64,7 @@ function Repositories() {
 
   useEffect(() => {
     fetchRepos();
-  }, [page, filterTeam, filterServiceGroup, filterOwner]);
+  }, [page, filterTeam, filterServiceGroup, filterOwner, filterName]);
 
   useEffect(() => {
     repoFetch('/api/departments')
@@ -105,6 +106,7 @@ function Repositories() {
     if (filterTeam) params.append('department_id', filterTeam);
     if (filterServiceGroup) params.append('service_group', filterServiceGroup);
     if (filterOwner) params.append('owner', filterOwner);
+    if (filterName) params.append('name', filterName);
 
     repoFetch(`/api/repos?${params.toString()}`)
       .then(res => res.json())
@@ -344,6 +346,7 @@ function Repositories() {
             <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
           ))}
         </select>
+        <input type="text" placeholder="按名称过滤..." value={filterName} onChange={e => handleFilterChange(setFilterName, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
         <input type="text" placeholder="按责任人过滤..." value={filterOwner} onChange={e => handleFilterChange(setFilterOwner, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
       </div>
 

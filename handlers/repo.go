@@ -222,6 +222,7 @@ func GetRepos(c *gin.Context) {
 	}
 	serviceGroup := c.Query("service_group")
 	owner := c.Query("owner")
+	repoName := c.Query("name")
 
 	if page < 1 {
 		page = 1
@@ -244,6 +245,9 @@ func GetRepos(c *gin.Context) {
 	if owner != "" {
 		query = query.Joins("LEFT JOIN users ON repositories.owner_id = users.id").
 			Where("users.name LIKE ? OR users.employee_id LIKE ? OR users.email LIKE ?", "%"+owner+"%", "%"+owner+"%", "%"+owner+"%")
+	}
+	if repoName != "" {
+		query = query.Where("repositories.name LIKE ?", "%"+repoName+"%")
 	}
 
 	var total int64
