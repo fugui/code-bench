@@ -108,7 +108,7 @@ func TestImportRepos(t *testing.T) {
 
 func TestGetReposFilterName(t *testing.T) {
 	// 1. 初始化测试数据库 (内存 sqlite)
-	db, err := gorm.Open(sqlite.Open("file::memory2:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}
