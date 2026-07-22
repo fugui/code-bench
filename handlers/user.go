@@ -143,7 +143,6 @@ func CreateUser(c *gin.Context) {
 	database.DB.Preload("Department").First(&user, user.ID)
 
 	// Broadcast sync to shield
-	BroadcastSync("upsert", "/api/sync/user", user.ID, user)
 
 	user.Password = ""
 	c.JSON(http.StatusCreated, user)
@@ -227,7 +226,6 @@ func UpdateUser(c *gin.Context) {
 	database.DB.Preload("Department").First(&user, user.ID)
 
 	// Broadcast sync to shield
-	BroadcastSync("upsert", "/api/sync/user", user.ID, user)
 
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
@@ -260,7 +258,6 @@ func UpdateUserStatus(c *gin.Context) {
 	database.DB.Preload("Department").First(&user, user.ID)
 
 	// Broadcast sync to shield
-	BroadcastSync("upsert", "/api/sync/user", user.ID, user)
 
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
@@ -286,7 +283,6 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	// Broadcast delete to shield
-	BroadcastSync("delete", "/api/sync/user", uint(id), nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
@@ -422,7 +418,6 @@ func ImportUsers(c *gin.Context) {
 				}
 				if err := database.DB.Create(&dept).Error; err == nil {
 					deptID = &dept.ID
-					BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
 				}
 			} else {
 				deptID = &dept.ID
@@ -442,7 +437,6 @@ func ImportUsers(c *gin.Context) {
 			}
 			if err := database.DB.Create(&user).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/user", user.ID, user)
 			}
 		} else {
 			user.Name = name
@@ -454,7 +448,6 @@ func ImportUsers(c *gin.Context) {
 			}
 			if err := database.DB.Save(&user).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/user", user.ID, user)
 			}
 		}
 	}

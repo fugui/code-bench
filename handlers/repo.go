@@ -205,7 +205,6 @@ func SyncRepoProjectIDAsync(repoID uint, repoURL string, headers map[string]stri
 				log.Printf("[ProjectIDSync] Successfully updated project_id %s, ssh_url %s, http_url %s for repo %d", projectID, sshURL, httpURL, repoID)
 				var updatedRepo models.Repository
 				if err := database.DB.Preload("Department").Preload("Owner").First(&updatedRepo, repoID).Error; err == nil {
-					BroadcastSync("upsert", "/api/sync/repo", repoID, updatedRepo)
 				}
 			}
 		}
@@ -312,7 +311,6 @@ func CreateRepo(c *gin.Context) {
 	database.DB.Preload("Department").Preload("Owner").First(&repo, repo.ID)
 
 	// Broadcast sync
-	BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 
 	c.JSON(http.StatusCreated, repo)
 }
@@ -331,7 +329,6 @@ func DeleteRepo(c *gin.Context) {
 	}
 
 	// Broadcast delete
-	BroadcastSync("delete", "/api/sync/repo", uint(id), nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Repository correctly deleted"})
 }
@@ -462,7 +459,6 @@ func UpdateRepo(c *gin.Context) {
 	database.DB.Preload("Department").Preload("Owner").First(&repo, id)
 
 	// Broadcast sync
-	BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 
 	c.JSON(http.StatusOK, repo)
 }
@@ -670,7 +666,6 @@ func ImportRepos(c *gin.Context) {
 					LeaderID: &user.ID,
 				}
 				if err := database.DB.Create(&dept).Error; err == nil {
-					BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
 				} else {
 					log.Printf("Line %d: Failed to create department %s: %v", lineNum+2, departmentName, err)
 					continue
@@ -707,7 +702,6 @@ func ImportRepos(c *gin.Context) {
 			}
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 
 				// 匹配子系统架构元素并关联
 				if subsystem != "" {
@@ -740,7 +734,6 @@ func ImportRepos(c *gin.Context) {
 			}
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/repo", repo.ID, repo)
 
 				// 匹配子系统架构元素并关联
 				if subsystem != "" {

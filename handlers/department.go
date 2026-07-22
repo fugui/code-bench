@@ -50,7 +50,6 @@ func CreateDepartment(c *gin.Context) {
 	}
 
 	// Broadcast sync
-	BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
 
 	c.JSON(http.StatusCreated, dept)
 }
@@ -89,7 +88,6 @@ func UpdateDepartment(c *gin.Context) {
 	}
 
 	// Broadcast sync
-	BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
 
 	c.JSON(http.StatusOK, dept)
 }
@@ -132,7 +130,6 @@ func DeleteDepartment(c *gin.Context) {
 	}
 
 	// Broadcast delete
-	BroadcastSync("delete", "/api/sync/department", uint(id), nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "部门已删除"})
 }
@@ -262,7 +259,7 @@ func ImportDepartments(c *gin.Context) {
 			}
 			if err := database.DB.Create(&dept).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
+				
 			}
 		} else {
 			if leaderID != nil {
@@ -270,7 +267,7 @@ func ImportDepartments(c *gin.Context) {
 			}
 			if err := database.DB.Save(&dept).Error; err == nil {
 				successCount++
-				BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
+				
 			}
 		}
 	}
@@ -309,7 +306,6 @@ func UpdateMyDepartment(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create department"})
 			return
 		}
-		BroadcastSync("upsert", "/api/sync/department", dept.ID, dept)
 	}
 
 	if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Update("department_id", dept.ID).Error; err != nil {
@@ -324,7 +320,6 @@ func UpdateMyDepartment(c *gin.Context) {
 	}
 
 	// Sync the updated user info
-	BroadcastSync("upsert", "/api/sync/user", updatedUser.ID, updatedUser)
 
 	c.JSON(http.StatusOK, updatedUser)
 }
