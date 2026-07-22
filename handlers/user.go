@@ -142,8 +142,6 @@ func CreateUser(c *gin.Context) {
 
 	database.DB.Preload("Department").First(&user, user.ID)
 
-	// Broadcast sync to shield
-
 	user.Password = ""
 	c.JSON(http.StatusCreated, user)
 }
@@ -225,8 +223,6 @@ func UpdateUser(c *gin.Context) {
 
 	database.DB.Preload("Department").First(&user, user.ID)
 
-	// Broadcast sync to shield
-
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
 }
@@ -257,8 +253,6 @@ func UpdateUserStatus(c *gin.Context) {
 
 	database.DB.Preload("Department").First(&user, user.ID)
 
-	// Broadcast sync to shield
-
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
 }
@@ -281,8 +275,6 @@ func DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
-
-	// Broadcast delete to shield
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }

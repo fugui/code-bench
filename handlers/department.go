@@ -49,8 +49,6 @@ func CreateDepartment(c *gin.Context) {
 		return
 	}
 
-	// Broadcast sync
-
 	c.JSON(http.StatusCreated, dept)
 }
 
@@ -86,8 +84,6 @@ func UpdateDepartment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update department"})
 		return
 	}
-
-	// Broadcast sync
 
 	c.JSON(http.StatusOK, dept)
 }
@@ -128,8 +124,6 @@ func DeleteDepartment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除部门失败"})
 		return
 	}
-
-	// Broadcast delete
 
 	c.JSON(http.StatusOK, gin.H{"message": "部门已删除"})
 }
