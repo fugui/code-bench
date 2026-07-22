@@ -5,7 +5,7 @@ server:
 
 # ── 数据库配置 (PostgreSQL) ──
 database:
-  driver: "postgres"                 # 数据库驱动: "postgres" (生产环境) 或 "sqlite" (本地单测回退)
+  driver: "postgres"                 # 数据库驱动: "postgres"
   host: "127.0.0.1"                  # PostgreSQL 服务器 IP
   port: 5432                         # 端口
   user: "postgres"                   # 用户名

@@ -17,7 +17,7 @@ import (
 )
 
 func TestImportRepos(t *testing.T) {
-	// 1. 初始化测试数据库 (内存 sqlite)
+	// 1. 初始化测试数据库
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
@@ -130,7 +130,7 @@ func TestImportRepos(t *testing.T) {
 }
 
 func TestGetReposFilterName(t *testing.T) {
-	// 1. 初始化测试数据库 (内存 sqlite)
+	// 1. 初始化测试数据库
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
@@ -187,7 +187,7 @@ func TestGetReposFilterName(t *testing.T) {
 }
 
 func TestImportReposWithoutRepoName(t *testing.T) {
-	// 1. 初始化测试数据库 (内存 sqlite)
+	// 1. 初始化测试数据库
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
@@ -265,7 +265,7 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 }
 
 func TestImportReposWithDefaultDepartment(t *testing.T) {
-	// 1. 初始化测试数据库 (内存 sqlite)
+	// 1. 初始化测试数据库
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
