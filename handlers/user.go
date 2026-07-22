@@ -64,7 +64,7 @@ func GetUsers(c *gin.Context) {
 
 	var users []models.User
 	offset := (page - 1) * pageSize
-	if err := query.Preload("Department").Order("users.last_login desc, users.created_at desc").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+	if err := query.Preload("Department").Order("users.last_login DESC NULLS LAST, users.created_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
