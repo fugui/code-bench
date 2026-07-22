@@ -9,6 +9,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -27,14 +28,25 @@ func InitDB() {
 		},
 	)
 
-	DB, err = gorm.Open(sqlite.Open("code_bench.db"), &gorm.Config{
-		Logger: newLogger,
+	var dialector gorm.Dialector
+	if models.AppConfig.Database.Driver == "sqlite" || models.AppConfig.Database.Host == "" {
+		log.Println("[Database] Connecting to SQLite in-memory database for testing/fallback...")
+		dialector = sqlite.Open("file::memory:?cache=shared")
+	} else {
+		dsn := models.AppConfig.Database.GetDSN()
+		log.Printf("[Database] Connecting to PostgreSQL database (%s)...", models.AppConfig.Database.DBName)
+		dialector = postgres.Open(dsn)
+	}
+
+	DB, err = gorm.Open(dialector, &gorm.Config{
+		Logger:                                   newLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		log.Fatalf("[Database] Failed to connect database: %v", err)
 	}
 
-	log.Println("[Database] AutoMigrating database schema (code_bench.db)...")
+	log.Println("[Database] AutoMigrating database schema...")
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Department{},

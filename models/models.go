@@ -12,6 +12,7 @@ type User struct {
 	EmployeeID   string      `gorm:"index;default:''" json:"employee_id"`    // Employee ID
 	EmployeeType string      `gorm:"default:''" json:"employee_type"`        // Employee Type
 	Email        string      `gorm:"uniqueIndex;not null" json:"email"`      // Email address
+	Username     string      `gorm:"index;default:''" json:"username"`       // Username
 	Name         string      `gorm:"not null;default:''" json:"name"`        // Display name
 	Password     string      `gorm:"not null" json:"-"`                      // Password hash
 	RegMethod    string      `gorm:"default:'local'" json:"reg_method"`      // "local", "sso", "imported"
