@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
+	"gorm.io/datatypes"
 )
 
 var syncingProjectIDs sync.Map
@@ -441,7 +442,7 @@ func UpdateRepo(c *gin.Context) {
 			updates["related_members"] = nil
 		} else {
 			b, _ := json.Marshal(*input.RelatedMembers)
-			updates["related_members"] = b
+			updates["related_members"] = datatypes.JSON(b)
 		}
 	}
 
