@@ -273,3 +273,9 @@ textarea::placeholder {
   color: var(--text-secondary);
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  flex-shrink: 0;
+}
+
