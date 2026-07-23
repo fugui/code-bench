@@ -36,11 +36,19 @@ export default function DeveloperDocs() {
     fetchTree();
   }, []);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
+    return {
+      'X-Portal-Request': 'true',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
   const fetchTree = async () => {
     setLoadingTree(true);
     try {
       const res = await fetch('/api/docs/tree', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (res.ok) {
@@ -79,7 +87,7 @@ export default function DeveloperDocs() {
     setContentError('');
     try {
       const res = await fetch(`/api/docs/content?path=${encodeURIComponent(path)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (res.ok) {
