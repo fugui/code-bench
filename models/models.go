@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/datatypes"
@@ -18,11 +19,32 @@ type User struct {
 	RegMethod    string      `gorm:"default:'local'" json:"reg_method"`      // "local", "sso", "imported"
 	IsActive     bool        `gorm:"default:true" json:"is_active"`          // Is active
 	IsAdmin      bool        `gorm:"default:false" json:"is_admin"`          // Is administrator
-	LastLogin    *time.Time  `json:"last_login"`
+	Roles        datatypes.JSON `gorm:"type:text" json:"roles"`              // System roles list e.g. ["pdm_admin", "pipeline_admin"]
+	LastLogin    *time.Time     `json:"last_login"`
 	LastIP       string      `gorm:"default:''" json:"last_ip"` // Last login IP
 	DepartmentID *uint       `json:"department_id"`             // Association Department ID
 	Department   *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`
 	CreatedAt    time.Time   `json:"created_at"`
+}
+
+func (u *User) GetRoles() []string {
+	var roles []string
+	if len(u.Roles) > 0 {
+		_ = json.Unmarshal(u.Roles, &roles)
+	}
+	if u.IsAdmin {
+		hasSuper := false
+		for _, r := range roles {
+			if r == "super_admin" {
+				hasSuper = true
+				break
+			}
+		}
+		if !hasSuper {
+			roles = append([]string{"super_admin"}, roles...)
+		}
+	}
+	return roles
 }
 
 type Department struct {

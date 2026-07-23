@@ -15,12 +15,13 @@ import (
 )
 
 type Claims struct {
-	UserID     uint   `json:"user_id"`
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
-	EmployeeID string `json:"employee_id"`
-	IsAdmin    bool   `json:"is_admin"`
+	UserID     uint     `json:"user_id"`
+	Username   string   `json:"username"`
+	Email      string   `json:"email"`
+	Name       string   `json:"name"`
+	EmployeeID string   `json:"employee_id"`
+	IsAdmin    bool     `json:"is_admin"`
+	Roles      []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -44,6 +45,7 @@ func GenerateToken(user models.User) (string, error) {
 		Name:       user.Name,
 		EmployeeID: user.EmployeeID,
 		IsAdmin:    user.IsAdmin,
+		Roles:      user.GetRoles(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -107,6 +109,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("username", user.Email)
 		c.Set("email", user.Email)
 		c.Set("isAdmin", user.IsAdmin)
+		c.Set("roles", user.GetRoles())
 		c.Set("user", user)
 		c.Next()
 	}
@@ -115,13 +118,20 @@ func AuthMiddleware() gin.HandlerFunc {
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isAdminVal, exists := c.Get("isAdmin")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
-			return
+		isAdmin := exists && isAdminVal.(bool)
+		rolesVal, rolesExists := c.Get("roles")
+		hasRole := false
+		if rolesExists {
+			if roles, ok := rolesVal.([]string); ok {
+				for _, r := range roles {
+					if r == "super_admin" || r == "bench_admin" {
+						hasRole = true
+						break
+					}
+				}
+			}
 		}
-		isAdmin, ok := isAdminVal.(bool)
-		if !ok || !isAdmin {
+		if !isAdmin && !hasRole {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
 			c.Abort()
 			return

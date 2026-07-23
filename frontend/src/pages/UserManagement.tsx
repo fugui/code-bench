@@ -6,10 +6,18 @@ import { AUTH_TOKEN_KEY } from '../config';
 function UserManagement() {
   const { showToast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
-  const [newUserForm, setNewUserForm] = useState({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, department_id: '' as string | number });
+  const AVAILABLE_ROLES = [
+    { key: 'super_admin', label: '超级管理员 (全系统)' },
+    { key: 'pdm_admin', label: 'PDM 管理员' },
+    { key: 'pipeline_admin', label: 'Pipeline 管理员' },
+    { key: 'shield_admin', label: 'CodeShield 管理员' },
+    { key: 'bench_admin', label: 'CodeBench 管理员' }
+  ];
+
+  const [newUserForm, setNewUserForm] = useState({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [] as string[], department_id: '' as string | number });
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, password: '', department_id: '' as string | number });
+  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [] as string[], password: '', department_id: '' as string | number });
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
 
@@ -114,11 +122,12 @@ function UserManagement() {
         },
         body: JSON.stringify({
           ...newUserForm,
+          is_admin: newUserForm.roles.includes('super_admin'),
           department_id: Number(newUserForm.department_id)
         })
       });
       if (res.ok) {
-        setNewUserForm({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, department_id: '' });
+        setNewUserForm({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [], department_id: '' });
         setIsUserModalOpen(false);
         fetchUsers(1, pageSize);
         setPage(1);
@@ -132,6 +141,16 @@ function UserManagement() {
   };
 
   const handleEditUser = (user: any) => {
+    let initialRoles: string[] = [];
+    if (Array.isArray(user.roles)) {
+      initialRoles = user.roles;
+    } else if (typeof user.roles === 'string') {
+      try { initialRoles = JSON.parse(user.roles); } catch (e) {}
+    }
+    if (user.is_admin && !initialRoles.includes('super_admin')) {
+      initialRoles.push('super_admin');
+    }
+
     setEditingUser(user);
     setEditUserForm({
       name: user.name || '',
@@ -140,6 +159,7 @@ function UserManagement() {
       unique_id: user.unique_id || '',
       employee_type: user.employee_type || '',
       is_admin: user.is_admin,
+      roles: initialRoles,
       password: '',
       department_id: user.department_id || ''
     });
@@ -160,7 +180,8 @@ function UserManagement() {
         employee_id: editUserForm.employee_id,
         unique_id: editUserForm.unique_id,
         employee_type: editUserForm.employee_type,
-        is_admin: editUserForm.is_admin,
+        is_admin: editUserForm.roles.includes('super_admin'),
+        roles: editUserForm.roles,
         department_id: Number(editUserForm.department_id)
       };
       if (editUserForm.password) payload.password = editUserForm.password;
@@ -312,9 +333,41 @@ function UserManagement() {
                         <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>本地录入</span>}
                   </td>
                   <td style={{ padding: '1rem' }}>
-                    {u.is_admin ?
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>管理员</span> :
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'var(--bg-color)', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>普通骨干</span>}
+                    {(() => {
+                      let rList: string[] = [];
+                      if (Array.isArray(u.roles)) rList = u.roles;
+                      else if (typeof u.roles === 'string') {
+                        try { rList = JSON.parse(u.roles); } catch (e) {}
+                      }
+                      if (u.is_admin && !rList.includes('super_admin')) {
+                        rList = ['super_admin', ...rList];
+                      }
+
+                      if (rList.length === 0) {
+                        return <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'var(--bg-color)', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>普通骨干</span>;
+                      }
+
+                      const roleMap: Record<string, { label: string; bg: string; color: string }> = {
+                        super_admin: { label: '超级管理员', bg: '#fef3c7', color: '#d97706' },
+                        pdm_admin: { label: 'PDM管理员', bg: '#e0f2fe', color: '#0284c7' },
+                        pipeline_admin: { label: 'Pipeline管理员', bg: '#f3e8ff', color: '#7e22ce' },
+                        shield_admin: { label: 'Shield管理员', bg: '#dcfce7', color: '#15803d' },
+                        bench_admin: { label: 'Bench管理员', bg: '#ffe4e6', color: '#be123c' }
+                      };
+
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                          {rList.map((rk: string) => {
+                            const info = roleMap[rk] || { label: rk, bg: 'var(--bg-color)', color: '#64748b' };
+                            return (
+                              <span key={rk} style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px', background: info.bg, color: info.color, fontSize: '0.75rem', fontWeight: 600 }}>
+                                {info.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td style={{ padding: '1rem' }}>
                     {u.is_active ?
@@ -496,9 +549,28 @@ function UserManagement() {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input type="checkbox" id="isAdmin" checked={newUserForm.is_admin} onChange={e => setNewUserForm({ ...newUserForm, is_admin: e.target.checked })} />
-                <label htmlFor="isAdmin" style={{ fontSize: '0.875rem', color: 'var(--text-color)' }}>设为管理员</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>分配系统管理权限</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  {AVAILABLE_ROLES.map(role => (
+                    <label key={role.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-color)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={newUserForm.roles.includes(role.key)}
+                        onChange={e => {
+                          const checked = e.target.checked;
+                          setNewUserForm(prev => ({
+                            ...prev,
+                            roles: checked
+                              ? [...prev.roles, role.key]
+                              : prev.roles.filter(r => r !== role.key)
+                          }));
+                        }}
+                      />
+                      <span>{role.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={() => setIsUserModalOpen(false)} style={{ padding: '0.6rem 1.5rem', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-color)', borderRadius: '4px', cursor: 'pointer' }}>取消</button>
@@ -547,9 +619,28 @@ function UserManagement() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>重置密码 <span style={{ color: '#94a3b8', fontWeight: 400 }}>(留空表示不修改)</span></label>
                 <input type="password" value={editUserForm.password} onChange={e => setEditUserForm({ ...editUserForm, password: e.target.value })} placeholder="输入新密码" style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', outline: 'none' }} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input type="checkbox" id="editIsAdmin" checked={editUserForm.is_admin} onChange={e => setEditUserForm({ ...editUserForm, is_admin: e.target.checked })} />
-                <label htmlFor="editIsAdmin" style={{ fontSize: '0.875rem', color: 'var(--text-color)' }}>设为管理员</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>分配系统管理权限</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  {AVAILABLE_ROLES.map(role => (
+                    <label key={role.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-color)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={editUserForm.roles.includes(role.key)}
+                        onChange={e => {
+                          const checked = e.target.checked;
+                          setEditUserForm(prev => ({
+                            ...prev,
+                            roles: checked
+                              ? [...prev.roles, role.key]
+                              : prev.roles.filter(r => r !== role.key)
+                          }));
+                        }}
+                      />
+                      <span>{role.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }} style={{ padding: '0.6rem 1.5rem', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-color)', borderRadius: '4px', cursor: 'pointer' }}>取消</button>

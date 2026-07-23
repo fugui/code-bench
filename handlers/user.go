@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
+	"gorm.io/datatypes"
 )
 
 func GetUsers(c *gin.Context) {
@@ -86,14 +88,15 @@ func GetUsers(c *gin.Context) {
 
 func CreateUser(c *gin.Context) {
 	var req struct {
-		Email        string `json:"email" binding:"required"`
-		Name         string `json:"name" binding:"required"`
-		Password     string `json:"password" binding:"required"`
-		EmployeeID   string `json:"employee_id"`
-		UniqueID     string `json:"unique_id"`
-		EmployeeType string `json:"employee_type"`
-		DepartmentID *uint  `json:"department_id"`
-		IsAdmin      bool   `json:"is_admin"`
+		Email        string   `json:"email" binding:"required"`
+		Name         string   `json:"name" binding:"required"`
+		Password     string   `json:"password" binding:"required"`
+		EmployeeID   string   `json:"employee_id"`
+		UniqueID     string   `json:"unique_id"`
+		EmployeeType string   `json:"employee_type"`
+		DepartmentID *uint    `json:"department_id"`
+		IsAdmin      bool     `json:"is_admin"`
+		Roles        []string `json:"roles"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -122,6 +125,19 @@ func CreateUser(c *gin.Context) {
 		uniqueID = &req.UniqueID
 	}
 
+	var rolesJSON datatypes.JSON
+	isAdmin := req.IsAdmin
+	if len(req.Roles) > 0 {
+		b, _ := json.Marshal(req.Roles)
+		rolesJSON = datatypes.JSON(b)
+		for _, r := range req.Roles {
+			if r == "super_admin" {
+				isAdmin = true
+				break
+			}
+		}
+	}
+
 	user := models.User{
 		Email:        req.Email,
 		Name:         req.Name,
@@ -132,7 +148,8 @@ func CreateUser(c *gin.Context) {
 		DepartmentID: req.DepartmentID,
 		RegMethod:    "local",
 		IsActive:     true,
-		IsAdmin:      req.IsAdmin,
+		IsAdmin:      isAdmin,
+		Roles:        rolesJSON,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -150,14 +167,15 @@ func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Email        string `json:"email"`
-		Name         string `json:"name"`
-		IsAdmin      *bool  `json:"is_admin"`
-		Password     string `json:"password"`
-		EmployeeID   string `json:"employee_id"`
-		UniqueID     string `json:"unique_id"`
-		EmployeeType string `json:"employee_type"`
-		DepartmentID *uint  `json:"department_id"`
+		Email        string    `json:"email"`
+		Name         string    `json:"name"`
+		IsAdmin      *bool     `json:"is_admin"`
+		Roles        *[]string `json:"roles"`
+		Password     string    `json:"password"`
+		EmployeeID   string    `json:"employee_id"`
+		UniqueID     string    `json:"unique_id"`
+		EmployeeType string    `json:"employee_type"`
+		DepartmentID *uint     `json:"department_id"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -188,6 +206,16 @@ func UpdateUser(c *gin.Context) {
 	}
 	if req.IsAdmin != nil {
 		user.IsAdmin = *req.IsAdmin
+	}
+	if req.Roles != nil {
+		b, _ := json.Marshal(*req.Roles)
+		user.Roles = datatypes.JSON(b)
+		for _, r := range *req.Roles {
+			if r == "super_admin" {
+				user.IsAdmin = true
+				break
+			}
+		}
 	}
 	if req.Password != "" {
 		hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)

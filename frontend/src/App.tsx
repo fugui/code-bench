@@ -746,7 +746,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           )}
 
 
-          {user && user.is_admin && (
+          {(user?.is_admin || (Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin')))) && (
             <>
               <NavLink 
                 to="/pipeline" 
