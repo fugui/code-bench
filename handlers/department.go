@@ -253,7 +253,7 @@ func ImportDepartments(c *gin.Context) {
 			}
 			if err := database.DB.Create(&dept).Error; err == nil {
 				successCount++
-				
+
 			}
 		} else {
 			if leaderID != nil {
@@ -261,7 +261,7 @@ func ImportDepartments(c *gin.Context) {
 			}
 			if err := database.DB.Save(&dept).Error; err == nil {
 				successCount++
-				
+
 			}
 		}
 	}

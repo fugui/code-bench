@@ -100,6 +100,10 @@ func main() {
 		apiProtected.POST("/me/department", handlers.UpdateMyDepartment)
 		apiProtected.GET("/me/department-proxy", handlers.GetMyDepartmentProxy)
 
+		// Developer Docs APIs
+		apiProtected.GET("/docs/tree", handlers.GetDocsTree)
+		apiProtected.GET("/docs/content", handlers.GetDocContent)
+
 		// Department APIs
 		apiProtected.GET("/departments", handlers.GetDepartments)
 		apiProtected.POST("/departments", handlers.CreateDepartment)

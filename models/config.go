@@ -83,6 +83,10 @@ func (d *DatabaseConfig) GetDSN() string {
 		host, user, d.Password, dbname, port, sslmode, timezone)
 }
 
+type DocsConfig struct {
+	Path string `yaml:"path"`
+}
+
 type Config struct {
 	Server struct {
 		Port              string        `yaml:"port"`
@@ -101,6 +105,7 @@ type Config struct {
 	} `yaml:"auth"`
 	Database DatabaseConfig    `yaml:"database"`
 	Sync     SyncConfig        `yaml:"sync"`
+	Docs     DocsConfig        `yaml:"docs"`
 	Gateways map[string]string `yaml:"gateways"`
 }
 

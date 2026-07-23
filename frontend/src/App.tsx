@@ -1,9 +1,10 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, Loader2, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
+import DeveloperDocs from './pages/DeveloperDocs';
 import { ToastProvider } from './components/Toast';
 
 // Set global environment flag for federated sub-applications
@@ -887,7 +888,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
         {user && (
-          <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+          <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <NavLink to="/docs" icon={BookOpen} label="开发人员手册" activePattern={/^\/docs/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
             <SidebarActionButton icon={MessageSquare} label="改进建议反馈" onClick={() => { setShowFeedbackModal(true); setFeedbackTab('create'); }} />
           </div>
         )}
@@ -908,6 +910,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
             {(() => {
               if (location.pathname === '/') return '首页';
+              if (location.pathname.startsWith('/docs')) return '开发人员手册';
               if (location.pathname.startsWith('/shield/reports') || location.pathname.startsWith('/shield/tasks')) return '报告中心';
               if (location.pathname.startsWith('/shield/analysis/ut') || location.pathname.startsWith('/shield/issues')) return '测试有效性分析';
               if (location.pathname.startsWith('/shield/admin/scan')) return '扫描任务管理';
@@ -1478,6 +1481,7 @@ export default function App() {
         <MainLayout>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/docs/*" element={<DeveloperDocs />} />
             <Route path="/oauth2/callback" element={<OAuthCallback />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/teams" element={<TeamManagement />} />
