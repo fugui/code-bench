@@ -746,74 +746,72 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           )}
 
 
-          {(user?.is_admin || (Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin')))) && (
-            <>
-              <NavLink 
-                to="/pipeline" 
-                icon={Activity} 
-                label="持续构建(Code Pipeline)" 
-                activePattern={/^\/pipeline/} 
-                onClick={(e) => {
-                  if (location.pathname.startsWith('/pipeline')) {
-                    e.preventDefault();
-                    setPipelineMenuCollapsed(!pipelineMenuCollapsed);
-                  } else {
-                    setPipelineMenuCollapsed(false);
-                    setShieldMenuCollapsed(true);
-                    setPdmMenuCollapsed(true);
-                  }
-                }}
-              />
-              {location.pathname.startsWith('/pipeline') && !pipelineMenuCollapsed && (pipelineMenuGroups.length > 0 || pipelineMenu.length > 0) && (
-                <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                  {pipelineMenuGroups.length > 0 ? (
-                    pipelineMenuGroups.map((group: any) => (
-                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {group.title}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                          {group.items.map((item: any) => {
-                            const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
-                            const isDashboard = item.path === '/' || item.path === '/dashboard';
-                            const isActive = isDashboard
-                              ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                              : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                            return (
-                              <Link
-                                key={item.path}
-                                to={fullPath}
-                                style={subNavLinkStyle(isActive)}
-                              >
-                                {item.label}
-                              </Link>
-                            );
-                          })}
-                        </div>
+          <>
+            <NavLink 
+              to="/pipeline" 
+              icon={Activity} 
+              label="持续构建(Code Pipeline)" 
+              activePattern={/^\/pipeline/} 
+              onClick={(e) => {
+                if (location.pathname.startsWith('/pipeline')) {
+                  e.preventDefault();
+                  setPipelineMenuCollapsed(!pipelineMenuCollapsed);
+                } else {
+                  setPipelineMenuCollapsed(false);
+                  setShieldMenuCollapsed(true);
+                  setPdmMenuCollapsed(true);
+                }
+              }}
+            />
+            {location.pathname.startsWith('/pipeline') && !pipelineMenuCollapsed && (pipelineMenuGroups.length > 0 || pipelineMenu.length > 0) && (
+              <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                {pipelineMenuGroups.length > 0 ? (
+                  pipelineMenuGroups.map((group: any) => (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {group.title}
                       </div>
-                    ))
-                  ) : (
-                    pipelineMenu.map((item: any) => {
-                      const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
-                      const isDashboard = item.path === '/' || item.path === '/dashboard';
-                      const isActive = isDashboard
-                        ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                        : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                      return (
-                        <Link
-                          key={item.path}
-                          to={fullPath}
-                          style={subNavLinkStyle(isActive)}
-                        >
-                          {item.label}
-                        </Link>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </>
-          )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                        {group.items.map((item: any) => {
+                          const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                          const isDashboard = item.path === '/' || item.path === '/dashboard';
+                          const isActive = isDashboard
+                            ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                            : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
+                          return (
+                            <Link
+                              key={item.path}
+                              to={fullPath}
+                              style={subNavLinkStyle(isActive)}
+                            >
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  pipelineMenu.map((item: any) => {
+                    const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
+                    const isDashboard = item.path === '/' || item.path === '/dashboard';
+                    const isActive = isDashboard
+                      ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                      : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
+                    return (
+                      <Link
+                        key={item.path}
+                        to={fullPath}
+                        style={subNavLinkStyle(isActive)}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </>
 
           {/* 产品数据管理 (PDM) */}
           <NavLink 
