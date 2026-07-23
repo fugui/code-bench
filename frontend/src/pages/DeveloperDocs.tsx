@@ -230,6 +230,109 @@ export default function DeveloperDocs() {
     setTimeout(() => setCopiedCodeIndex(null), 2000);
   };
 
+  // Syntax highlighter for C/C++, Java, Python, Yaml, JSON, Go, TS/JS, etc.
+  const renderHighlightedCode = (codeText: string, lang: string): React.ReactNode => {
+    const norm = (lang || '').toLowerCase().trim();
+
+    // Dark theme palette (One Dark / VS Code Dark Plus inspired)
+    const colors = {
+      keyword: '#c678dd',     // Purple / Pink (const, return, if, class, etc.)
+      string: '#98c379',      // Green ("string", 'string', `string`)
+      comment: '#7f848e',     // Muted Grey (italic)
+      number: '#d19a66',      // Orange / Amber (123, 3.14)
+      function: '#61afef',    // Bright Blue (funcName)
+      key: '#e06c75',         // Soft Red / Coral (JSON / YAML Key)
+      directive: '#e5c07b',   // Amber (#include, #define)
+    };
+
+    const lines = codeText.split('\n');
+
+    return lines.map((line, lineIdx) => {
+      const tokens: React.ReactNode[] = [];
+      let keyIdx = 0;
+
+      const isJson = ['json'].includes(norm);
+      const isYaml = ['yaml', 'yml'].includes(norm);
+
+      let tokenRegex: RegExp;
+      if (isJson) {
+        tokenRegex = /("(?:\\.|[^\\"])*")\s*(?=:)|("(?:\\.|[^\\"])*")|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+      } else if (isYaml) {
+        tokenRegex = /(#.*$)|(^[\t ]*(?:[a-zA-Z0-9_\-\.]+|"[^"]+"|'[^']+')\s*)(?=:)|("(?:\\.|[^\\"])*"|'(?:\\.|[^\\'])*')|\b(true|false|null|yes|no)\b|(-?\d+(?:\.\d+)?)/g;
+      } else {
+        tokenRegex = /(#.*$|\/\/.*$|\/\*[\s\S]*?\*\/)|("(?:\\.|[^\\"])*"|'(?:\\.|[^\\'])*'|`(?:\\.|[^\\`])*`)|(^#(?:include|define|ifdef|ifndef|endif|pragma|else|elif)\b\S*)|(\b(?:int|long|short|char|float|double|void|bool|boolean|unsigned|signed|const|struct|union|class|public|private|protected|virtual|override|return|if|else|elif|for|while|do|switch|case|default|break|continue|typedef|using|namespace|new|delete|template|typename|auto|sizeof|static|extern|inline|throw|try|catch|finally|import|export|from|package|func|def|self|extends|implements|interface|type|val|var|let|async|await|yield|True|False|None|true|false|null|nil|undefined|go|defer|make|range|select)\b)|(\b[a-zA-Z_]\w*)(?=\s*\()|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?\b)/g;
+      }
+
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+
+      while ((match = tokenRegex.exec(line)) !== null) {
+        if (match.index > lastIndex) {
+          tokens.push(line.substring(lastIndex, match.index));
+        }
+
+        const matchText = match[0];
+
+        if (isJson) {
+          if (match[1]) { // JSON Key
+            tokens.push(<span key={keyIdx++} style={{ color: colors.key, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[2]) { // JSON String
+            tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
+          } else if (match[3]) { // JSON Bool/Null
+            tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[4]) { // JSON Number
+            tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
+          } else {
+            tokens.push(matchText);
+          }
+        } else if (isYaml) {
+          if (match[1]) { // YAML Comment
+            tokens.push(<span key={keyIdx++} style={{ color: colors.comment, fontStyle: 'italic' }}>{matchText}</span>);
+          } else if (match[2]) { // YAML Key
+            tokens.push(<span key={keyIdx++} style={{ color: colors.key, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[3]) { // YAML String
+            tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
+          } else if (match[4]) { // YAML Bool/Null
+            tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[5]) { // YAML Number
+            tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
+          } else {
+            tokens.push(matchText);
+          }
+        } else {
+          // C, C++, Java, Python, Go, TS, JS
+          if (match[1]) { // Comment
+            tokens.push(<span key={keyIdx++} style={{ color: colors.comment, fontStyle: 'italic' }}>{matchText}</span>);
+          } else if (match[2]) { // String
+            tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
+          } else if (match[3]) { // Directive (#include, #define)
+            tokens.push(<span key={keyIdx++} style={{ color: colors.directive, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[4]) { // Keyword / Type
+            tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
+          } else if (match[5]) { // Function Call
+            tokens.push(<span key={keyIdx++} style={{ color: colors.function }}>{matchText}</span>);
+          } else if (match[6]) { // Number
+            tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
+          } else {
+            tokens.push(matchText);
+          }
+        }
+
+        lastIndex = tokenRegex.lastIndex;
+      }
+
+      if (lastIndex < line.length) {
+        tokens.push(line.substring(lastIndex));
+      }
+
+      return (
+        <div key={lineIdx} style={{ minHeight: '1.4em' }}>
+          {tokens.length > 0 ? tokens : ' '}
+        </div>
+      );
+    });
+  };
+
   // Custom Markdown parser for core formatting
   const renderMarkdown = (markdownText: string) => {
     if (!markdownText) return null;
@@ -300,7 +403,7 @@ export default function DeveloperDocs() {
               color: '#e2e8f0',
               fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace'
             }}>
-              <code>{codeText}</code>
+              <code>{renderHighlightedCode(codeText, lang)}</code>
             </pre>
           </div>
         );
