@@ -35,6 +35,34 @@ export default function DeveloperDocs() {
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Record<string, boolean>>({});
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
 
+  const [isLightTheme, setIsLightTheme] = useState<boolean>(() => {
+    return document.documentElement.classList.contains('light-theme') || localStorage.getItem('code-theme') === 'light';
+  });
+
+  useEffect(() => {
+    const checkTheme = () => {
+      const isLight = document.documentElement.classList.contains('light-theme') || localStorage.getItem('code-theme') === 'light';
+      setIsLightTheme(isLight);
+    };
+    checkTheme();
+
+    const observer = new MutationObserver(() => {
+      checkTheme();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    window.addEventListener('storage', checkTheme);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('storage', checkTheme);
+    };
+  }, []);
+
   // Encode document path for URL while preserving slashes '/'
   const encodeDocPath = (path: string) => {
     return path.split('/').map(seg => encodeURIComponent(seg)).join('/');
@@ -234,8 +262,16 @@ export default function DeveloperDocs() {
   const renderHighlightedCode = (codeText: string, lang: string): React.ReactNode => {
     const norm = (lang || '').toLowerCase().trim();
 
-    // Dark theme palette (One Dark / VS Code Dark Plus inspired)
-    const colors = {
+    // Theme palette adaptivity (Dark theme: VS Code Dark Plus / One Dark, Light theme: GitHub Light / One Light)
+    const colors = isLightTheme ? {
+      keyword: '#a626a4',     // Magenta / Purple (const, return, if, class, etc.)
+      string: '#50a14f',      // Forest Green ("string", 'string', `string`)
+      comment: '#a0a1a7',     // Grey (italic)
+      number: '#986801',      // Gold / Amber (123, 3.14)
+      function: '#4078f2',    // Royal Blue (funcName)
+      key: '#e45649',         // Coral Red (JSON / YAML Key)
+      directive: '#a626a4',   // Magenta (#include, #define)
+    } : {
       keyword: '#c678dd',     // Purple / Pink (const, return, if, class, etc.)
       string: '#98c379',      // Green ("string", 'string', `string`)
       comment: '#7f848e',     // Muted Grey (italic)
@@ -364,14 +400,14 @@ export default function DeveloperDocs() {
             borderRadius: '8px',
             overflow: 'hidden',
             border: '1px solid var(--border-color)',
-            background: 'var(--code-bg, #1e1e2e)'
+            background: isLightTheme ? '#f6f8fa' : 'var(--code-bg, #1e1e2e)'
           }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '0.4rem 1rem',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: isLightTheme ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.05)',
               borderBottom: '1px solid var(--border-color)',
               fontSize: '0.75rem',
               color: 'var(--text-secondary)'
@@ -400,7 +436,7 @@ export default function DeveloperDocs() {
               overflowX: 'auto',
               fontSize: '0.875rem',
               lineHeight: 1.6,
-              color: '#e2e8f0',
+              color: isLightTheme ? '#24292e' : '#e2e8f0',
               fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace'
             }}>
               <code>{renderHighlightedCode(codeText, lang)}</code>
@@ -601,11 +637,11 @@ export default function DeveloperDocs() {
       if (part.startsWith('`') && part.endsWith('`')) {
         return (
           <code key={index} style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: isLightTheme ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.1)',
             padding: '0.15rem 0.4rem',
             borderRadius: '4px',
             fontSize: '0.85em',
-            color: 'var(--primary-color, #60a5fa)',
+            color: isLightTheme ? '#0969da' : 'var(--primary-color, #60a5fa)',
             fontFamily: 'Consolas, Monaco, monospace'
           }}>
             {part.slice(1, -1)}
