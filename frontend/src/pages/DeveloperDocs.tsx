@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion } from 'lucide-react';
 
 interface DocNode {
@@ -15,6 +16,9 @@ interface TocItem {
 }
 
 export default function DeveloperDocs() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [tree, setTree] = useState<DocNode[]>([]);
   const [configured, setConfigured] = useState<boolean>(true);
   const [treeMessage, setTreeMessage] = useState<string>('');
@@ -31,7 +35,24 @@ export default function DeveloperDocs() {
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Record<string, boolean>>({});
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
 
-  // Fetch document tree
+  // Encode document path for URL while preserving slashes '/'
+  const encodeDocPath = (path: string) => {
+    return path.split('/').map(seg => encodeURIComponent(seg)).join('/');
+  };
+
+  // Decode document path from URL pathname (/docs/01-规范/代码.md -> 01-规范/代码.md)
+  const getDocPathFromUrl = (pathname: string) => {
+    const prefix = '/docs/';
+    if (pathname.startsWith(prefix)) {
+      const rawRel = pathname.substring(prefix.length);
+      if (rawRel) {
+        return rawRel.split('/').map(seg => decodeURIComponent(seg)).join('/');
+      }
+    }
+    return '';
+  };
+
+  // Fetch document tree on mount
   useEffect(() => {
     fetchTree();
   }, []);
@@ -57,15 +78,6 @@ export default function DeveloperDocs() {
         if (data.message) {
           setTreeMessage(data.message);
         }
-        // Auto select first doc if available
-        if (data.tree && data.tree.length > 0) {
-          const firstDoc = findFirstDocPath(data.tree);
-          if (firstDoc) {
-            setSelectedPath(firstDoc);
-            // Expand parent folders of first doc
-            expandParentFolders(data.tree, firstDoc);
-          }
-        }
       } else {
         setTreeMessage(data.error || '获取文档树失败');
       }
@@ -76,11 +88,41 @@ export default function DeveloperDocs() {
     }
   };
 
+  // Sync selectedPath with URL pathname and tree
+  useEffect(() => {
+    if (tree.length === 0) return;
+    const urlDocPath = getDocPathFromUrl(location.pathname);
+    if (urlDocPath) {
+      setSelectedPath(urlDocPath);
+      expandParentFolders(tree, urlDocPath);
+    } else {
+      const firstDoc = findFirstDocPath(tree);
+      if (firstDoc) {
+        setSelectedPath(firstDoc);
+        expandParentFolders(tree, firstDoc);
+        navigate(`/docs/${encodeDocPath(firstDoc)}`, { replace: true });
+      }
+    }
+  }, [location.pathname, tree]);
+
   // Fetch doc content whenever selectedPath changes
   useEffect(() => {
     if (!selectedPath) return;
     fetchDocContent(selectedPath);
   }, [selectedPath]);
+
+  // Auto-scroll to anchor hash once document content is rendered
+  useEffect(() => {
+    if (!loadingContent && docContent && location.hash) {
+      const targetId = decodeURIComponent(location.hash.substring(1));
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 150);
+    }
+  }, [loadingContent, docContent, location.hash]);
 
   const fetchDocContent = async (path: string) => {
     setLoadingContent(true);
@@ -479,6 +521,11 @@ export default function DeveloperDocs() {
     });
   };
 
+  const handleSelectDoc = (path: string) => {
+    setSelectedPath(path);
+    navigate(`/docs/${encodeDocPath(path)}`);
+  };
+
   // Render doc tree recursively
   const renderTreeNodes = (nodes: DocNode[], depth = 0) => {
     return nodes.map((node) => {
@@ -522,7 +569,7 @@ export default function DeveloperDocs() {
       return (
         <div
           key={node.path}
-          onClick={() => setSelectedPath(node.path)}
+          onClick={() => handleSelectDoc(node.path)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -691,6 +738,9 @@ export default function DeveloperDocs() {
                 href={`#${item.id}`}
                 onClick={(e) => {
                   e.preventDefault();
+                  if (selectedPath) {
+                    navigate(`/docs/${encodeDocPath(selectedPath)}#${encodeURIComponent(item.id)}`, { replace: true });
+                  }
                   const el = document.getElementById(item.id);
                   if (el) {
                     el.scrollIntoView({ behavior: 'smooth' });
