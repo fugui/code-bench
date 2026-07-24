@@ -1006,27 +1006,44 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
                       }
 
-                      let roleText = '';
                       if (roles.includes('super_admin')) {
-                        roleText = '超级管理员';
-                      } else {
-                        const roleNameMap: Record<string, string> = {
-                          pipeline_admin: 'Pipeline管理员',
-                          shield_admin: 'Shield管理员',
-                          pdm_admin: 'PDM管理员',
-                          bench_admin: 'Bench管理员',
-                        };
-                        const matched = roles.map(r => roleNameMap[r]).filter(Boolean);
-                        if (matched.length > 0) {
-                          roleText = matched.join(' · ');
-                        } else if (user.is_admin) {
-                          roleText = '管理员';
-                        }
+                        return <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>超级管理员</span>;
                       }
 
-                      return roleText ? (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{roleText}</span>
-                      ) : null;
+                      const roleShortMap: Record<string, { short: string; bg: string; color: string }> = {
+                        pipeline_admin: { short: 'P', bg: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' },
+                        shield_admin: { short: 'S', bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981' },
+                        pdm_admin: { short: 'M', bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' },
+                        bench_admin: { short: 'B', bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' },
+                      };
+
+                      const matched = roles.map(r => roleShortMap[r]).filter(Boolean);
+                      if (matched.length > 0) {
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                            {matched.map((item, idx) => (
+                              <span key={idx} style={{
+                                background: item.bg,
+                                color: item.color,
+                                padding: '0 4px',
+                                borderRadius: '3px',
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                lineHeight: '1.2'
+                              }}>
+                                {item.short}
+                              </span>
+                            ))}
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginLeft: '1px' }}>管理员</span>
+                          </div>
+                        );
+                      }
+
+                      if (user.is_admin) {
+                        return <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>;
+                      }
+
+                      return null;
                     })()}
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.25rem', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -1036,13 +1053,13 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
                 {showDropdown && (
                   <div style={{
-                    position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '200px',
+                    position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '210px',
                     background: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border-color)',
                     boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100
                   }}>
                     <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.02)' }}>
                       <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
                         {(() => {
                           let roles: string[] = [];
                           if (Array.isArray(user.roles)) {
@@ -1050,16 +1067,44 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                           } else if (typeof user.roles === 'string') {
                             try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
                           }
-                          if (roles.includes('super_admin')) return '超级管理员';
-                          const roleNameMap: Record<string, string> = {
-                            pipeline_admin: 'Pipeline管理员',
-                            shield_admin: 'Shield管理员',
-                            pdm_admin: 'PDM管理员',
-                            bench_admin: 'Bench管理员',
+
+                          if (roles.includes('super_admin')) {
+                            return (
+                              <span style={{ fontSize: '0.725rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 600, width: 'fit-content' }}>
+                                超级管理员
+                              </span>
+                            );
+                          }
+
+                          const roleFullMap: Record<string, { label: string; bg: string; color: string }> = {
+                            pipeline_admin: { label: 'Pipeline 管理员', bg: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' },
+                            shield_admin: { label: 'Shield 管理员', bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981' },
+                            pdm_admin: { label: 'PDM 管理员', bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' },
+                            bench_admin: { label: 'Bench 管理员', bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' },
                           };
-                          const matched = roles.map(r => roleNameMap[r]).filter(Boolean);
-                          if (matched.length > 0) return matched.join(' · ');
-                          return user.is_admin ? '管理员' : '普通用户';
+
+                          const matched = roles.map(r => roleFullMap[r]).filter(Boolean);
+                          if (matched.length > 0) {
+                            return matched.map((r, idx) => (
+                              <span key={idx} style={{ fontSize: '0.725rem', padding: '2px 8px', borderRadius: '4px', background: r.bg, color: r.color, fontWeight: 500, width: 'fit-content' }}>
+                                {r.label}
+                              </span>
+                            ));
+                          }
+
+                          if (user.is_admin) {
+                            return (
+                              <span style={{ fontSize: '0.725rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(100, 116, 139, 0.15)', color: '#64748b', fontWeight: 500, width: 'fit-content' }}>
+                                管理员
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <span style={{ fontSize: '0.725rem', color: 'var(--text-secondary)' }}>
+                              普通用户
+                            </span>
+                          );
                         })()}
                       </div>
                     </div>
