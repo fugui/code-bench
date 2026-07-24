@@ -339,8 +339,8 @@ function UserManagement() {
                       else if (typeof u.roles === 'string') {
                         try { rList = JSON.parse(u.roles); } catch (e) {}
                       }
-                      if (u.is_admin && !rList.includes('super_admin')) {
-                        rList = ['super_admin', ...rList];
+                      if (rList.includes('super_admin') || u.is_admin) {
+                        return <span style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>超级管理员</span>;
                       }
 
                       if (rList.length === 0) {
@@ -348,7 +348,6 @@ function UserManagement() {
                       }
 
                       const roleMap: Record<string, { label: string; bg: string; color: string }> = {
-                        super_admin: { label: '超级管理员', bg: '#fef3c7', color: '#d97706' },
                         pdm_admin: { label: 'PDM管理员', bg: '#e0f2fe', color: '#0284c7' },
                         pipeline_admin: { label: 'Pipeline管理员', bg: '#f3e8ff', color: '#7e22ce' },
                         shield_admin: { label: 'Shield管理员', bg: '#dcfce7', color: '#15803d' },
