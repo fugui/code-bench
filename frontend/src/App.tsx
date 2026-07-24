@@ -998,9 +998,36 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   </div>
                   <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</span>
-                    {user.is_admin && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>
-                    )}
+                    {(() => {
+                      let roles: string[] = [];
+                      if (Array.isArray(user.roles)) {
+                        roles = user.roles;
+                      } else if (typeof user.roles === 'string') {
+                        try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
+                      }
+
+                      let roleText = '';
+                      if (roles.includes('super_admin')) {
+                        roleText = '超级管理员';
+                      } else {
+                        const roleNameMap: Record<string, string> = {
+                          pipeline_admin: 'Pipeline管理员',
+                          shield_admin: 'Shield管理员',
+                          pdm_admin: 'PDM管理员',
+                          bench_admin: 'Bench管理员',
+                        };
+                        const matched = roles.map(r => roleNameMap[r]).filter(Boolean);
+                        if (matched.length > 0) {
+                          roleText = matched.join(' · ');
+                        } else if (user.is_admin) {
+                          roleText = '管理员';
+                        }
+                      }
+
+                      return roleText ? (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{roleText}</span>
+                      ) : null;
+                    })()}
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.25rem', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -1009,10 +1036,33 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
                 {showDropdown && (
                   <div style={{
-                    position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '180px',
+                    position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '200px',
                     background: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border-color)',
                     boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100
                   }}>
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>{user.name || user.username}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {(() => {
+                          let roles: string[] = [];
+                          if (Array.isArray(user.roles)) {
+                            roles = user.roles;
+                          } else if (typeof user.roles === 'string') {
+                            try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
+                          }
+                          if (roles.includes('super_admin')) return '超级管理员';
+                          const roleNameMap: Record<string, string> = {
+                            pipeline_admin: 'Pipeline管理员',
+                            shield_admin: 'Shield管理员',
+                            pdm_admin: 'PDM管理员',
+                            bench_admin: 'Bench管理员',
+                          };
+                          const matched = roles.map(r => roleNameMap[r]).filter(Boolean);
+                          if (matched.length > 0) return matched.join(' · ');
+                          return user.is_admin ? '管理员' : '普通用户';
+                        })()}
+                      </div>
+                    </div>
                     <div style={{ padding: '0.5rem' }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setShowPasswordModal(true); }}
