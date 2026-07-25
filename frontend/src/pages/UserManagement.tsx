@@ -59,12 +59,16 @@ function UserManagement() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDept, setFilterDept] = useState<string | number>('');
+  const [sortBy, setSortBy] = useState<string>('last_login');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
-  const fetchUsers = async (currentPage = page, currentPageSize = pageSize) => {
+  const fetchUsers = async (currentPage = page, currentPageSize = pageSize, currentSortBy = sortBy, currentOrder = order) => {
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: currentPageSize.toString(),
+        sort_by: currentSortBy,
+        order: currentOrder,
       });
       if (searchQuery) {
         params.append('search', searchQuery);
@@ -88,6 +92,47 @@ function UserManagement() {
     } catch (err) {
       console.error('Failed to fetch users:', err);
     }
+  };
+
+  const handleSort = (field: string) => {
+    let nextOrder: 'asc' | 'desc' = 'desc';
+    if (sortBy === field) {
+      nextOrder = order === 'desc' ? 'asc' : 'desc';
+    } else {
+      if (field === 'email' || field === 'name') {
+        nextOrder = 'asc';
+      } else {
+        nextOrder = 'desc';
+      }
+    }
+    setSortBy(field);
+    setOrder(nextOrder);
+    fetchUsers(1, pageSize, field, nextOrder);
+    setPage(1);
+  };
+
+  const renderSortHeader = (label: string, field: string) => {
+    const isCurrent = sortBy === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        style={{
+          padding: '1rem',
+          cursor: 'pointer',
+          userSelect: 'none',
+          color: isCurrent ? 'var(--primary-color)' : '#64748b',
+          transition: 'color 0.2s',
+        }}
+        title={`按 ${label} 排序`}
+      >
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+          <span>{label}</span>
+          <span style={{ fontSize: '0.75rem', opacity: isCurrent ? 1 : 0.4 }}>
+            {isCurrent ? (order === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        </div>
+      </th>
+    );
   };
 
   useEffect(() => {
@@ -301,14 +346,14 @@ function UserManagement() {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', color: '#64748b', fontSize: '0.875rem', textAlign: 'left' }}>
               <th style={{ padding: '1rem' }}>系统 ID</th>
-              <th style={{ padding: '1rem' }}>登录邮箱</th>
-              <th style={{ padding: '1rem' }}>姓名</th>
-              <th style={{ padding: '1rem' }}>工号</th>
+              {renderSortHeader('登录邮箱', 'email')}
+              {renderSortHeader('姓名', 'name')}
+              {renderSortHeader('工号', 'employee_id')}
               <th style={{ padding: '1rem' }}>归属部门</th>
               <th style={{ padding: '1rem' }}>录入方式</th>
-              <th style={{ padding: '1rem' }}>角色标识</th>
-              <th style={{ padding: '1rem' }}>账号状态</th>
-              <th style={{ padding: '1rem' }}>最近登录</th>
+              {renderSortHeader('角色标识', 'roles')}
+              {renderSortHeader('账号状态', 'is_active')}
+              {renderSortHeader('最近登录', 'last_login')}
               <th style={{ padding: '1rem', textAlign: 'right' }}>操作</th>
             </tr>
           </thead>
@@ -339,7 +384,7 @@ function UserManagement() {
                       else if (typeof u.roles === 'string') {
                         try { rList = JSON.parse(u.roles); } catch (e) {}
                       }
-                      if (rList.includes('super_admin') || u.is_admin) {
+                      if (rList.includes('super_admin')) {
                         return <span style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>超级管理员</span>;
                       }
 

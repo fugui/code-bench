@@ -64,9 +64,33 @@ func GetUsers(c *gin.Context) {
 		return
 	}
 
+	sortBy := c.Query("sort_by")
+	order := strings.ToUpper(c.Query("order"))
+	if order != "ASC" && order != "DESC" {
+		order = "DESC"
+	}
+
+	orderExpr := "users.last_login DESC NULLS LAST, users.created_at DESC"
+	switch sortBy {
+	case "email":
+		orderExpr = fmt.Sprintf("users.email %s", order)
+	case "employee_id":
+		orderExpr = fmt.Sprintf("users.employee_id %s NULLS LAST", order)
+	case "roles":
+		orderExpr = fmt.Sprintf("(CASE WHEN users.roles::text LIKE '%%super_admin%%' THEN 5 WHEN users.roles::text LIKE '%%bench_admin%%' THEN 4 WHEN users.roles::text LIKE '%%pipeline_admin%%' THEN 3 WHEN users.roles::text LIKE '%%shield_admin%%' THEN 2 WHEN users.roles::text LIKE '%%pdm_admin%%' THEN 1 ELSE 0 END) %s, users.created_at DESC", order)
+	case "last_login":
+		orderExpr = fmt.Sprintf("users.last_login %s NULLS LAST, users.created_at DESC", order)
+	case "is_active":
+		orderExpr = fmt.Sprintf("users.is_active %s, users.created_at DESC", order)
+	case "created_at":
+		orderExpr = fmt.Sprintf("users.created_at %s", order)
+	case "name":
+		orderExpr = fmt.Sprintf("users.name %s", order)
+	}
+
 	var users []models.User
 	offset := (page - 1) * pageSize
-	if err := query.Preload("Department").Order("users.last_login DESC NULLS LAST, users.created_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+	if err := query.Preload("Department").Order(orderExpr).Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
