@@ -110,19 +110,19 @@ func OAuth2Callback(c *gin.Context) {
 	}
 
 	mapping := oauth2Cfg.FieldMapping
-	email := getStringField(userInfo, mapping.Email)
+	email := strings.ToLower(strings.TrimSpace(getStringField(userInfo, mapping.Email)))
 	rawUsername := getStringField(userInfo, mapping.Username)
 	name := parseSSOAttribute(rawUsername)
 	if customName := getStringField(userInfo, mapping.Name); customName != "" {
 		name = customName
 	}
 
-	employeeID := getStringField(userInfo, mapping.EmployeeID)
-	uniqueID := getStringField(userInfo, mapping.UniqueID)
-	employeeType := getStringField(userInfo, mapping.EmployeeType)
+	employeeID := strings.TrimSpace(getStringField(userInfo, mapping.EmployeeID))
+	uniqueID := strings.TrimSpace(getStringField(userInfo, mapping.UniqueID))
+	employeeType := strings.TrimSpace(getStringField(userInfo, mapping.EmployeeType))
 
 	if email == "" {
-		email = parseSSOEnglishName(rawUsername)
+		email = strings.ToLower(strings.TrimSpace(parseSSOEnglishName(rawUsername)))
 	}
 
 	if email == "" {
@@ -151,7 +151,7 @@ func OAuth2Callback(c *gin.Context) {
 		if !allowed {
 			// 如果域名校验未通过，但数据库中已开通过该邮箱对应的账号，则予以放通
 			var count int64
-			if err := database.DB.Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err == nil && count > 0 {
+			if err := database.DB.Model(&models.User{}).Where("LOWER(email) = LOWER(?)", email).Count(&count).Error; err == nil && count > 0 {
 				allowed = true
 			}
 		}
@@ -181,7 +181,7 @@ func OAuth2Callback(c *gin.Context) {
 	}
 
 	if !userFound && email != "" {
-		if err := database.DB.Where("email = ?", email).First(&user).Error; err == nil {
+		if err := database.DB.Where("LOWER(email) = LOWER(?)", email).First(&user).Error; err == nil {
 			userFound = true
 		}
 	}

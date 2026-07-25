@@ -132,7 +132,8 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	if _, err := mail.ParseAddress(req.Email); err != nil {
+	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
+	if _, err := mail.ParseAddress(cleanEmail); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Login email must be a valid email address"})
 		return
 	}
@@ -144,8 +145,9 @@ func CreateUser(c *gin.Context) {
 	}
 
 	var uniqueID *string
-	if req.UniqueID != "" {
-		uniqueID = &req.UniqueID
+	if strings.TrimSpace(req.UniqueID) != "" {
+		trimmed := strings.TrimSpace(req.UniqueID)
+		uniqueID = &trimmed
 	}
 
 	var rolesJSON datatypes.JSON
@@ -155,12 +157,12 @@ func CreateUser(c *gin.Context) {
 	}
 
 	user := models.User{
-		Email:        req.Email,
-		Name:         req.Name,
+		Email:        cleanEmail,
+		Name:         strings.TrimSpace(req.Name),
 		Password:     string(hashed),
-		EmployeeID:   req.EmployeeID,
+		EmployeeID:   strings.TrimSpace(req.EmployeeID),
 		UniqueID:     uniqueID,
-		EmployeeType: req.EmployeeType,
+		EmployeeType: strings.TrimSpace(req.EmployeeType),
 		DepartmentID: req.DepartmentID,
 		RegMethod:    "local",
 		IsActive:     true,
@@ -168,7 +170,7 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
 		return
 	}
 
@@ -189,7 +191,7 @@ func UpdateUser(c *gin.Context) {
 		Roles        *[]string `json:"roles"`
 		Password     string    `json:"password"`
 		EmployeeID   string    `json:"employee_id"`
-		UniqueID     string    `json:"unique_id"`
+		UniqueID     *string   `json:"unique_id"`
 		EmployeeType string    `json:"employee_type"`
 		DepartmentID *uint     `json:"department_id"`
 	}
@@ -211,14 +213,15 @@ func UpdateUser(c *gin.Context) {
 	}
 
 	if req.Email != "" {
-		if _, err := mail.ParseAddress(req.Email); err != nil {
+		cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
+		if _, err := mail.ParseAddress(cleanEmail); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Login email must be a valid email address"})
 			return
 		}
-		user.Email = req.Email
+		user.Email = cleanEmail
 	}
 	if req.Name != "" {
-		user.Name = req.Name
+		user.Name = strings.TrimSpace(req.Name)
 	}
 	if req.Roles != nil {
 		b, _ := json.Marshal(*req.Roles)
@@ -233,15 +236,14 @@ func UpdateUser(c *gin.Context) {
 		user.Password = string(hashed)
 	}
 	if req.EmployeeID != "" {
-		user.EmployeeID = req.EmployeeID
+		user.EmployeeID = strings.TrimSpace(req.EmployeeID)
 	}
-	if req.UniqueID != "" {
-		user.UniqueID = &req.UniqueID
-	} else {
-		user.UniqueID = nil
+	if req.UniqueID != nil && strings.TrimSpace(*req.UniqueID) != "" {
+		trimmed := strings.TrimSpace(*req.UniqueID)
+		user.UniqueID = &trimmed
 	}
 	if req.EmployeeType != "" {
-		user.EmployeeType = req.EmployeeType
+		user.EmployeeType = strings.TrimSpace(req.EmployeeType)
 	}
 	if req.DepartmentID != nil {
 		user.DepartmentID = req.DepartmentID

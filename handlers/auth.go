@@ -163,8 +163,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
-	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+	if err := database.DB.Where("LOWER(email) = LOWER(?)", cleanEmail).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
