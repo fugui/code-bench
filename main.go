@@ -112,11 +112,12 @@ func main() {
 		apiProtected.POST("/departments/import", handlers.ImportDepartments)
 		apiProtected.GET("/departments/export", handlers.ExportDepartments)
 
-		// User APIs (Super Admin only)
+		// User APIs
+		apiProtected.GET("/users", handlers.GetUsers)
+
 		adminUsers := apiProtected.Group("/users")
 		adminUsers.Use(handlers.SuperAdminMiddleware())
 		{
-			adminUsers.GET("", handlers.GetUsers)
 			adminUsers.POST("", handlers.CreateUser)
 			adminUsers.PUT("/:id", handlers.UpdateUser)
 			adminUsers.PATCH("/:id/status", handlers.UpdateUserStatus)
