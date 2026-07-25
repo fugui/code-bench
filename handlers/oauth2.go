@@ -15,6 +15,7 @@ import (
 	"code-bench/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
 )
 
 var oauth2States *StateStore
@@ -202,6 +203,12 @@ func OAuth2Callback(c *gin.Context) {
 			uniqueIDPtr = &uniqueID
 		}
 
+		var initialRoles datatypes.JSON
+		if isAdmin {
+			b, _ := json.Marshal([]string{"super_admin"})
+			initialRoles = datatypes.JSON(b)
+		}
+
 		user = models.User{
 			Email:        email,
 			Name:         displayName,
@@ -209,7 +216,7 @@ func OAuth2Callback(c *gin.Context) {
 			UniqueID:     uniqueIDPtr,
 			EmployeeType: employeeType,
 			RegMethod:    "sso",
-			IsAdmin:      isAdmin,
+			Roles:        initialRoles,
 			IsActive:     true,
 			Password:     "$2a$10$SSO_USER_NO_PASSWORD_LOGIN",
 		}
@@ -242,9 +249,12 @@ func OAuth2Callback(c *gin.Context) {
 			updates["is_active"] = true
 			user.IsActive = true
 		}
-		if !user.IsAdmin && isAdmin {
-			updates["is_admin"] = true
-			user.IsAdmin = true
+		if isAdmin && !user.IsSuperAdmin() {
+			roles := user.GetRoles()
+			roles = append(roles, "super_admin")
+			b, _ := json.Marshal(roles)
+			updates["roles"] = datatypes.JSON(b)
+			user.Roles = datatypes.JSON(b)
 		}
 		if len(updates) > 0 {
 			database.DB.Model(&user).Updates(updates)

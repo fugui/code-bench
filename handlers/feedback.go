@@ -90,13 +90,18 @@ func GetFeedbacks(c *gin.Context) {
 	}
 	userID := userIDVal.(uint)
 
-	isAdminVal, _ := c.Get("isAdmin")
-	isAdmin, _ := isAdminVal.(bool)
+	userVal, exists := c.Get("user")
+	canManage := false
+	if exists {
+		if user, ok := userVal.(models.User); ok && user.HasRole("bench_admin") {
+			canManage = true
+		}
+	}
 
 	query := database.DB.Model(&models.Feedback{})
 
 	// 权限过滤：非管理员只能查自己的提报
-	if !isAdmin {
+	if !canManage {
 		query = query.Where("user_id = ?", userID)
 	} else {
 		// 管理员可以按特定提报人过滤
@@ -126,44 +131,46 @@ func GetFeedbacks(c *gin.Context) {
 	}
 
 	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "统计历史反馈失败"})
-		return
-	}
+	query.Count(&total)
 
-	var feedbacks []models.Feedback
+	var list []models.Feedback
 	offset := (page - 1) * pageSize
-	if err := query.Preload("User").Order("created_at desc").Offset(offset).Limit(pageSize).Find(&feedbacks).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取历史反馈列表失败"})
+	if err := query.Preload("User").Order("created_at desc").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询反馈失败"})
 		return
 	}
 
 	// 为普通用户隐藏 User 表的高危敏感信息 (如密码)
-	for i := range feedbacks {
-		if feedbacks[i].User != nil {
-			feedbacks[i].User.Password = ""
+	for i := range list {
+		if list[i].User != nil {
+			list[i].User.Password = ""
 		}
 	}
 
-	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
-	if totalPages < 1 {
-		totalPages = 1
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"items":      feedbacks,
-		"total":      total,
-		"page":       page,
-		"pageSize":   pageSize,
-		"totalPages": totalPages,
+		"data":        list,
+		"page":        page,
+		"page_size":   pageSize,
+		"total_items": total,
+		"total_pages": totalPages,
 	})
 }
 
 // UpdateFeedback 管理员回复并处理反馈建议
 func UpdateFeedback(c *gin.Context) {
-	isAdminVal, _ := c.Get("isAdmin")
-	isAdmin, _ := isAdminVal.(bool)
-	if !isAdmin {
+	userVal, exists := c.Get("user")
+	canManage := false
+	if exists {
+		if user, ok := userVal.(models.User); ok && user.HasRole("bench_admin") {
+			canManage = true
+		}
+	}
+	if !canManage {
 		c.JSON(http.StatusForbidden, gin.H{"error": "权限不足，仅管理员可回复反馈"})
 		return
 	}
