@@ -644,6 +644,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   }
   const isSuperAdmin = !!(user && (user.is_admin || userRoles.includes('super_admin')));
   const canManageTeams = !!(user && (isSuperAdmin || userRoles.includes('bench_admin')));
+  const isShieldAdmin = !!(user && (isSuperAdmin || userRoles.includes('shield_admin')));
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
@@ -684,7 +685,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 shieldMenuGroups
                   .filter((group: any) => {
                     if (group.adminOnly) {
-                      return user && !!user.is_admin;
+                      return isShieldAdmin;
                     }
                     return true;
                   })
@@ -694,7 +695,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         return false;
                       }
                       if (item.adminOnly) {
-                        return user && !!user.is_admin;
+                        return isShieldAdmin;
                       }
                       return true;
                     });
@@ -734,7 +735,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                       return false;
                     }
                     if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
-                      return user && !!user.is_admin;
+                      return isShieldAdmin;
                     }
                     return true;
                   })
