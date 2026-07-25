@@ -117,21 +117,14 @@ func AuthMiddleware() gin.HandlerFunc {
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isAdminVal, exists := c.Get("isAdmin")
-		isAdmin := exists && isAdminVal.(bool)
-		rolesVal, rolesExists := c.Get("roles")
-		hasRole := false
-		if rolesExists {
-			if roles, ok := rolesVal.([]string); ok {
-				for _, r := range roles {
-					if r == "super_admin" || r == "bench_admin" {
-						hasRole = true
-						break
-					}
-				}
-			}
+		userVal, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
 		}
-		if !isAdmin && !hasRole {
+		user, ok := userVal.(models.User)
+		if !ok || !user.HasRole("bench_admin") {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
 			c.Abort()
 			return
@@ -142,21 +135,14 @@ func AdminMiddleware() gin.HandlerFunc {
 
 func SuperAdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isAdminVal, exists := c.Get("isAdmin")
-		isAdmin := exists && isAdminVal.(bool)
-		rolesVal, rolesExists := c.Get("roles")
-		hasRole := false
-		if rolesExists {
-			if roles, ok := rolesVal.([]string); ok {
-				for _, r := range roles {
-					if r == "super_admin" {
-						hasRole = true
-						break
-					}
-				}
-			}
+		userVal, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
 		}
-		if !isAdmin && !hasRole {
+		user, ok := userVal.(models.User)
+		if !ok || !user.IsSuperAdmin() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Super admin privileges required"})
 			c.Abort()
 			return

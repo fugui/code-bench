@@ -47,6 +47,26 @@ func (u *User) GetRoles() []string {
 	return roles
 }
 
+func (u *User) HasRole(targetRole string) bool {
+	roles := u.GetRoles()
+	for _, r := range roles {
+		if r == "super_admin" || r == targetRole {
+			return true
+		}
+	}
+	return false
+}
+
+func (u *User) IsSuperAdmin() bool {
+	roles := u.GetRoles()
+	for _, r := range roles {
+		if r == "super_admin" {
+			return true
+		}
+	}
+	return false
+}
+
 type Department struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"uniqueIndex;not null" json:"name"`

@@ -126,7 +126,7 @@ func CreateUser(c *gin.Context) {
 	}
 
 	var rolesJSON datatypes.JSON
-	isAdmin := req.IsAdmin
+	isAdmin := false
 	if len(req.Roles) > 0 {
 		b, _ := json.Marshal(req.Roles)
 		rolesJSON = datatypes.JSON(b)
@@ -136,6 +136,10 @@ func CreateUser(c *gin.Context) {
 				break
 			}
 		}
+	} else if req.IsAdmin {
+		isAdmin = true
+		b, _ := json.Marshal([]string{"super_admin"})
+		rolesJSON = datatypes.JSON(b)
 	}
 
 	user := models.User{
@@ -153,18 +157,20 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
-	database.DB.Preload("Department").First(&user, user.ID)
-
-	user.Password = ""
 	c.JSON(http.StatusCreated, user)
 }
 
 func UpdateUser(c *gin.Context) {
-	id := c.Param("id")
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
 	var req struct {
 		Email        string    `json:"email"`
@@ -204,18 +210,19 @@ func UpdateUser(c *gin.Context) {
 	if req.Name != "" {
 		user.Name = req.Name
 	}
-	if req.IsAdmin != nil {
-		user.IsAdmin = *req.IsAdmin
-	}
 	if req.Roles != nil {
 		b, _ := json.Marshal(*req.Roles)
 		user.Roles = datatypes.JSON(b)
+		hasSuper := false
 		for _, r := range *req.Roles {
 			if r == "super_admin" {
-				user.IsAdmin = true
+				hasSuper = true
 				break
 			}
 		}
+		user.IsAdmin = hasSuper
+	} else if req.IsAdmin != nil {
+		user.IsAdmin = *req.IsAdmin
 	}
 	if req.Password != "" {
 		hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
