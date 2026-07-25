@@ -642,7 +642,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       try { userRoles = JSON.parse(user.roles); } catch (e) { userRoles = []; }
     }
   }
-  const isSuperAdmin = !!(user && (user.is_admin || userRoles.includes('super_admin')));
+  const isSuperAdmin = !!(user && userRoles.includes('super_admin'));
   const canManageTeams = !!(user && (isSuperAdmin || userRoles.includes('bench_admin')));
   const isShieldAdmin = !!(user && (isSuperAdmin || userRoles.includes('shield_admin')));
 
@@ -1022,7 +1022,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
                       }
 
-                      if (roles.includes('super_admin') || user.is_admin) {
+                      if (roles.includes('super_admin')) {
                         return <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>超级管理员</span>;
                       }
 
@@ -1055,10 +1055,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         );
                       }
 
-                      if (user.is_admin) {
-                        return <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>管理员</span>;
-                      }
-
                       return null;
                     })()}
                   </div>
@@ -1084,7 +1080,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                             try { roles = JSON.parse(user.roles); } catch (e) { roles = []; }
                           }
 
-                          if (roles.includes('super_admin') || user.is_admin) {
+                          if (roles.includes('super_admin')) {
                             return (
                               <span style={{ fontSize: '0.725rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 600, width: 'fit-content' }}>
                                 超级管理员
@@ -1106,14 +1102,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                                 {r.label}
                               </span>
                             ));
-                          }
-
-                          if (user.is_admin) {
-                            return (
-                              <span style={{ fontSize: '0.725rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(100, 116, 139, 0.15)', color: '#64748b', fontWeight: 500, width: 'fit-content' }}>
-                                管理员
-                              </span>
-                            );
                           }
 
                           return (
@@ -1408,7 +1396,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', background: 'rgba(59, 130, 246, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                                     {moduleCn}
                                   </span>
-                                  {user && user.is_admin && item.user && (
+                                  {user && isSuperAdmin && item.user && (
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                                       提报人: {item.user.name || item.user.username}
                                     </span>
@@ -1483,7 +1471,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                                         <span style={{ lineHeight: 1.5 }}>{item.reply}</span>
                                       </div>
                                     )}
-                                    {user && user.is_admin && (
+                                    {user && isSuperAdmin && (
                                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                                         <button
                                           onClick={() => {

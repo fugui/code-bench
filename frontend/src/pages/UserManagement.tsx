@@ -14,10 +14,10 @@ function UserManagement() {
     { key: 'bench_admin', label: 'CodeBench 管理员' }
   ];
 
-  const [newUserForm, setNewUserForm] = useState({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [] as string[], department_id: '' as string | number });
+  const [newUserForm, setNewUserForm] = useState({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', roles: [] as string[], department_id: '' as string | number });
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [] as string[], password: '', department_id: '' as string | number });
+  const [editUserForm, setEditUserForm] = useState({ name: '', email: '', employee_id: '', unique_id: '', employee_type: '', roles: [] as string[], password: '', department_id: '' as string | number });
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
 
@@ -167,12 +167,11 @@ function UserManagement() {
         },
         body: JSON.stringify({
           ...newUserForm,
-          is_admin: newUserForm.roles.includes('super_admin'),
           department_id: Number(newUserForm.department_id)
         })
       });
       if (res.ok) {
-        setNewUserForm({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', is_admin: false, roles: [], department_id: '' });
+        setNewUserForm({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', roles: [], department_id: '' });
         setIsUserModalOpen(false);
         fetchUsers(1, pageSize);
         setPage(1);
@@ -203,7 +202,6 @@ function UserManagement() {
       employee_id: user.employee_id || '',
       unique_id: user.unique_id || '',
       employee_type: user.employee_type || '',
-      is_admin: user.is_admin,
       roles: initialRoles,
       password: '',
       department_id: user.department_id || ''
@@ -225,7 +223,6 @@ function UserManagement() {
         employee_id: editUserForm.employee_id,
         unique_id: editUserForm.unique_id,
         employee_type: editUserForm.employee_type,
-        is_admin: editUserForm.roles.includes('super_admin'),
         roles: editUserForm.roles,
         department_id: Number(editUserForm.department_id)
       };

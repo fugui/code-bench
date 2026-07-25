@@ -20,7 +20,6 @@ type Claims struct {
 	Email      string   `json:"email"`
 	Name       string   `json:"name"`
 	EmployeeID string   `json:"employee_id"`
-	IsAdmin    bool     `json:"is_admin"`
 	Roles      []string `json:"roles"`
 	jwt.RegisteredClaims
 }
@@ -44,7 +43,6 @@ func GenerateToken(user models.User) (string, error) {
 		Email:      user.Email,
 		Name:       user.Name,
 		EmployeeID: user.EmployeeID,
-		IsAdmin:    user.IsAdmin,
 		Roles:      user.GetRoles(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -108,7 +106,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("userID", user.ID)
 		c.Set("username", user.Email)
 		c.Set("email", user.Email)
-		c.Set("isAdmin", user.IsAdmin)
 		c.Set("roles", user.GetRoles())
 		c.Set("user", user)
 		c.Next()
