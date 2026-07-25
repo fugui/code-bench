@@ -39,14 +39,17 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
 
+  const lastValueRef = useRef(value);
   // When value changes externally, resolve the display name
   useEffect(() => {
-    if (value && !displayText) {
+    lastValueRef.current = value;
+    if (value !== undefined && value !== null && value !== '') {
       const isIdOnly = /^\d+$/.test(value.toString());
       const queryParam = isIdOnly ? `id=${value}` : `search=${encodeURIComponent(value.toString())}`;
       authFetch(`/api/users?${queryParam}&pageSize=5`)
         .then(res => res.json())
         .then(data => {
+          if (lastValueRef.current !== value) return;
           const list: User[] = data.items || [];
           const match = list.find((m: User) => m.id === Number(value) || m.employee_id === value.toString());
           if (match) {
@@ -56,7 +59,7 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
           }
         })
         .catch(() => setDisplayText(value.toString()));
-    } else if (!value) {
+    } else {
       setDisplayText('');
     }
   }, [value]);
@@ -123,10 +126,10 @@ function MemberSearchSelect({ value, onChange, style }: MemberSearchSelectProps)
       <div style={{ position: 'relative' }}>
         <input
           type="text"
-          value={showDropdown ? query : (displayText || query)}
+          value={showDropdown ? (query || displayText) : (displayText || query)}
           onChange={handleInputChange}
           onFocus={handleFocus}
-          placeholder={displayText || '输入姓名或工号搜索...'}
+          placeholder="输入姓名或工号搜索..."
           style={{
             width: '100%', padding: '0.625rem 2rem 0.625rem 0.75rem', borderRadius: '6px',
             border: '1px solid var(--border-color)', background: 'var(--bg-color)',
