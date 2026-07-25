@@ -276,9 +276,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
-          setFeedbacks(data.items || []);
+          const list = Array.isArray(data) ? data : (data.items || data.data || []);
+          setFeedbacks(list);
           setFeedbacksPage(data.page || 1);
-          setFeedbacksTotalPages(data.totalPages || 1);
+          setFeedbacksTotalPages(data.totalPages || data.total_pages || 1);
           setExpandedFeedbacks({});
         }
       })

@@ -153,10 +153,14 @@ func GetFeedbacks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"items":       list,
 		"data":        list,
 		"page":        page,
+		"pageSize":    pageSize,
 		"page_size":   pageSize,
+		"total":       total,
 		"total_items": total,
+		"totalPages":  totalPages,
 		"total_pages": totalPages,
 	})
 }
