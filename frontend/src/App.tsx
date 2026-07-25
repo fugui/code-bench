@@ -634,6 +634,17 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     transition: 'all 0.2s',
   } as React.CSSProperties);
 
+  let userRoles: string[] = [];
+  if (user) {
+    if (Array.isArray(user.roles)) {
+      userRoles = user.roles;
+    } else if (typeof user.roles === 'string') {
+      try { userRoles = JSON.parse(user.roles); } catch (e) { userRoles = []; }
+    }
+  }
+  const isSuperAdmin = !!(user && (user.is_admin || userRoles.includes('super_admin')));
+  const canManageTeams = !!(user && (isSuperAdmin || userRoles.includes('bench_admin')));
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
       {/* Sidebar */}
@@ -877,13 +888,17 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           )}
-          {user && user.is_admin && (
+          {user && (canManageTeams || isSuperAdmin) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
-              <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-              <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              {canManageTeams && (
+                <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              )}
+              {isSuperAdmin && (
+                <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+              )}
             </div>
           )}
         </nav>

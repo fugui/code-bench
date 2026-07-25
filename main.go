@@ -112,9 +112,9 @@ func main() {
 		apiProtected.POST("/departments/import", handlers.ImportDepartments)
 		apiProtected.GET("/departments/export", handlers.ExportDepartments)
 
-		// User APIs (Admin only)
+		// User APIs (Super Admin only)
 		adminUsers := apiProtected.Group("/users")
-		adminUsers.Use(handlers.AdminMiddleware())
+		adminUsers.Use(handlers.SuperAdminMiddleware())
 		{
 			adminUsers.GET("", handlers.GetUsers)
 			adminUsers.POST("", handlers.CreateUser)

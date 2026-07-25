@@ -140,6 +140,31 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
+func SuperAdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isAdminVal, exists := c.Get("isAdmin")
+		isAdmin := exists && isAdminVal.(bool)
+		rolesVal, rolesExists := c.Get("roles")
+		hasRole := false
+		if rolesExists {
+			if roles, ok := rolesVal.([]string); ok {
+				for _, r := range roles {
+					if r == "super_admin" {
+						hasRole = true
+						break
+					}
+				}
+			}
+		}
+		if !isAdmin && !hasRole {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Super admin privileges required"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 func Login(c *gin.Context) {
 	if !models.AppConfig.Auth.PasswordLoginEnabled {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Password login is disabled"})
