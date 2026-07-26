@@ -103,6 +103,9 @@ func main() {
 		// Developer Docs APIs
 		apiProtected.GET("/docs/tree", handlers.GetDocsTree)
 		apiProtected.GET("/docs/content", handlers.GetDocContent)
+		apiProtected.GET("/docs/comments", handlers.GetDocComments)
+		apiProtected.POST("/docs/comments", handlers.CreateDocComment)
+		apiProtected.DELETE("/docs/comments/:id", handlers.DeleteDocComment)
 
 		// Department APIs
 		apiProtected.GET("/departments", handlers.GetDepartments)

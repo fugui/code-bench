@@ -119,3 +119,24 @@ type Feedback struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type DocStat struct {
+	DocPath   string    `gorm:"primaryKey;size:500" json:"doc_path"` // 文档相对路径
+	Views     int64     `gorm:"default:0" json:"views"`              // 累计阅读次数
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type DocComment struct {
+	ID        uint          `gorm:"primaryKey" json:"id"`
+	DocPath   string        `gorm:"index;size:500;not null" json:"doc_path"` // 归属文档相对路径
+	UserID    uint          `gorm:"index;not null" json:"user_id"`           // 发表人 ID
+	User      *User         `gorm:"foreignKey:UserID" json:"user,omitempty"` // 发表人信息
+	ParentID  *uint         `gorm:"index" json:"parent_id"`                  // 父评论 ID (为 nil 表示顶级评论)
+	Parent    *DocComment   `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
+	Replies   []*DocComment `gorm:"foreignKey:ParentID" json:"replies,omitempty"` // 子回复列表 (虚拟/关联)
+	Content   string        `gorm:"type:text;not null" json:"content"`       // 评论内容 (支持 Markdown)
+	Status    string        `gorm:"size:20;default:'active'" json:"status"`  // 状态："active" (正常), "deleted" (已删除)
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+}
+

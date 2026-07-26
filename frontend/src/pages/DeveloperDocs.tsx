@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion } from 'lucide-react';
+import {
+  BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
+  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle
+} from 'lucide-react';
 
 interface DocNode {
   name: string;
   path: string;
   is_dir: boolean;
+  views?: number;
+  comment_count?: number;
   children?: DocNode[];
 }
 
@@ -13,6 +18,30 @@ interface TocItem {
   id: string;
   text: string;
   level: number;
+}
+
+interface UserInfo {
+  id: number;
+  name: string;
+  email: string;
+  employee_id?: string;
+  roles?: string[];
+  department?: {
+    name: string;
+  };
+}
+
+interface DocCommentItem {
+  id: number;
+  doc_path: string;
+  user_id: number;
+  user?: UserInfo;
+  parent_id?: number;
+  content: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  replies?: DocCommentItem[];
 }
 
 export default function DeveloperDocs() {
@@ -28,8 +57,21 @@ export default function DeveloperDocs() {
   const [docContent, setDocContent] = useState<string>('');
   const [docName, setDocName] = useState<string>('');
   const [modTime, setModTime] = useState<string>('');
+  const [docViews, setDocViews] = useState<number>(0);
+  const [docCommentCount, setDocCommentCount] = useState<number>(0);
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [contentError, setContentError] = useState<string>('');
+
+  // Comment & Discussion States
+  const [comments, setComments] = useState<DocCommentItem[]>([]);
+  const [loadingComments, setLoadingComments] = useState<boolean>(false);
+  const [commentInput, setCommentInput] = useState<string>('');
+  const [submittingComment, setSubmittingComment] = useState<boolean>(false);
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyInput, setReplyInput] = useState<string>('');
+  const [submittingReply, setSubmittingReply] = useState<boolean>(false);
+
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(null);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Record<string, boolean>>({});
@@ -63,6 +105,14 @@ export default function DeveloperDocs() {
     };
   }, []);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
+    return {
+      'X-Portal-Request': 'true',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
   // Encode document path for URL while preserving slashes '/'
   const encodeDocPath = (path: string) => {
     return path.split('/').map(seg => encodeURIComponent(seg)).join('/');
@@ -80,17 +130,22 @@ export default function DeveloperDocs() {
     return '';
   };
 
-  // Fetch document tree on mount
+  // Fetch document tree and current user on mount
   useEffect(() => {
     fetchTree();
+    fetchCurrentUser();
   }, []);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
-    return {
-      'X-Portal-Request': 'true',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    };
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch('/api/me', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser(data);
+      }
+    } catch (err) {
+      console.error('获取当前用户信息失败', err);
+    }
   };
 
   const fetchTree = async () => {
@@ -133,10 +188,11 @@ export default function DeveloperDocs() {
     }
   }, [location.pathname, tree]);
 
-  // Fetch doc content whenever selectedPath changes
+  // Fetch doc content and comments whenever selectedPath changes
   useEffect(() => {
     if (!selectedPath) return;
     fetchDocContent(selectedPath);
+    fetchDocComments(selectedPath);
   }, [selectedPath]);
 
   // Auto-scroll to anchor hash once document content is rendered
@@ -164,6 +220,8 @@ export default function DeveloperDocs() {
         setDocContent(data.content || '');
         setDocName(data.name || '');
         setModTime(data.mod_time || '');
+        setDocViews(data.views || 0);
+        setDocCommentCount(data.comment_count || 0);
       } else {
         setContentError(data.error || '加载文档内容失败');
       }
@@ -171,6 +229,105 @@ export default function DeveloperDocs() {
       setContentError('读取文档出错: ' + err.message);
     } finally {
       setLoadingContent(false);
+    }
+  };
+
+  const fetchDocComments = async (path: string) => {
+    setLoadingComments(true);
+    try {
+      const res = await fetch(`/api/docs/comments?path=${encodeURIComponent(path)}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setComments(data.comments || []);
+        setDocCommentCount(data.total || 0);
+      }
+    } catch (err) {
+      console.error('加载文档评论失败', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!commentInput.trim() || !selectedPath) return;
+    setSubmittingComment(true);
+    try {
+      const res = await fetch('/api/docs/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          path: selectedPath,
+          content: commentInput.trim(),
+        }),
+      });
+      if (res.ok) {
+        setCommentInput('');
+        fetchDocComments(selectedPath);
+        fetchTree();
+      } else {
+        const data = await res.json();
+        alert(data.error || '提交评论失败');
+      }
+    } catch (err: any) {
+      alert('提交评论出错: ' + err.message);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handlePostReply = async (parentId: number) => {
+    if (!replyInput.trim() || !selectedPath) return;
+    setSubmittingReply(true);
+    try {
+      const res = await fetch('/api/docs/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          path: selectedPath,
+          parent_id: parentId,
+          content: replyInput.trim(),
+        }),
+      });
+      if (res.ok) {
+        setReplyInput('');
+        setReplyingToId(null);
+        fetchDocComments(selectedPath);
+        fetchTree();
+      } else {
+        const data = await res.json();
+        alert(data.error || '提交回复失败');
+      }
+    } catch (err: any) {
+      alert('提交回复出错: ' + err.message);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!window.confirm('确定要删除这条评论吗？')) return;
+    try {
+      const res = await fetch(`/api/docs/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        fetchDocComments(selectedPath);
+        fetchTree();
+      } else {
+        const data = await res.json();
+        alert(data.error || '删除失败');
+      }
+    } catch (err: any) {
+      alert('删除评论出错: ' + err.message);
     }
   };
 
@@ -262,23 +419,22 @@ export default function DeveloperDocs() {
   const renderHighlightedCode = (codeText: string, lang: string): React.ReactNode => {
     const norm = (lang || '').toLowerCase().trim();
 
-    // Theme palette adaptivity (Dark theme: VS Code Dark Plus / One Dark, Light theme: GitHub Light / One Light)
     const colors = isLightTheme ? {
-      keyword: '#a626a4',     // Magenta / Purple (const, return, if, class, etc.)
-      string: '#50a14f',      // Forest Green ("string", 'string', `string`)
-      comment: '#a0a1a7',     // Grey (italic)
-      number: '#986801',      // Gold / Amber (123, 3.14)
-      function: '#4078f2',    // Royal Blue (funcName)
-      key: '#e45649',         // Coral Red (JSON / YAML Key)
-      directive: '#a626a4',   // Magenta (#include, #define)
+      keyword: '#a626a4',
+      string: '#50a14f',
+      comment: '#a0a1a7',
+      number: '#986801',
+      function: '#4078f2',
+      key: '#e45649',
+      directive: '#a626a4',
     } : {
-      keyword: '#c678dd',     // Purple / Pink (const, return, if, class, etc.)
-      string: '#98c379',      // Green ("string", 'string', `string`)
-      comment: '#7f848e',     // Muted Grey (italic)
-      number: '#d19a66',      // Orange / Amber (123, 3.14)
-      function: '#61afef',    // Bright Blue (funcName)
-      key: '#e06c75',         // Soft Red / Coral (JSON / YAML Key)
-      directive: '#e5c07b',   // Amber (#include, #define)
+      keyword: '#c678dd',
+      string: '#98c379',
+      comment: '#7f848e',
+      number: '#d19a66',
+      function: '#61afef',
+      key: '#e06c75',
+      directive: '#e5c07b',
     };
 
     const lines = codeText.split('\n');
@@ -310,44 +466,43 @@ export default function DeveloperDocs() {
         const matchText = match[0];
 
         if (isJson) {
-          if (match[1]) { // JSON Key
+          if (match[1]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.key, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[2]) { // JSON String
+          } else if (match[2]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
-          } else if (match[3]) { // JSON Bool/Null
+          } else if (match[3]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[4]) { // JSON Number
+          } else if (match[4]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
           } else {
             tokens.push(matchText);
           }
         } else if (isYaml) {
-          if (match[1]) { // YAML Comment
+          if (match[1]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.comment, fontStyle: 'italic' }}>{matchText}</span>);
-          } else if (match[2]) { // YAML Key
+          } else if (match[2]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.key, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[3]) { // YAML String
+          } else if (match[3]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
-          } else if (match[4]) { // YAML Bool/Null
+          } else if (match[4]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[5]) { // YAML Number
+          } else if (match[5]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
           } else {
             tokens.push(matchText);
           }
         } else {
-          // C, C++, Java, Python, Go, TS, JS
-          if (match[1]) { // Comment
+          if (match[1]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.comment, fontStyle: 'italic' }}>{matchText}</span>);
-          } else if (match[2]) { // String
+          } else if (match[2]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.string }}>{matchText}</span>);
-          } else if (match[3]) { // Directive (#include, #define)
+          } else if (match[3]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.directive, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[4]) { // Keyword / Type
+          } else if (match[4]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.keyword, fontWeight: 600 }}>{matchText}</span>);
-          } else if (match[5]) { // Function Call
+          } else if (match[5]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.function }}>{matchText}</span>);
-          } else if (match[6]) { // Number
+          } else if (match[6]) {
             tokens.push(<span key={keyIdx++} style={{ color: colors.number }}>{matchText}</span>);
           } else {
             tokens.push(matchText);
@@ -572,7 +727,6 @@ export default function DeveloperDocs() {
 
         if (tableLines.length >= 2) {
           const headerCols = tableLines[0].split('|').slice(1, -1).map(c => c.trim());
-          // check if second line is separator
           const isSep = tableLines[1].split('|').slice(1, -1).every(c => c.trim().match(/^:?-+:?$/));
           const dataRows = isSep ? tableLines.slice(2) : tableLines.slice(1);
 
@@ -630,7 +784,6 @@ export default function DeveloperDocs() {
 
   // Helper for inline markdown: bold, italic, code, links
   const parseInlineMarkdown = (text: string): React.ReactNode => {
-    // Process code blocks first `code`
     const parts = text.split(/(`[^`]+`)/g);
 
     return parts.map((part, index) => {
@@ -649,11 +802,8 @@ export default function DeveloperDocs() {
         );
       }
 
-      // Process **bold** and *italic*
       let subContent = part;
-      // Bold
       subContent = subContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Italic
       subContent = subContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
       return <span key={index} dangerouslySetInnerHTML={{ __html: subContent }} />;
@@ -712,6 +862,7 @@ export default function DeveloperDocs() {
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '0.5rem',
             padding: '0.45rem 0.75rem',
             marginLeft: depth > 0 ? '0.25rem' : '0',
@@ -730,13 +881,229 @@ export default function DeveloperDocs() {
             if (!isSelected) e.currentTarget.style.background = 'transparent';
           }}
         >
-          <FileText size={15} opacity={isSelected ? 1 : 0.7} />
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {node.name}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+            <FileText size={15} opacity={isSelected ? 1 : 0.7} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {node.name}
+            </span>
+          </div>
+
+          {/* Stats badges in tree */}
+          {node.views !== undefined && node.views > 0 && (
+            <span style={{
+              fontSize: '0.7rem',
+              padding: '0.1rem 0.35rem',
+              borderRadius: '10px',
+              background: isSelected ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+              color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              flexShrink: 0
+            }}>
+              <Eye size={10} />
+              {node.views}
+            </span>
+          )}
         </div>
       );
     });
+  };
+
+  // Render individual comment card with replies
+  const renderCommentItem = (comment: DocCommentItem, isReply = false) => {
+    const authorName = comment.user?.name || comment.user?.email || '开发者';
+    const initial = authorName.charAt(0).toUpperCase();
+    const isOwner = currentUser && currentUser.id === comment.user_id;
+    const isSuperAdmin = currentUser && currentUser.roles?.includes('super_admin');
+    const canDelete = isOwner || isSuperAdmin;
+    const isReplying = replyingToId === comment.id;
+
+    return (
+      <div key={comment.id} style={{
+        marginTop: isReply ? '0.75rem' : '1.25rem',
+        padding: '1rem 1.25rem',
+        borderRadius: '10px',
+        background: isReply
+          ? (isLightTheme ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)')
+          : (isLightTheme ? '#ffffff' : 'rgba(255, 255, 255, 0.04)'),
+        border: '1px solid var(--border-color)',
+        transition: 'all 0.2s'
+      }}>
+        {/* Comment Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {/* Avatar */}
+            <div style={{
+              width: isReply ? '28px' : '34px',
+              height: isReply ? '28px' : '34px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: isReply ? '0.75rem' : '0.875rem',
+              boxShadow: '0 2px 6px rgba(59, 130, 246, 0.3)',
+              flexShrink: 0
+            }}>
+              {initial}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-color)' }}>
+                  {authorName}
+                </span>
+                {comment.user?.department?.name && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    padding: '0.05rem 0.4rem',
+                    borderRadius: '4px',
+                    background: 'rgba(59, 130, 246, 0.12)',
+                    color: '#3b82f6',
+                    fontWeight: 500
+                  }}>
+                    {comment.user.department.name}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                {new Date(comment.created_at).toLocaleString('zh-CN')}
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {!isReply && (
+              <button
+                onClick={() => {
+                  if (isReplying) {
+                    setReplyingToId(null);
+                  } else {
+                    setReplyingToId(comment.id);
+                    setReplyInput('');
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.25rem 0.55rem',
+                  borderRadius: '5px',
+                  border: '1px solid var(--border-color)',
+                  background: isReplying ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: isReplying ? '#3b82f6' : 'var(--text-secondary)',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <CornerDownRight size={13} />
+                <span>{isReplying ? '取消' : '回复'}</span>
+              </button>
+            )}
+
+            {canDelete && (
+              <button
+                onClick={() => handleDeleteComment(comment.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.25rem 0.45rem',
+                  borderRadius: '5px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#ef4444',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  transition: 'opacity 0.15s'
+                }}
+                title="删除评论"
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Comment Content */}
+        <div style={{
+          fontSize: '0.9rem',
+          lineHeight: 1.6,
+          color: 'var(--text-color)',
+          paddingLeft: isReply ? '2.2rem' : '2.6rem',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
+        }}>
+          {comment.content}
+        </div>
+
+        {/* Reply Input Box */}
+        {isReplying && (
+          <div style={{ marginTop: '0.85rem', paddingLeft: '2.6rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <textarea
+                value={replyInput}
+                onChange={(e) => setReplyInput(e.target.value)}
+                placeholder={`回复 @${authorName}...`}
+                rows={2}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.85rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--primary-color, #3b82f6)',
+                  background: isLightTheme ? '#ffffff' : 'rgba(0, 0, 0, 0.2)',
+                  color: 'var(--text-color)',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <button
+                onClick={() => handlePostReply(comment.id)}
+                disabled={submittingReply || !replyInput.trim()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  padding: '0.5rem 0.85rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'var(--primary-color, #3b82f6)',
+                  color: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: submittingReply || !replyInput.trim() ? 'not-allowed' : 'pointer',
+                  opacity: submittingReply || !replyInput.trim() ? 0.6 : 1
+                }}
+              >
+                <Send size={13} />
+                <span>{submittingReply ? '提交中...' : '回复'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Nested Child Replies */}
+        {comment.replies && comment.replies.length > 0 && (
+          <div style={{
+            marginLeft: '1.25rem',
+            marginTop: '0.5rem',
+            paddingLeft: '0.75rem',
+            borderLeft: '2px solid rgba(59, 130, 246, 0.25)'
+          }}>
+            {comment.replies.map(reply => renderCommentItem(reply, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -798,7 +1165,7 @@ export default function DeveloperDocs() {
         </div>
       </div>
 
-      {/* Center: Main Markdown Reader */}
+      {/* Center: Main Markdown Reader & Discussion Section */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '2rem 3rem' }}>
         {loadingContent ? (
           <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -841,17 +1208,159 @@ export default function DeveloperDocs() {
               <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem 0', fontWeight: 700, color: 'var(--text-color)' }}>
                 {docName.replace(/\.(md|markdown)$/i, '')}
               </h1>
-              {modTime && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  <Clock size={14} />
-                  <span>最近更新于 {new Date(modTime).toLocaleString('zh-CN')}</span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                {modTime && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Clock size={14} />
+                    <span>最近更新于 {new Date(modTime).toLocaleString('zh-CN')}</span>
+                  </div>
+                )}
+
+                {/* View Count Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#3b82f6', fontWeight: 500 }}>
+                  <Eye size={14} />
+                  <span>{docViews} 次阅读</span>
                 </div>
-              )}
+
+                {/* Comment Count Badge */}
+                <a
+                  href="#comments-section"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById('comments-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    color: '#10b981',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <MessageSquare size={14} />
+                  <span>{docCommentCount} 条讨论</span>
+                </a>
+              </div>
             </div>
 
-            {/* Body */}
+            {/* Document Body */}
             <div style={{ color: 'var(--text-color)' }}>
               {renderMarkdown(docContent)}
+            </div>
+
+            {/* Divider */}
+            <hr style={{ margin: '3rem 0 2rem 0', border: 'none', borderTop: '1px solid var(--border-color)', opacity: 0.6 }} />
+
+            {/* Comments & Discussion Section */}
+            <div id="comments-section" style={{ scrollMarginTop: '80px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                <MessageCircle size={20} color="#3b82f6" />
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                  评论与讨论 ({docCommentCount})
+                </h3>
+              </div>
+
+              {/* Main Comment Input Box */}
+              <div style={{
+                marginBottom: '2rem',
+                padding: '1.25rem',
+                borderRadius: '12px',
+                background: isLightTheme ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-color)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+              }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    flexShrink: 0
+                  }}>
+                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <UserIcon size={18} />}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <textarea
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      placeholder="发表对该规范文档的建议、补充或提问..."
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        background: isLightTheme ? '#f8fafc' : 'rgba(0, 0, 0, 0.2)',
+                        color: 'var(--text-color)',
+                        outline: 'none',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.6rem' }}>
+                      <button
+                        onClick={handlePostComment}
+                        disabled={submittingComment || !commentInput.trim()}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.55rem 1.2rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                          color: '#ffffff',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: submittingComment || !commentInput.trim() ? 'not-allowed' : 'pointer',
+                          opacity: submittingComment || !commentInput.trim() ? 0.6 : 1,
+                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                        }}
+                      >
+                        <Send size={14} />
+                        <span>{submittingComment ? '发表中...' : '发表评论'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comments List */}
+              {loadingComments ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  正在载入讨论内容...
+                </div>
+              ) : comments.length === 0 ? (
+                <div style={{
+                  padding: '2.5rem',
+                  textAlign: 'center',
+                  color: 'var(--text-secondary)',
+                  background: isLightTheme ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem'
+                }}>
+                  <MessageSquare size={32} opacity={0.3} style={{ marginBottom: '0.5rem' }} />
+                  <div>暂无讨论，快来发表第一条观点吧！</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {comments.map(comment => renderCommentItem(comment))}
+                </div>
+              )}
             </div>
           </div>
         )}
