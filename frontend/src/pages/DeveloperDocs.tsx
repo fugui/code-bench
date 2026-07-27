@@ -900,10 +900,8 @@ export default function DeveloperDocs() {
     const encodedPath = rawPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
 
     if (!isDocFile) {
-      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
-      const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : '';
       return {
-        href: `/api/docs/raw?path=${encodedPath}${tokenQuery}`,
+        href: `/api/docs/raw?path=${encodedPath}`,
         isExternal: true,
         isDownload: true,
       };
@@ -990,9 +988,7 @@ export default function DeveloperDocs() {
             const relDocPath = decodeURIComponent(href.substring(6));
             // Preserve slashes while encoding path segments for clean URL parameter
             const encodedRelPath = relDocPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
-            const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
-            const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : '';
-            imageUrl = `/api/docs/raw?path=${encodedRelPath}${tokenQuery}`;
+            imageUrl = `/api/docs/raw?path=${encodedRelPath}`;
           } else {
             imageUrl = href;
           }

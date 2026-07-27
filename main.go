@@ -89,6 +89,7 @@ func main() {
 		api.GET("/auth/config", handlers.GetAuthConfig)
 		api.GET("/oauth2/authorize", handlers.StartOAuth2Flow)
 		api.GET("/oauth2/callback", handlers.OAuth2Callback)
+		api.GET("/docs/raw", handlers.GetDocRaw)
 	}
 
 	// Protected Core APIs
@@ -103,7 +104,6 @@ func main() {
 		// Developer Docs APIs
 		apiProtected.GET("/docs/tree", handlers.GetDocsTree)
 		apiProtected.GET("/docs/content", handlers.GetDocContent)
-		apiProtected.GET("/docs/raw", handlers.GetDocRaw)
 		apiProtected.GET("/docs/comments", handlers.GetDocComments)
 		apiProtected.POST("/docs/comments", handlers.CreateDocComment)
 		apiProtected.DELETE("/docs/comments/:id", handlers.DeleteDocComment)
