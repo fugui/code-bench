@@ -843,8 +843,8 @@ export default function DeveloperDocs() {
     return elements;
   };
 
-  // Helper to resolve Markdown link URLs (external, anchor, or relative/absolute doc paths)
-  const resolveMarkdownUrl = (url: string, baseDocPath: string): { href: string; isExternal: boolean } => {
+  // Helper to resolve Markdown link URLs (external, anchor, download attachments, or relative/absolute doc paths)
+  const resolveMarkdownUrl = (url: string, baseDocPath: string): { href: string; isExternal: boolean; isDownload?: boolean } => {
     const trimmed = url.trim();
 
     // 1. External links
@@ -857,12 +857,17 @@ export default function DeveloperDocs() {
       return { href: trimmed, isExternal: false };
     }
 
-    // 3. Absolute docs links (/docs/...)
+    // 3. Raw API links (/api/docs/raw...)
+    if (trimmed.startsWith('/api/')) {
+      return { href: trimmed, isExternal: true, isDownload: true };
+    }
+
+    // 4. Absolute docs links (/docs/...)
     if (trimmed.startsWith('/docs/')) {
       return { href: trimmed, isExternal: false };
     }
 
-    // 4. Relative or absolute document paths (e.g. ./01-规范/代码.md, ../02-架构/系统设计.md)
+    // 5. Relative or absolute document/file paths (e.g. ./01-规范/代码.md, ./files/template.xlsx)
     let rawPath = trimmed;
     let hash = '';
     const hashIdx = rawPath.indexOf('#');
@@ -888,7 +893,22 @@ export default function DeveloperDocs() {
       rawPath = dirParts.join('/');
     }
 
+    // Check if path points to a non-markdown file (attachment / template download)
+    const ext = rawPath.includes('.') ? rawPath.substring(rawPath.lastIndexOf('.')).toLowerCase() : '';
+    const isDocFile = ext === '' || ext === '.md' || ext === '.markdown';
+
     const encodedPath = rawPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+
+    if (!isDocFile) {
+      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
+      const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : '';
+      return {
+        href: `/api/docs/raw?path=${encodedPath}${tokenQuery}`,
+        isExternal: true,
+        isDownload: true,
+      };
+    }
+
     return { href: `/docs/${encodedPath}${hash}`, isExternal: false };
   };
 
@@ -901,7 +921,7 @@ export default function DeveloperDocs() {
     const href = link.getAttribute('href');
     if (!href) return;
 
-    if (/^(https?:\/\/|mailto:|ftp:\/\/|\/\/)/i.test(href)) {
+    if (/^(https?:\/\/|mailto:|ftp:\/\/|\/\/|\/api\/)/i.test(href)) {
       return;
     }
 
@@ -968,11 +988,12 @@ export default function DeveloperDocs() {
       // Markdown Links [TITLE](URL)
       subContent = subContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, title, rawUrl) => {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
-        const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const { href, isExternal, isDownload } = resolveMarkdownUrl(cleanUrl, selectedPath);
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
-        const classAttr = isExternal ? 'doc-link external-link' : 'doc-link internal-link';
-        const icon = isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
-        return `<a href="${href}" ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
+        const downloadAttr = isDownload ? 'download' : '';
+        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const icon = isDownload ? ' <span style="font-size: 0.8em; opacity: 0.8;">📥</span>' : isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
+        return `<a href="${href}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
       });
 
       // Markdown Autolinks <URL> or <email>
