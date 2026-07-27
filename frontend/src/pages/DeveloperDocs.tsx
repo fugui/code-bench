@@ -1032,7 +1032,7 @@ export default function DeveloperDocs() {
               <textarea
                 value={replyInput}
                 onChange={(e) => setReplyInput(e.target.value)}
-                placeholder={`回复 @${authorName}...`}
+                placeholder={`回复 @${authorName}（支持 Markdown 语法）...`}
                 rows={2}
                 style={{
                   flex: 1,
@@ -1275,7 +1275,7 @@ export default function DeveloperDocs() {
                     <textarea
                       value={commentInput}
                       onChange={(e) => setCommentInput(e.target.value)}
-                      placeholder="发表对该规范文档的建议、补充或提问..."
+                      placeholder="发表对该规范文档的建议、补充或提问（支持 Markdown 语法）..."
                       rows={3}
                       style={{
                         width: '100%',
@@ -1292,7 +1292,19 @@ export default function DeveloperDocs() {
                       }}
                     />
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.6rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.6rem' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        opacity: 0.85
+                      }}>
+                        <FileText size={12} color="#3b82f6" />
+                        <span>支持 Markdown 语法（如代码块 <code style={{ fontSize: '0.7rem', padding: '0.05rem 0.25rem', background: 'rgba(255,255,255,0.1)', borderRadius: '3px' }}>```</code>、<code style={{ fontSize: '0.7rem', padding: '0.05rem 0.25rem', background: 'rgba(255,255,255,0.1)', borderRadius: '3px' }}>**加粗**</code>、列表等）</span>
+                      </span>
+
                       <button
                         onClick={handlePostComment}
                         disabled={submittingComment || !commentInput.trim()}
