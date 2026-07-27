@@ -451,3 +451,45 @@ func scanDocDir(currentDir string, rootDir string) ([]DocNode, error) {
 
 	return nodes, nil
 }
+
+// GetDocRaw handles GET /api/docs/raw?path=... to serve raw assets (images, attachments) from the docs repository
+func GetDocRaw(c *gin.Context) {
+	relPath := strings.TrimSpace(c.Query("path"))
+	if relPath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求路径 (path) 不能为空"})
+		return
+	}
+
+	docsRoot := strings.TrimSpace(models.AppConfig.Docs.Path)
+	if docsRoot == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文档仓库路径未配置"})
+		return
+	}
+
+	cleanRoot := filepath.Clean(docsRoot)
+	fullPath := filepath.Clean(filepath.Join(cleanRoot, relPath))
+
+	// Path Traversal Protection
+	rel, err := filepath.Rel(cleanRoot, fullPath)
+	if err != nil || strings.HasPrefix(rel, "..") || strings.HasPrefix(rel, "/") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问此路径"})
+		return
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "文件不存在"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取文件失败: " + err.Error()})
+		return
+	}
+
+	if info.IsDir() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "目标路径为目录而非文件"})
+		return
+	}
+
+	c.File(fullPath)
+}

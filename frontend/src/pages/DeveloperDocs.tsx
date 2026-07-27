@@ -945,6 +945,26 @@ export default function DeveloperDocs() {
       subContent = subContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       subContent = subContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
+      // Markdown Images ![ALT](URL)
+      subContent = subContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, rawUrl) => {
+        const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
+        let imageUrl = cleanUrl;
+        if (!/^(https?:\/\/|data:|blob:|\/\/)/i.test(cleanUrl)) {
+          const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
+          if (!isExternal && href.startsWith('/docs/')) {
+            const relDocPath = decodeURIComponent(href.substring(6));
+            // Preserve slashes while encoding path segments for clean URL parameter
+            const encodedRelPath = relDocPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+            const token = localStorage.getItem('token') || '';
+            const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : '';
+            imageUrl = `/api/docs/raw?path=${encodedRelPath}${tokenQuery}`;
+          } else {
+            imageUrl = href;
+          }
+        }
+        return `<img src="${imageUrl}" alt="${alt || ''}" title="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0.75rem 0; display: block; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);" />`;
+      });
+
       // Markdown Links [TITLE](URL)
       subContent = subContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, title, rawUrl) => {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
