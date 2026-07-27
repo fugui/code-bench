@@ -1020,10 +1020,9 @@ export default function DeveloperDocs() {
           lineHeight: 1.6,
           color: 'var(--text-color)',
           paddingLeft: isReply ? '2.2rem' : '2.6rem',
-          whiteSpace: 'pre-wrap',
           wordBreak: 'break-word'
         }}>
-          {comment.content}
+          {renderMarkdown(comment.content)}
         </div>
 
         {/* Reply Input Box */}
