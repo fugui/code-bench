@@ -955,7 +955,7 @@ export default function DeveloperDocs() {
             const relDocPath = decodeURIComponent(href.substring(6));
             // Preserve slashes while encoding path segments for clean URL parameter
             const encodedRelPath = relDocPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
-            const token = localStorage.getItem('token') || '';
+            const token = localStorage.getItem('code_shield_token') || localStorage.getItem('token') || '';
             const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : '';
             imageUrl = `/api/docs/raw?path=${encodedRelPath}${tokenQuery}`;
           } else {
