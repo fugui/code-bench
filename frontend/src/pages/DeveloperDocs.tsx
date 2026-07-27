@@ -1206,9 +1206,12 @@ export default function DeveloperDocs() {
 
                 {/* Comment Count Badge */}
                 <a
-                  href="#comments-section"
+                  href={`/docs/${encodeDocPath(selectedPath)}#comments-section`}
                   onClick={(e) => {
                     e.preventDefault();
+                    if (selectedPath) {
+                      navigate(`/docs/${encodeDocPath(selectedPath)}#comments-section`);
+                    }
                     const el = document.getElementById('comments-section');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -1415,9 +1418,12 @@ export default function DeveloperDocs() {
 
             {/* Quick Comment Section Jump */}
             <a
-              href="#comments-section"
+              href={`/docs/${encodeDocPath(selectedPath)}#comments-section`}
               onClick={(e) => {
                 e.preventDefault();
+                if (selectedPath) {
+                  navigate(`/docs/${encodeDocPath(selectedPath)}#comments-section`);
+                }
                 const el = document.getElementById('comments-section');
                 if (el) {
                   el.scrollIntoView({ behavior: 'smooth' });
