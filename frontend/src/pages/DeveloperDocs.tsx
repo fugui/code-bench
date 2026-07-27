@@ -955,6 +955,20 @@ export default function DeveloperDocs() {
         return `<a href="${href}" ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
       });
 
+      // Markdown Autolinks <URL> or <email>
+      subContent = subContent.replace(/<((?:https?:\/\/|mailto:|ftp:\/\/|\/\/)[^\s<>]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(?:\/|\.\/|\.\.\/)[^\s<>]+)>/g, (_match, rawUrl) => {
+        let cleanUrl = rawUrl.trim();
+        let displayTitle = cleanUrl;
+        if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanUrl)) {
+          cleanUrl = `mailto:${cleanUrl}`;
+        }
+        const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
+        const classAttr = isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const icon = isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
+        return `<a href="${href}" ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${displayTitle}${icon}</a>`;
+      });
+
       return <span key={index} dangerouslySetInnerHTML={{ __html: subContent }} />;
     });
   };
