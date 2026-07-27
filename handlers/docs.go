@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/md5"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"code-bench/database"
@@ -18,12 +20,40 @@ import (
 )
 
 type DocNode struct {
+	ID           string    `json:"id,omitempty"`
 	Name         string    `json:"name"`
 	Path         string    `json:"path"` // Relative path from docs root
 	IsDir        bool      `json:"is_dir"`
 	Views        int64     `json:"views"`
 	CommentCount int64     `json:"comment_count"`
 	Children     []DocNode `json:"children,omitempty"`
+}
+
+var (
+	docMapMutex sync.RWMutex
+	docIDToPath = make(map[string]string)
+	docPathToID = make(map[string]string)
+)
+
+// GenerateDocID returns an 8-character hex string based on the MD5 of relPath
+func GenerateDocID(relPath string) string {
+	h := md5.Sum([]byte(relPath))
+	return fmt.Sprintf("%x", h)[:8]
+}
+
+func registerDocID(relPath string) string {
+	id := GenerateDocID(relPath)
+	docMapMutex.Lock()
+	docIDToPath[id] = relPath
+	docPathToID[relPath] = id
+	docMapMutex.Unlock()
+	return id
+}
+
+func getPathByDocID(id string) string {
+	docMapMutex.RLock()
+	defer docMapMutex.RUnlock()
+	return docIDToPath[id]
 }
 
 // GetDocsTree handles GET /api/docs/tree
@@ -101,11 +131,28 @@ func populateNodeStats(nodes []DocNode, viewsMap map[string]int64, commentsMap m
 	}
 }
 
-// GetDocContent handles GET /api/docs/content?path=...
+// GetDocContent handles GET /api/docs/content?path=... or ?id=...
 func GetDocContent(c *gin.Context) {
 	relPath := strings.TrimSpace(c.Query("path"))
+	docID := strings.TrimSpace(c.Query("id"))
+
+	if relPath == "" && docID != "" {
+		relPath = getPathByDocID(docID)
+		if relPath == "" {
+			// Refresh tree scan once if not found
+			docsRoot := strings.TrimSpace(models.AppConfig.Docs.Path)
+			if docsRoot != "" {
+				cleanRoot := filepath.Clean(docsRoot)
+				if _, err := os.Stat(cleanRoot); err == nil {
+					_, _ = scanDocDir(cleanRoot, cleanRoot)
+					relPath = getPathByDocID(docID)
+				}
+			}
+		}
+	}
+
 	if relPath == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求路径 (path) 不能为空"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求路径 (path) 或文档 ID (id) 不能为空或找不到对应文档"})
 		return
 	}
 
@@ -166,7 +213,9 @@ func GetDocContent(c *gin.Context) {
 		Where("doc_path = ? AND status = ?", relPath, "active").
 		Count(&commentCount)
 
+	docID = registerDocID(relPath)
 	c.JSON(http.StatusOK, gin.H{
+		"id":            docID,
 		"path":          relPath,
 		"name":          info.Name(),
 		"content":       string(contentBytes),
@@ -381,7 +430,9 @@ func scanDocDir(currentDir string, rootDir string) ([]DocNode, error) {
 		} else {
 			ext := strings.ToLower(filepath.Ext(name))
 			if ext == ".md" || ext == ".markdown" {
+				docID := registerDocID(relPath)
 				nodes = append(nodes, DocNode{
+					ID:    docID,
 					Name:  name,
 					Path:  relPath,
 					IsDir: false,

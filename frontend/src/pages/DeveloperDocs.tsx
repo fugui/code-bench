@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
-  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle
+  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2
 } from 'lucide-react';
 
 interface DocNode {
+  id?: string;
   name: string;
   path: string;
   is_dir: boolean;
@@ -54,6 +55,7 @@ export default function DeveloperDocs() {
   const [loadingTree, setLoadingTree] = useState<boolean>(true);
 
   const [selectedPath, setSelectedPath] = useState<string>('');
+  const [currentDocId, setCurrentDocId] = useState<string>('');
   const [docContent, setDocContent] = useState<string>('');
   const [docName, setDocName] = useState<string>('');
   const [modTime, setModTime] = useState<string>('');
@@ -61,6 +63,7 @@ export default function DeveloperDocs() {
   const [docCommentCount, setDocCommentCount] = useState<number>(0);
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [contentError, setContentError] = useState<string>('');
+  const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
   // Comment & Discussion States
   const [comments, setComments] = useState<DocCommentItem[]>([]);
@@ -118,16 +121,52 @@ export default function DeveloperDocs() {
     return path.split('/').map(seg => encodeURIComponent(seg)).join('/');
   };
 
+  // Extract short docId from /docs/d/:docId
+  const getDocIdFromUrl = (pathname: string) => {
+    const prefix = '/docs/d/';
+    if (pathname.startsWith(prefix)) {
+      const id = pathname.substring(prefix.length);
+      return id ? decodeURIComponent(id) : '';
+    }
+    return '';
+  };
+
   // Decode document path from URL pathname (/docs/01-规范/代码.md -> 01-规范/代码.md)
   const getDocPathFromUrl = (pathname: string) => {
     const prefix = '/docs/';
-    if (pathname.startsWith(prefix)) {
+    if (pathname.startsWith(prefix) && !pathname.startsWith('/docs/d/')) {
       const rawRel = pathname.substring(prefix.length);
       if (rawRel) {
         return rawRel.split('/').map(seg => decodeURIComponent(seg)).join('/');
       }
     }
     return '';
+  };
+
+  const getDocSharePath = (hash?: string) => {
+    if (currentDocId) {
+      return `/docs/d/${currentDocId}${hash || ''}`;
+    }
+    return `/docs/${encodeDocPath(selectedPath)}${hash || ''}`;
+  };
+
+  const handleCopyShareLink = (hash?: string) => {
+    const sharePath = getDocSharePath(hash);
+    const fullUrl = `${window.location.origin}${sharePath}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedShareLink(true);
+    setTimeout(() => setCopiedShareLink(false), 2000);
+  };
+
+  const findFirstDocNode = (nodes: DocNode[]): DocNode | null => {
+    for (const node of nodes) {
+      if (!node.is_dir) return node;
+      if (node.children && node.children.length > 0) {
+        const found = findFirstDocNode(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
   };
 
   // Fetch document tree and current user on mount
@@ -171,29 +210,30 @@ export default function DeveloperDocs() {
     }
   };
 
-  // Sync selectedPath with URL pathname and tree
+  // Sync URL pathname with document tree and fetch content
   useEffect(() => {
     if (tree.length === 0) return;
+    const urlDocId = getDocIdFromUrl(location.pathname);
     const urlDocPath = getDocPathFromUrl(location.pathname);
-    if (urlDocPath) {
+
+    if (urlDocId) {
+      fetchDocContent(undefined, urlDocId);
+    } else if (urlDocPath) {
       setSelectedPath(urlDocPath);
       expandParentFolders(tree, urlDocPath);
+      fetchDocContent(urlDocPath);
+      fetchDocComments(urlDocPath);
     } else {
-      const firstDoc = findFirstDocPath(tree);
+      const firstDoc = findFirstDocNode(tree);
       if (firstDoc) {
-        setSelectedPath(firstDoc);
-        expandParentFolders(tree, firstDoc);
-        navigate(`/docs/${encodeDocPath(firstDoc)}`, { replace: true });
+        if (firstDoc.id) {
+          navigate(`/docs/d/${firstDoc.id}`, { replace: true });
+        } else {
+          navigate(`/docs/${encodeDocPath(firstDoc.path)}`, { replace: true });
+        }
       }
     }
   }, [location.pathname, tree]);
-
-  // Fetch doc content and comments whenever selectedPath changes
-  useEffect(() => {
-    if (!selectedPath) return;
-    fetchDocContent(selectedPath);
-    fetchDocComments(selectedPath);
-  }, [selectedPath]);
 
   // Auto-scroll to anchor hash once document content is rendered
   useEffect(() => {
@@ -208,11 +248,12 @@ export default function DeveloperDocs() {
     }
   }, [loadingContent, docContent, location.hash]);
 
-  const fetchDocContent = async (path: string) => {
+  const fetchDocContent = async (path?: string, id?: string) => {
     setLoadingContent(true);
     setContentError('');
     try {
-      const res = await fetch(`/api/docs/content?path=${encodeURIComponent(path)}`, {
+      const query = id ? `id=${encodeURIComponent(id)}` : `path=${encodeURIComponent(path || '')}`;
+      const res = await fetch(`/api/docs/content?${query}`, {
         headers: getAuthHeaders(),
       });
       const data = await res.json();
@@ -222,6 +263,14 @@ export default function DeveloperDocs() {
         setModTime(data.mod_time || '');
         setDocViews(data.views || 0);
         setDocCommentCount(data.comment_count || 0);
+        if (data.path) {
+          setSelectedPath(data.path);
+          expandParentFolders(tree, data.path);
+          fetchDocComments(data.path);
+        }
+        if (data.id) {
+          setCurrentDocId(data.id);
+        }
       } else {
         setContentError(data.error || '加载文档内容失败');
       }
@@ -810,9 +859,14 @@ export default function DeveloperDocs() {
     });
   };
 
-  const handleSelectDoc = (path: string) => {
-    setSelectedPath(path);
-    navigate(`/docs/${encodeDocPath(path)}`);
+  const handleSelectDoc = (node: DocNode) => {
+    setSelectedPath(node.path);
+    if (node.id) {
+      setCurrentDocId(node.id);
+      navigate(`/docs/d/${node.id}`);
+    } else {
+      navigate(`/docs/${encodeDocPath(node.path)}`);
+    }
   };
 
   // Render doc tree recursively
@@ -858,7 +912,7 @@ export default function DeveloperDocs() {
       return (
         <div
           key={node.path}
-          onClick={() => handleSelectDoc(node.path)}
+          onClick={() => handleSelectDoc(node)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -1186,9 +1240,35 @@ export default function DeveloperDocs() {
               <div style={{ fontSize: '0.8rem', color: 'var(--primary-color, #60a5fa)', marginBottom: '0.4rem' }}>
                 {selectedPath}
               </div>
-              <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem 0', fontWeight: 700, color: 'var(--text-color)' }}>
-                {docName.replace(/\.(md|markdown)$/i, '')}
-              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+                <h1 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 700, color: 'var(--text-color)' }}>
+                  {docName.replace(/\.(md|markdown)$/i, '')}
+                </h1>
+
+                {/* Share Short Link Button */}
+                <button
+                  onClick={() => handleCopyShareLink()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    background: copiedShareLink ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.08)',
+                    color: copiedShareLink ? '#10b981' : '#3b82f6',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    flexShrink: 0
+                  }}
+                  title="复制极简短链接发给同事"
+                >
+                  {copiedShareLink ? <Check size={14} /> : <Share2 size={14} />}
+                  <span>{copiedShareLink ? '短链已复制' : '分享短链'}</span>
+                </button>
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                 {modTime && (
@@ -1206,12 +1286,10 @@ export default function DeveloperDocs() {
 
                 {/* Comment Count Badge */}
                 <a
-                  href={`/docs/${encodeDocPath(selectedPath)}#comments-section`}
+                  href={getDocSharePath('#comments-section')}
                   onClick={(e) => {
                     e.preventDefault();
-                    if (selectedPath) {
-                      navigate(`/docs/${encodeDocPath(selectedPath)}#comments-section`);
-                    }
+                    navigate(getDocSharePath('#comments-section'));
                     const el = document.getElementById('comments-section');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -1418,12 +1496,10 @@ export default function DeveloperDocs() {
 
             {/* Quick Comment Section Jump */}
             <a
-              href={`/docs/${encodeDocPath(selectedPath)}#comments-section`}
+              href={getDocSharePath('#comments-section')}
               onClick={(e) => {
                 e.preventDefault();
-                if (selectedPath) {
-                  navigate(`/docs/${encodeDocPath(selectedPath)}#comments-section`);
-                }
+                navigate(getDocSharePath('#comments-section'));
                 const el = document.getElementById('comments-section');
                 if (el) {
                   el.scrollIntoView({ behavior: 'smooth' });
