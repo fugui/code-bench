@@ -4,6 +4,7 @@ import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
   Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2
 } from 'lucide-react';
+import { MermaidDiagram } from '../components/MermaidDiagram';
 
 interface DocNode {
   id?: string;
@@ -597,6 +598,17 @@ export default function DeveloperDocs() {
         i++; // skip closing ```
         const codeText = codeLines.join('\n');
         const currentIndex = codeBlockCount++;
+
+        if (lang.toLowerCase() === 'mermaid') {
+          elements.push(
+            <MermaidDiagram
+              key={`mermaid-${i}`}
+              chart={codeText}
+              isLightTheme={isLightTheme}
+            />
+          );
+          continue;
+        }
 
         elements.push(
           <div key={`code-${i}`} style={{
