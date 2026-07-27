@@ -1366,8 +1366,8 @@ export default function DeveloperDocs() {
         )}
       </div>
 
-      {/* Right Sidebar: Table of Contents */}
-      {tocList.length > 0 && (
+      {/* Right Sidebar: Table of Contents & Comment Jump */}
+      {docContent && (
         <div style={{
           width: '220px',
           borderLeft: '1px solid var(--border-color)',
@@ -1411,6 +1411,61 @@ export default function DeveloperDocs() {
                 {item.text}
               </a>
             ))}
+
+            {tocList.length > 0 && (
+              <div style={{
+                margin: '0.4rem 0',
+                borderTop: '1px solid var(--border-color)',
+                opacity: 0.5
+              }} />
+            )}
+
+            {/* Quick Comment Section Jump */}
+            <a
+              href="#comments-section"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('comments-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.8rem',
+                color: 'var(--primary-color, #3b82f6)',
+                fontWeight: 600,
+                textDecoration: 'none',
+                padding: '0.4rem 0.55rem',
+                borderRadius: '6px',
+                background: isLightTheme ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.12)',
+                transition: 'all 0.15s',
+                marginTop: tocList.length > 0 ? '0.2rem' : '0'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isLightTheme ? 'rgba(59, 130, 246, 0.16)' : 'rgba(59, 130, 246, 0.24)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isLightTheme ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.12)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <MessageSquare size={14} color="var(--primary-color, #3b82f6)" />
+                <span>评论区</span>
+              </div>
+              <span style={{
+                fontSize: '0.7rem',
+                padding: '0.1rem 0.45rem',
+                borderRadius: '10px',
+                background: 'var(--primary-color, #3b82f6)',
+                color: '#ffffff',
+                fontWeight: 600
+              }}>
+                {docCommentCount}
+              </span>
+            </a>
           </div>
         </div>
       )}
