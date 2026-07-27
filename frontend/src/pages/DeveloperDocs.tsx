@@ -965,7 +965,22 @@ export default function DeveloperDocs() {
       subContent = subContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       subContent = subContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-      // Markdown Images ![ALT](URL)
+      // 1. Markdown Autolinks <URL> or <email> (Must run before HTML tag insertion)
+      subContent = subContent.replace(/<((?:https?:\/\/|mailto:|ftp:\/\/|\/\/)[^\s<>]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(?:\/docs\/|\/api\/|\.\/|\.\.\/)[^\s<>]+)>/g, (_match, rawUrl) => {
+        let cleanUrl = rawUrl.trim();
+        let displayTitle = cleanUrl;
+        if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanUrl)) {
+          cleanUrl = `mailto:${cleanUrl}`;
+        }
+        const { href, isExternal, isDownload } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
+        const downloadAttr = isDownload ? 'download' : '';
+        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const icon = isDownload ? ' <span style="font-size: 0.8em; opacity: 0.8;">📥</span>' : isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
+        return `<a href="${href}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${displayTitle}${icon}</a>`;
+      });
+
+      // 2. Markdown Images ![ALT](URL)
       subContent = subContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, rawUrl) => {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
         let imageUrl = cleanUrl;
@@ -985,7 +1000,7 @@ export default function DeveloperDocs() {
         return `<img src="${imageUrl}" alt="${alt || ''}" title="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0.75rem 0; display: block; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);" />`;
       });
 
-      // Markdown Links [TITLE](URL)
+      // 3. Markdown Links [TITLE](URL)
       subContent = subContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, title, rawUrl) => {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
         const { href, isExternal, isDownload } = resolveMarkdownUrl(cleanUrl, selectedPath);
@@ -994,20 +1009,6 @@ export default function DeveloperDocs() {
         const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : 'doc-link internal-link';
         const icon = isDownload ? ' <span style="font-size: 0.8em; opacity: 0.8;">📥</span>' : isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
         return `<a href="${href}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
-      });
-
-      // Markdown Autolinks <URL> or <email>
-      subContent = subContent.replace(/<((?:https?:\/\/|mailto:|ftp:\/\/|\/\/)[^\s<>]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(?:\/|\.\/|\.\.\/)[^\s<>]+)>/g, (_match, rawUrl) => {
-        let cleanUrl = rawUrl.trim();
-        let displayTitle = cleanUrl;
-        if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanUrl)) {
-          cleanUrl = `mailto:${cleanUrl}`;
-        }
-        const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
-        const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
-        const classAttr = isExternal ? 'doc-link external-link' : 'doc-link internal-link';
-        const icon = isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
-        return `<a href="${href}" ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${displayTitle}${icon}</a>`;
       });
 
       return <span key={index} dangerouslySetInnerHTML={{ __html: subContent }} />;
