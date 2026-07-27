@@ -1454,37 +1454,38 @@ export default function DeveloperDocs() {
             本页大纲
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {tocList.map((item, idx) => (
-              <a
-                key={idx}
-                href={`#${item.id}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (selectedPath) {
-                    navigate(`/docs/${encodeDocPath(selectedPath)}#${encodeURIComponent(item.id)}`, { replace: true });
-                  }
-                  const el = document.getElementById(item.id);
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--text-secondary)',
-                  textDecoration: 'none',
-                  paddingLeft: `${(item.level - 1) * 0.75}rem`,
-                  lineHeight: 1.4,
-                  transition: 'color 0.15s',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-color, #60a5fa)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-              >
-                {item.text}
-              </a>
-            ))}
+            {tocList.map((item, idx) => {
+              const itemHash = `#${encodeURIComponent(item.id)}`;
+              return (
+                <a
+                  key={idx}
+                  href={getDocSharePath(itemHash)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(getDocSharePath(itemHash));
+                    const el = document.getElementById(item.id);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)',
+                    textDecoration: 'none',
+                    paddingLeft: `${(item.level - 1) * 0.75}rem`,
+                    lineHeight: 1.4,
+                    transition: 'color 0.15s',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-color, #60a5fa)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                >
+                  {item.text}
+                </a>
+              );
+            })}
 
             {tocList.length > 0 && (
               <div style={{
