@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
-  MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle
+  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle
 } from 'lucide-react';
 
 interface DocNode {
@@ -57,6 +57,7 @@ export default function DeveloperDocs() {
   const [docContent, setDocContent] = useState<string>('');
   const [docName, setDocName] = useState<string>('');
   const [modTime, setModTime] = useState<string>('');
+  const [docViews, setDocViews] = useState<number>(0);
   const [docCommentCount, setDocCommentCount] = useState<number>(0);
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [contentError, setContentError] = useState<string>('');
@@ -219,6 +220,7 @@ export default function DeveloperDocs() {
         setDocContent(data.content || '');
         setDocName(data.name || '');
         setModTime(data.mod_time || '');
+        setDocViews(data.views || 0);
         setDocCommentCount(data.comment_count || 0);
       } else {
         setContentError(data.error || '加载文档内容失败');
@@ -1196,6 +1198,12 @@ export default function DeveloperDocs() {
                     <span>最近更新于 {new Date(modTime).toLocaleString('zh-CN')}</span>
                   </div>
                 )}
+
+                {/* View Count Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#3b82f6', fontWeight: 500 }}>
+                  <Eye size={14} />
+                  <span>{docViews} 次阅读</span>
+                </div>
 
                 {/* Comment Count Badge */}
                 <a
