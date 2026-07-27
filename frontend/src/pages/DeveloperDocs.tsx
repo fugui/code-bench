@@ -831,6 +831,84 @@ export default function DeveloperDocs() {
     return elements;
   };
 
+  // Helper to resolve Markdown link URLs (external, anchor, or relative/absolute doc paths)
+  const resolveMarkdownUrl = (url: string, baseDocPath: string): { href: string; isExternal: boolean } => {
+    const trimmed = url.trim();
+
+    // 1. External links
+    if (/^(https?:\/\/|mailto:|ftp:\/\/|\/\/)/i.test(trimmed)) {
+      return { href: trimmed, isExternal: true };
+    }
+
+    // 2. Anchor links (#section-id)
+    if (trimmed.startsWith('#')) {
+      return { href: trimmed, isExternal: false };
+    }
+
+    // 3. Absolute docs links (/docs/...)
+    if (trimmed.startsWith('/docs/')) {
+      return { href: trimmed, isExternal: false };
+    }
+
+    // 4. Relative or absolute document paths (e.g. ./01-规范/代码.md, ../02-架构/系统设计.md)
+    let rawPath = trimmed;
+    let hash = '';
+    const hashIdx = rawPath.indexOf('#');
+    if (hashIdx !== -1) {
+      hash = rawPath.substring(hashIdx);
+      rawPath = rawPath.substring(0, hashIdx);
+    }
+
+    if (rawPath.startsWith('/')) {
+      rawPath = rawPath.substring(1);
+    } else if (baseDocPath) {
+      const dirParts = baseDocPath.split('/').slice(0, -1);
+      const targetParts = rawPath.split('/');
+
+      for (const part of targetParts) {
+        if (part === '.' || part === '') continue;
+        if (part === '..') {
+          if (dirParts.length > 0) dirParts.pop();
+        } else {
+          dirParts.push(part);
+        }
+      }
+      rawPath = dirParts.join('/');
+    }
+
+    const encodedPath = rawPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+    return { href: `/docs/${encodedPath}${hash}`, isExternal: false };
+  };
+
+  // Click delegation handler for Markdown links (smooth SPA route navigation & anchor scrolling)
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+    if (!link) return;
+
+    const href = link.getAttribute('href');
+    if (!href) return;
+
+    if (/^(https?:\/\/|mailto:|ftp:\/\/|\/\/)/i.test(href)) {
+      return;
+    }
+
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const targetId = decodeURIComponent(href.substring(1));
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
+    if (href.startsWith('/docs/')) {
+      e.preventDefault();
+      navigate(href);
+    }
+  };
+
   // Helper for inline markdown: bold, italic, code, links
   const parseInlineMarkdown = (text: string): React.ReactNode => {
     const parts = text.split(/(`[^`]+`)/g);
@@ -854,6 +932,16 @@ export default function DeveloperDocs() {
       let subContent = part;
       subContent = subContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       subContent = subContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      // Markdown Links [TITLE](URL)
+      subContent = subContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, title, rawUrl) => {
+        const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
+        const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
+        const classAttr = isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const icon = isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
+        return `<a href="${href}" ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
+      });
 
       return <span key={index} dangerouslySetInnerHTML={{ __html: subContent }} />;
     });
@@ -1310,7 +1398,7 @@ export default function DeveloperDocs() {
             </div>
 
             {/* Document Body */}
-            <div style={{ color: 'var(--text-color)' }}>
+            <div style={{ color: 'var(--text-color)' }} onClick={handleContentClick}>
               {renderMarkdown(docContent)}
             </div>
 
@@ -1431,7 +1519,7 @@ export default function DeveloperDocs() {
                   <div>暂无讨论，快来发表第一条观点吧！</div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} onClick={handleContentClick}>
                   {comments.map(comment => renderCommentItem(comment))}
                 </div>
               )}
