@@ -57,6 +57,14 @@ func main() {
 			log.Fatalf("Invalid target URL for prefix %s: %v", prefix, err)
 		}
 		proxy := httputil.NewSingleHostReverseProxy(target)
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "context canceled") {
+				// 客户端主动取消了连接（例如前端输入框防抖或切页），忽略该日志
+				return
+			}
+			log.Printf("[Proxy Error] %v", err)
+			w.WriteHeader(http.StatusBadGateway)
+		}
 		p := prefix // local copy for closure
 		r.Any("/"+p+"/*path", func(c *gin.Context) {
 			path := c.Request.URL.Path
