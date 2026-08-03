@@ -303,6 +303,13 @@ func CreateRepo(c *gin.Context) {
 		}
 	}
 
+	// 提前检查 name 唯一性，避免数据库约束错误直接透出
+	var existing models.Repository
+	if err := database.DB.Where("name = ?", repo.Name).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("仓库名称 '%s' 已存在，请勿重复添加", repo.Name)})
+		return
+	}
+
 	if err := database.DB.Create(&repo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
