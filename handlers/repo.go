@@ -236,10 +236,10 @@ func GetRepos(c *gin.Context) {
 	query := database.DB.Model(&models.Repository{})
 
 	if deptID != "" {
-		query = query.Where("department_id = ?", deptID)
+		query = query.Where("repositories.department_id = ?", deptID)
 	}
 	if serviceGroup != "" {
-		query = query.Where("service_group LIKE ?", "%"+serviceGroup+"%")
+		query = query.Where("repositories.service_group LIKE ?", "%"+serviceGroup+"%")
 	}
 	if owner != "" {
 		query = query.Joins("LEFT JOIN users ON repositories.owner_id = users.id").

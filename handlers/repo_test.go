@@ -350,3 +350,56 @@ func TestImportReposWithDefaultDepartment(t *testing.T) {
 		t.Errorf("expected HTTPURL to be %q, got %q", expectedHTTPURL, importedRepo.HTTPURL)
 	}
 }
+
+func TestGetReposFilterDepartmentAndOwner(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	db.AutoMigrate(&models.User{}, &models.Repository{})
+	database.DB = db
+
+	deptID := uint(37)
+	user := models.User{
+		ID:           1,
+		Name:         "wangzhongyu",
+		EmployeeID:   "1001",
+		Email:        "wangzhongyu@example.com",
+		DepartmentID: &deptID,
+	}
+	db.Create(&user)
+
+	repo := models.Repository{
+		ID:           1,
+		DepartmentID: 37,
+		Name:         "test-dept-owner-repo",
+		URL:          "git@example.com:test/repo.git",
+		OwnerID:      1,
+	}
+	db.Create(&repo)
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/api/repos?department_id=37&owner=wangzhongyu", nil)
+	ctx.Request = req
+
+	GetRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Items []models.Repository `json:"items"`
+		Total int64               `json:"total"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse JSON response: %v", err)
+	}
+
+	if resp.Total != 1 {
+		t.Errorf("expected total items to be 1, but got %d", resp.Total)
+	}
+}
+
