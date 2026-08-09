@@ -522,20 +522,24 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     // @ts-ignore
     import('shield/menu')
       .then(mod => {
-        // Robust module resolution checking both grouped and flat lists
         if (mod) {
-          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-            setShieldMenuGroups(mod.menuGroups);
-          }
-          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-          if (items && Array.isArray(items)) {
-            setShieldMenu(items);
+          const config = mod.shieldMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
+          if (config && Array.isArray(config.groups)) {
+            setShieldMenuGroups(config.groups);
+            setShieldMenu(config.groups.flatMap((g: any) => g.items));
+          } else {
+            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+              setShieldMenuGroups(mod.menuGroups);
+            }
+            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+            if (items && Array.isArray(items)) {
+              setShieldMenu(items);
+            }
           }
         }
       })
       .catch(err => {
         console.warn("Failed to dynamically load shield menu, using robust fallback:", err);
-        // Fallback static menu for resilience matching new layout paths
         setShieldMenu([
           { path: '/reports', label: '报告概览' },
           { path: '/analysis/ut', label: '测试有效性' },
@@ -547,19 +551,23 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         ]);
       });
 
-
-
     // Dynamically load remote menu metadata from code-pipeline micro-frontend
     // @ts-ignore
     import('pipeline/menu')
       .then(mod => {
         if (mod) {
-          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-            setPipelineMenuGroups(mod.menuGroups);
-          }
-          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-          if (items && Array.isArray(items)) {
-            setPipelineMenu(items);
+          const config = mod.pipelineMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
+          if (config && Array.isArray(config.groups)) {
+            setPipelineMenuGroups(config.groups);
+            setPipelineMenu(config.groups.flatMap((g: any) => g.items));
+          } else {
+            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+              setPipelineMenuGroups(mod.menuGroups);
+            }
+            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+            if (items && Array.isArray(items)) {
+              setPipelineMenu(items);
+            }
           }
         }
       })
@@ -576,20 +584,26 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     import('pdm/menu')
       .then(mod => {
         if (mod) {
-          if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-            setPdmMenuGroups(mod.menuGroups);
-          }
-          const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-          if (items && Array.isArray(items)) {
-            setPdmMenu(items);
+          const config = mod.pdmMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
+          if (config && Array.isArray(config.groups)) {
+            setPdmMenuGroups(config.groups);
+            setPdmMenu(config.groups.flatMap((g: any) => g.items));
+          } else {
+            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
+              setPdmMenuGroups(mod.menuGroups);
+            }
+            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
+            if (items && Array.isArray(items)) {
+              setPdmMenu(items);
+            }
           }
         }
       })
       .catch(err => {
         console.warn("Failed to dynamically load pdm menu, using fallback:", err);
         setPdmMenu([
-          { path: '/device-types', label: '设备类型管理' },
-          { path: '/devices', label: '设备ID管理' }
+          { path: '/device-type', label: '设备类型管理' },
+          { path: '/device', label: '设备ID管理' }
         ]);
       });
   }, []);
@@ -925,23 +939,32 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         }}>
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
             {(() => {
-              if (location.pathname === '/') return '首页';
-              if (location.pathname.startsWith('/docs')) return '开发人员手册';
-              if (location.pathname.startsWith('/shield/reports') || location.pathname.startsWith('/shield/tasks')) return '报告中心';
-              if (location.pathname.startsWith('/shield/analysis/ut') || location.pathname.startsWith('/shield/issues')) return '测试有效性分析';
-              if (location.pathname.startsWith('/shield/admin/scan')) return '扫描任务管理';
-              if (location.pathname.startsWith('/shield/admin/task-types')) return '任务类型管理';
-              if (location.pathname.startsWith('/shield/admin/teams') || location.pathname.startsWith('/shield/teams')) return '团队与代码仓管理';
-              if (location.pathname.startsWith('/shield/admin/users')) return '用户管理';
-              if (location.pathname.startsWith('/shield/admin/activity')) return '执行日志';
-              if (location.pathname.startsWith('/shield/config')) return '管理中心';
-              if (location.pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
-              if (location.pathname.startsWith('/pipeline')) return '持续构建与检查流水线';
-              if (location.pathname.startsWith('/pdm/device-types')) return '设备类型管理';
-              if (location.pathname.startsWith('/pdm/devices')) return '设备ID管理';
-              if (location.pathname.startsWith('/pdm')) return '产品数据管理 (PDM)';
-              if (location.pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
-              if (location.pathname.startsWith('/admin/users')) return '用户管理';
+              const pathname = location.pathname;
+              if (pathname === '/') return '首页';
+              if (pathname.startsWith('/docs')) return '开发人员手册';
+              if (pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
+              if (pathname.startsWith('/admin/users')) return '用户管理';
+              if (pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
+
+              const modulesMap: Array<{ prefix: string; menu: any[]; defaultTitle: string }> = [
+                { prefix: '/pipeline', menu: pipelineMenu, defaultTitle: '持续构建 (Code Pipeline)' },
+                { prefix: '/shield', menu: shieldMenu, defaultTitle: '代码质量 (Code Shield)' },
+                { prefix: '/pdm', menu: pdmMenu, defaultTitle: '产品数据管理 (PDM)' },
+              ];
+
+              for (const mod of modulesMap) {
+                if (pathname.startsWith(mod.prefix)) {
+                  const matchedItem = mod.menu.find((item: any) => {
+                    const fullPath = `${mod.prefix}${item.path === '/' ? '' : item.path}`;
+                    return pathname === fullPath || pathname.startsWith(fullPath + '/');
+                  });
+                  if (matchedItem) {
+                    return matchedItem.headerTitle || matchedItem.label;
+                  }
+                  return mod.defaultTitle;
+                }
+              }
+
               return '开发者综合工作台';
             })()}
           </h1>
