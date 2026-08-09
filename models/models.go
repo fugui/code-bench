@@ -134,9 +134,8 @@ type DocComment struct {
 	ParentID  *uint         `gorm:"index" json:"parent_id"`                  // 父评论 ID (为 nil 表示顶级评论)
 	Parent    *DocComment   `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
 	Replies   []*DocComment `gorm:"foreignKey:ParentID" json:"replies,omitempty"` // 子回复列表 (虚拟/关联)
-	Content   string        `gorm:"type:text;not null" json:"content"`       // 评论内容 (支持 Markdown)
-	Status    string        `gorm:"size:20;default:'active'" json:"status"`  // 状态："active" (正常), "deleted" (已删除)
+	Content   string        `gorm:"type:text;not null" json:"content"`            // 评论内容 (支持 Markdown)
+	Status    string        `gorm:"size:20;default:'active'" json:"status"`       // 状态："active" (正常), "deleted" (已删除)
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
 }
-

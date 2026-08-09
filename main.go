@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -40,7 +41,19 @@ func main() {
 	// 3. Initialize Gin engine
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.Use(gin.Recovery())
+	r.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
+		if err == http.ErrAbortHandler {
+			c.Abort()
+			return
+		}
+		errStr := fmt.Sprintf("%v", err)
+		if strings.Contains(errStr, "net/http: abort Handler") || strings.Contains(errStr, "broken pipe") {
+			c.Abort()
+			return
+		}
+		log.Printf("[Recovery] panic recovered: %v", err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}))
 	if models.AppConfig.Server.GinLog {
 		r.Use(gin.Logger())
 	}

@@ -402,4 +402,3 @@ func TestGetReposFilterDepartmentAndOwner(t *testing.T) {
 		t.Errorf("expected total items to be 1, but got %d", resp.Total)
 	}
 }
-
