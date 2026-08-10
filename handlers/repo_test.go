@@ -12,18 +12,22 @@ import (
 	"code-bench/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
+func setupTestDB(t *testing.T) *gorm.DB {
+	_ = models.LoadConfig("../config.yaml")
+	database.InitDB()
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Repository{})
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ArchitectureElement{})
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Department{})
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.User{})
+	return database.DB
+}
+
 func TestImportRepos(t *testing.T) {
 	// 1. 初始化测试数据库
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to init db: %v", err)
-	}
-	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
-	database.DB = db
+	db := setupTestDB(t)
 
 	// 启动 Mock CodeHub 服务
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -131,12 +135,7 @@ func TestImportRepos(t *testing.T) {
 
 func TestGetReposFilterName(t *testing.T) {
 	// 1. 初始化测试数据库
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to init db: %v", err)
-	}
-	db.AutoMigrate(&models.Repository{})
-	database.DB = db
+	db := setupTestDB(t)
 
 	// 2. 插入测试仓库
 	repo1 := models.Repository{
@@ -188,12 +187,7 @@ func TestGetReposFilterName(t *testing.T) {
 
 func TestImportReposWithoutRepoName(t *testing.T) {
 	// 1. 初始化测试数据库
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to init db: %v", err)
-	}
-	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
-	database.DB = db
+	db := setupTestDB(t)
 
 	// 启动 Mock CodeHub 服务
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -266,12 +260,7 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 
 func TestImportReposWithDefaultDepartment(t *testing.T) {
 	// 1. 初始化测试数据库
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to init db: %v", err)
-	}
-	db.AutoMigrate(&models.User{}, &models.Department{}, &models.Repository{}, &models.ArchitectureElement{})
-	database.DB = db
+	db := setupTestDB(t)
 
 	// 启动 Mock CodeHub 服务
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -352,12 +341,7 @@ func TestImportReposWithDefaultDepartment(t *testing.T) {
 }
 
 func TestGetReposFilterDepartmentAndOwner(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to init db: %v", err)
-	}
-	db.AutoMigrate(&models.User{}, &models.Repository{})
-	database.DB = db
+	db := setupTestDB(t)
 
 	deptID := uint(37)
 	user := models.User{
