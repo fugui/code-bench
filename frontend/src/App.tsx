@@ -637,8 +637,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   }
 
   const subNavLinkStyle = (isActive: boolean) => ({
-    display: 'block',
-    padding: '0.5rem 1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.45rem 0.65rem',
     borderRadius: '8px',
     textDecoration: 'none',
     fontSize: '0.85rem',
@@ -647,6 +649,25 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     fontWeight: isActive ? 600 : 500,
     transition: 'all 0.2s',
   } as React.CSSProperties);
+
+  const renderSubIcon = (item: any, isActive: boolean) => {
+    if (!item || !item.icon) return null;
+    return (
+      <svg
+        width="14"
+        height="14"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }}
+      >
+        <path d={item.icon} />
+      </svg>
+    );
+  };
 
   let userRoles: string[] = [];
   if (user) {
@@ -724,16 +745,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
                           {visibleItems.map((item: any) => {
                             const fullPath = `/shield${item.path}`;
+                            const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
                             return (
                               <Link
                                 key={item.path}
                                 to={fullPath}
-                                style={subNavLinkStyle(
-                                  location.pathname === fullPath ||
-                                  location.pathname.startsWith(fullPath + '/')
-                                )}
+                                style={subNavLinkStyle(isActive)}
                               >
-                                {item.label}
+                                {renderSubIcon(item, isActive)}
+                                <span>{item.label}</span>
                               </Link>
                             );
                           })}
@@ -755,16 +775,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   })
                   .map((item: any) => {
                     const fullPath = `/shield${item.path}`;
+                    const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
                     return (
                       <Link
                         key={item.path}
                         to={fullPath}
-                        style={subNavLinkStyle(
-                          location.pathname === fullPath ||
-                          location.pathname.startsWith(fullPath + '/')
-                        )}
+                        style={subNavLinkStyle(isActive)}
                       >
-                        {item.label}
+                        {renderSubIcon(item, isActive)}
+                        <span>{item.label}</span>
                       </Link>
                     );
                   })
@@ -811,7 +830,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                               to={fullPath}
                               style={subNavLinkStyle(isActive)}
                             >
-                              {item.label}
+                              {renderSubIcon(item, isActive)}
+                              <span>{item.label}</span>
                             </Link>
                           );
                         })}
@@ -831,7 +851,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                         to={fullPath}
                         style={subNavLinkStyle(isActive)}
                       >
-                        {item.label}
+                        {renderSubIcon(item, isActive)}
+                        <span>{item.label}</span>
                       </Link>
                     );
                   })
@@ -868,16 +889,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
                       {group.items.map((item: any) => {
                         const fullPath = `/pdm${item.path}`;
+                        const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
                         return (
                           <Link
                             key={item.path}
                             to={fullPath}
-                            style={subNavLinkStyle(
-                              location.pathname === fullPath ||
-                              location.pathname.startsWith(fullPath + '/')
-                            )}
+                            style={subNavLinkStyle(isActive)}
                           >
-                            {item.label}
+                            {renderSubIcon(item, isActive)}
+                            <span>{item.label}</span>
                           </Link>
                         );
                       })}
@@ -887,16 +907,15 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               ) : (
                 pdmMenu.map((item: any) => {
                   const fullPath = `/pdm${item.path}`;
+                  const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
                   return (
                     <Link
                       key={item.path}
                       to={fullPath}
-                      style={subNavLinkStyle(
-                        location.pathname === fullPath ||
-                        location.pathname.startsWith(fullPath + '/')
-                      )}
+                      style={subNavLinkStyle(isActive)}
                     >
-                      {item.label}
+                      {renderSubIcon(item, isActive)}
+                      <span>{item.label}</span>
                     </Link>
                   );
                 })
