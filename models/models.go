@@ -111,11 +111,14 @@ type Feedback struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	UserID    uint      `gorm:"index;not null" json:"user_id"`
 	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Module    string    `gorm:"size:50;not null" json:"module"`          // 所涉模块："portal", "shield", "pipeline", "proto", "other"
-	Title     string    `gorm:"size:255;not null" json:"title"`          // 反馈简述/标题
-	Content   string    `gorm:"type:text;not null" json:"content"`       // 具体反馈内容建议
-	Status    string    `gorm:"size:30;default:'pending'" json:"status"` // 处理状态："pending" (待处理), "processing" (处理中), "resolved" (已采纳/已解决), "rejected" (暂不考虑)
-	Reply     string    `gorm:"type:text;default:''" json:"reply"`       // 管理员回复/采纳说明
+	Category  string    `gorm:"size:30;default:'feature';not null" json:"category"` // 反馈类型："bug" (缺陷), "feature" (需求建议), "ux" (交互/UI), "performance" (性能), "other" (其他)
+	Module    string    `gorm:"size:50;not null" json:"module"`                     // 所涉模块："portal", "shield", "pipeline", "pdm", "modelgate", "proto", "other"
+	Priority  string    `gorm:"size:20;default:'medium';not null" json:"priority"`  // 优先级："low", "medium", "high", "urgent"
+	Title     string    `gorm:"size:255;not null" json:"title"`                     // 反馈简述/标题
+	Content   string    `gorm:"type:text;not null" json:"content"`                  // 具体反馈内容建议
+	Images    string    `gorm:"type:text;default:''" json:"images"`                 // JSON 数组格式存放的贴图 URL 列表
+	Status    string    `gorm:"size:30;default:'pending'" json:"status"`            // 处理状态："pending" (待处理), "processing" (处理中), "resolved" (已采纳/已解决), "rejected" (暂不考虑)
+	Reply     string    `gorm:"type:text;default:''" json:"reply"`                  // 管理员回复/采纳说明
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

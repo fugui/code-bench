@@ -168,8 +168,12 @@ func main() {
 		// Feedback APIs
 		apiProtected.GET("/feedbacks", handlers.GetFeedbacks)
 		apiProtected.POST("/feedbacks", handlers.CreateFeedback)
+		apiProtected.POST("/feedbacks/upload", handlers.UploadFeedbackImage)
 		apiProtected.PATCH("/feedbacks/:id", handlers.UpdateFeedback)
 	}
+
+	// Serve uploaded images statically
+	r.Static("/uploads", "./uploads")
 
 	// 7. Serve frontend static files
 	if distErr == nil {

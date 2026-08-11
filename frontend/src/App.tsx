@@ -1,10 +1,11 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, Loader2, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
 import DeveloperDocs from './pages/DeveloperDocs';
+import FeedbackCenter from './pages/FeedbackCenter';
 import { ToastProvider } from './components/Toast';
 
 // Set global environment flag for federated sub-applications
@@ -95,34 +96,7 @@ function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string
   );
 }
 
-function SidebarActionButton({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem',
-      borderRadius: '10px', width: '100%', border: 'none', textAlign: 'left',
-      color: 'var(--text-secondary)',
-      background: 'transparent',
-      fontWeight: 500,
-      fontSize: '0.95rem',
-      cursor: 'pointer',
-      transition: 'all 0.25s ease',
-      borderLeft: '3px solid transparent',
-      outline: 'none'
-    }}
-    onMouseEnter={e => {
-      e.currentTarget.style.color = 'var(--text-color)';
-      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.color = 'var(--text-secondary)';
-      e.currentTarget.style.background = 'transparent';
-    }}
-    >
-      <Icon size={20} />
-      <span>{label}</span>
-    </button>
-  );
-}
+
 
 
 // Lazy loading remote App from module federation
@@ -243,132 +217,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [passwordForm, setPasswordForm] = React.useState({ oldPassword: '', newPassword: '' });
-  const [showFeedbackModal, setShowFeedbackModal] = React.useState(false);
-  const [feedbackTab, setFeedbackTab] = React.useState<'create' | 'history'>('create');
-  const [feedbackForm, setFeedbackForm] = React.useState({ module: 'portal', title: '', content: '' });
-  const [feedbacks, setFeedbacks] = React.useState<any[]>([]);
-  const [feedbacksPage, setFeedbacksPage] = React.useState(1);
-  const [feedbacksTotalPages, setFeedbacksTotalPages] = React.useState(1);
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = React.useState(false);
-  const [isFetchingFeedbacks, setIsFetchingFeedbacks] = React.useState(false);
-  const [feedbackSuccessMessage, setFeedbackSuccessMessage] = React.useState('');
-  const [feedbackErrorMessage, setFeedbackErrorMessage] = React.useState('');
-  const [editingFeedbackId, setEditingFeedbackId] = React.useState<number | null>(null);
-  const [replyStatus, setReplyStatus] = React.useState<string>('pending');
-  const [replyText, setReplyText] = React.useState<string>('');
-  const [isSubmittingReply, setIsSubmittingReply] = React.useState(false);
-  const [hideResolved, setHideResolved] = React.useState(true);
-  const [expandedFeedbacks, setExpandedFeedbacks] = React.useState<Record<number, boolean>>({});
   const authConfigRef = React.useRef<any>(null);
-
-  const toggleFeedbackExpand = (id: number) => {
-    setExpandedFeedbacks(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const fetchFeedbacks = React.useCallback((page: number = 1, forceHideResolved?: boolean) => {
-    setIsFetchingFeedbacks(true);
-    const activeHideResolved = forceHideResolved !== undefined ? forceHideResolved : hideResolved;
-    const excludeParam = activeHideResolved ? '&excludeStatus=resolved' : '';
-    portalFetch(`/api/feedbacks?page=${page}&pageSize=5${excludeParam}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          setFeedbacks(data.items || []);
-          setFeedbacksPage(data.page || 1);
-          setFeedbacksTotalPages(data.totalPages || 1);
-          setExpandedFeedbacks({});
-        }
-      })
-      .catch(err => console.error('Failed to fetch feedbacks:', err))
-      .finally(() => setIsFetchingFeedbacks(false));
-  }, [hideResolved]);
-
-  const handleHideResolvedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    setHideResolved(checked);
-    fetchFeedbacks(1, checked);
-  };
-
-  const handleReplySubmit = async (feedbackId: number) => {
-    setIsSubmittingReply(true);
-    try {
-      const res = await portalFetch(`/api/feedbacks/${feedbackId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: replyStatus,
-          reply: replyText.trim()
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setEditingFeedbackId(null);
-        setReplyText('');
-        fetchFeedbacks(feedbacksPage);
-      } else {
-        alert(data.error || '提交回复失败，请重试');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('网络错误，请稍后再试');
-    } finally {
-      setIsSubmittingReply(false);
-    }
-  };
-
-  const handleFeedbackSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeedbackErrorMessage('');
-    setFeedbackSuccessMessage('');
-
-    if (feedbackForm.title.trim().length < 5) {
-      setFeedbackErrorMessage('标题字数过短，至少需要5个字符');
-      return;
-    }
-    if (feedbackForm.content.trim().length < 10) {
-      setFeedbackErrorMessage('反馈建议详情过短，至少需要10个字符以描述细节');
-      return;
-    }
-
-    setIsSubmittingFeedback(true);
-    try {
-      const res = await portalFetch('/api/feedbacks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module: feedbackForm.module,
-          title: feedbackForm.title.trim(),
-          content: feedbackForm.content.trim()
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setFeedbackSuccessMessage(data.message || '提报成功！感谢您的宝贵建议。');
-        setFeedbackForm({ module: 'portal', title: '', content: '' });
-        fetchFeedbacks(1);
-        setTimeout(() => {
-          setFeedbackTab('history');
-          setFeedbackSuccessMessage('');
-        }, 1500);
-      } else {
-        setFeedbackErrorMessage(data.error || '提交反馈失败，请重试');
-      }
-    } catch (err) {
-      console.error(err);
-      setFeedbackErrorMessage('发生网络错误，请稍后再试');
-    } finally {
-      setIsSubmittingFeedback(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (showFeedbackModal && feedbackTab === 'history') {
-      fetchFeedbacks(1);
-    }
-  }, [showFeedbackModal, feedbackTab, fetchFeedbacks]);
 
   const portalFetch = (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('code_shield_token');
@@ -939,7 +788,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         {user && (
           <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <NavLink to="/docs" icon={BookOpen} label="开发人员手册" activePattern={/^\/docs/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-            <SidebarActionButton icon={MessageSquare} label="改进建议反馈" onClick={() => { setShowFeedbackModal(true); setFeedbackTab('create'); }} />
+            <NavLink to="/feedback" icon={MessageSquare} label="改进建议与反馈" activePattern={/^\/feedback/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
           </div>
         )}
       </aside>
@@ -961,6 +810,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               const pathname = location.pathname;
               if (pathname === '/') return '首页';
               if (pathname.startsWith('/docs')) return '开发人员手册';
+              if (pathname.startsWith('/feedback')) return '产品改进与建议反馈中心';
               if (pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (pathname.startsWith('/admin/users')) return '用户管理';
               if (pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
@@ -1221,353 +1071,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {showFeedbackModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowFeedbackModal(false)}>
-          <div className="glass-card" style={{ width: '600px', maxWidth: '95%', padding: '2rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '85vh', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MessageSquare size={22} color="var(--primary-color)" />
-                产品改进与建议反馈
-              </h3>
-              <button 
-                onClick={() => setShowFeedbackModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.5rem', outline: 'none' }}
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Tab 选择器 */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '1rem' }}>
-              <button
-                onClick={() => setFeedbackTab('create')}
-                style={{
-                  padding: '0.75rem 0.5rem', background: 'transparent', border: 'none', cursor: 'pointer',
-                  color: feedbackTab === 'create' ? 'var(--primary-color)' : 'var(--text-secondary)',
-                  borderBottom: feedbackTab === 'create' ? '2px solid var(--primary-color)' : '2px solid transparent',
-                  fontWeight: feedbackTab === 'create' ? 600 : 500, fontSize: '0.9rem', outline: 'none'
-                }}
-              >
-                提出改进建议
-              </button>
-              <button
-                onClick={() => setFeedbackTab('history')}
-                style={{
-                  padding: '0.75rem 0.5rem', background: 'transparent', border: 'none', cursor: 'pointer',
-                  color: feedbackTab === 'history' ? 'var(--primary-color)' : 'var(--text-secondary)',
-                  borderBottom: feedbackTab === 'history' ? '2px solid var(--primary-color)' : '2px solid transparent',
-                  fontWeight: feedbackTab === 'history' ? 600 : 500, fontSize: '0.9rem', outline: 'none'
-                }}
-              >
-                我的建议历史
-              </button>
-            </div>
-
-            {/* 内容区域 */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-              {feedbackTab === 'create' ? (
-                <form onSubmit={handleFeedbackSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {feedbackSuccessMessage && (
-                    <div style={{ padding: '0.75rem 1rem', background: 'rgba(52, 211, 153, 0.1)', color: '#10b981', borderRadius: '8px', fontSize: '0.875rem', border: '1px solid rgba(52, 211, 153, 0.2)' }}>
-                      {feedbackSuccessMessage}
-                    </div>
-                  )}
-                  {feedbackErrorMessage && (
-                    <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', fontSize: '0.875rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                      {feedbackErrorMessage}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>所涉功能模块</label>
-                    <select
-                      value={feedbackForm.module}
-                      onChange={e => setFeedbackForm({ ...feedbackForm, module: e.target.value })}
-                      style={{
-                        width: '100%', padding: '0.625rem', borderRadius: '8px',
-                        border: '1px solid var(--border-color)', background: 'var(--bg-color)',
-                        color: 'var(--text-color)', outline: 'none'
-                      }}
-                    >
-                      <option value="portal">综合门户工作台 (Portal)</option>
-                      <option value="shield">代码质量卫士 (Code Shield)</option>
-                      <option value="pipeline">持续构建流水线 (Code Pipeline)</option>
-                      <option value="pdm">产品数据管理 (PDM)</option>
-                      <option value="other">其他建议与反馈</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)' }}>建议简述（标题）</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="请用一句话简要概括您的建议（至少5个字符）"
-                      value={feedbackForm.title}
-                      onChange={e => setFeedbackForm({ ...feedbackForm, title: e.target.value })}
-                      style={{
-                        width: '100%', padding: '0.625rem', borderRadius: '8px',
-                        border: '1px solid var(--border-color)', background: 'var(--bg-color)',
-                        color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>建议详情描述</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                        已输入 {feedbackForm.content.length} 字
-                      </span>
-                    </label>
-                    <textarea
-                      required
-                      rows={6}
-                      placeholder="请详细阐述您遇到的问题，或具体的改进想法（例如期待怎样的交互、如何减少您的操作步骤等，至少需要10个字符）"
-                      value={feedbackForm.content}
-                      onChange={e => setFeedbackForm({ ...feedbackForm, content: e.target.value })}
-                      style={{
-                        width: '100%', padding: '0.75rem', borderRadius: '8px',
-                        border: '1px solid var(--border-color)', background: 'var(--bg-color)',
-                        color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none',
-                        resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowFeedbackModal(false)}
-                      style={{
-                        background: 'transparent', border: 'none', color: 'var(--text-secondary)',
-                        cursor: 'pointer', padding: '0.625rem 1.25rem', fontSize: '0.875rem'
-                      }}
-                    >
-                      取消
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingFeedback}
-                      className="btn"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        padding: '0.625rem 1.5rem', border: 'none', background: 'var(--primary-color)',
-                        color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-                      }}
-                    >
-                      {isSubmittingFeedback && (
-                        <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                      )}
-                      {isSubmittingFeedback ? '提交中...' : '提交建议'}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
-                      <input
-                        type="checkbox"
-                        checked={hideResolved}
-                        onChange={handleHideResolvedChange}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      隐藏已解决/已采纳建议
-                    </label>
-                  </div>
-
-                  {isFetchingFeedbacks ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '3rem 0', color: 'var(--text-secondary)', gap: '0.5rem', flexDirection: 'column' }}>
-                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '3px solid rgba(59,130,246,0.2)', borderTop: '3px solid #3b82f6', animation: 'spin 0.8s linear infinite' }} />
-                      <span>正在加载反馈记录...</span>
-                    </div>
-                  ) : feedbacks.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-secondary)' }}>
-                      <ClipboardList size={36} style={{ marginBottom: '1rem', opacity: 0.5, marginLeft: 'auto', marginRight: 'auto' }} />
-                      <p style={{ margin: 0, fontSize: '0.9rem' }}>您目前还没有提交过符合筛选条件的建议哦。</p>
-                      <button
-                        onClick={() => setFeedbackTab('create')}
-                        style={{ marginTop: '1rem', background: 'transparent', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
-                      >
-                        立刻提第一个建议 &rarr;
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {feedbacks.map((item) => {
-                        const moduleCn = {
-                          portal: '综合门户 (Portal)',
-                          shield: '代码质量 (Shield)',
-                          pipeline: '持续构建 (Pipeline)',
-                          proto: '接口管理 (Proto)',
-                          other: '其他建议'
-                        }[item.module] || item.module;
-
-                        const statusStyle = {
-                          pending: { bg: 'rgba(100, 116, 139, 0.1)', color: '#64748b', text: '待处理' },
-                          processing: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', text: '处理中' },
-                          resolved: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', text: '已采纳/已解决' },
-                          rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', text: '暂不考虑' }
-                        }[item.status] || { bg: 'rgba(100, 116, 139, 0.1)', color: '#64748b', text: item.status };
-
-                        const isExpanded = !!expandedFeedbacks[item.id];
-
-                        return (
-                          <div
-                            key={item.id}
-                            style={{
-                              padding: '1.25rem', borderRadius: '10px',
-                              background: 'var(--bg-color)', border: '1px solid var(--border-color)',
-                              display: 'flex', flexDirection: 'column', gap: isExpanded ? '0.75rem' : '0'
-                            }}
-                          >
-                            {/* 折叠头部 */}
-                            <div
-                              onClick={() => toggleFeedbackExpand(item.id)}
-                              style={{
-                                cursor: 'pointer',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.5rem',
-                                userSelect: 'none'
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', background: 'rgba(59, 130, 246, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                    {moduleCn}
-                                  </span>
-                                  {user && isSuperAdmin && item.user && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                      提报人: {item.user.name || item.user.username}
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, background: statusStyle.bg, color: statusStyle.color, padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                    {statusStyle.text}
-                                  </span>
-                                  {isExpanded ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
-                                </div>
-                              </div>
-                              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.925rem', paddingRight: '1.5rem', textAlign: 'left' }}>
-                                {item.title}
-                              </div>
-                            </div>
-
-                            {/* 展开的详情内容 */}
-                            {isExpanded && (
-                              <>
-                                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap', textAlign: 'left' }}>
-                                  {item.content}
-                                </p>
-                                {editingFeedbackId === item.id ? (
-                                  <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)' }}>处理状态:</span>
-                                      <select
-                                        value={replyStatus}
-                                        onChange={e => setReplyStatus(e.target.value)}
-                                        style={{ padding: '0.3rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', fontSize: '0.8rem', outline: 'none' }}
-                                      >
-                                        <option value="pending">待处理</option>
-                                        <option value="processing">处理中</option>
-                                        <option value="resolved">已采纳/已解决</option>
-                                        <option value="rejected">暂不考虑</option>
-                                      </select>
-                                    </div>
-                                    <textarea
-                                      rows={3}
-                                      placeholder="请填写官方答复内容..."
-                                      value={replyText}
-                                      onChange={e => setReplyText(e.target.value)}
-                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none', fontSize: '0.825rem', fontFamily: 'inherit', resize: 'vertical' }}
-                                    />
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingFeedbackId(null)}
-                                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                                      >
-                                        取消
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={isSubmittingReply}
-                                        onClick={() => handleReplySubmit(item.id)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 1rem', border: 'none', background: 'var(--primary-color)', color: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                                      >
-                                        {isSubmittingReply && (
-                                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid white', animation: 'spin 0.8s linear infinite' }} />
-                                        )}
-                                        {isSubmittingReply ? '保存中...' : '提交答复'}
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    {item.reply && (
-                                      <div style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(59, 130, 246, 0.04)', borderLeft: '3px solid var(--primary-color)', borderRadius: '0 6px 6px 0', fontSize: '0.825rem', color: 'var(--text-color)', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
-                                        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>官方答复：</span>
-                                        <span style={{ lineHeight: 1.5 }}>{item.reply}</span>
-                                      </div>
-                                    )}
-                                    {user && isSuperAdmin && (
-                                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                                        <button
-                                          onClick={() => {
-                                            setEditingFeedbackId(item.id);
-                                            setReplyStatus(item.status || 'pending');
-                                            setReplyText(item.reply || '');
-                                          }}
-                                          style={{ background: 'rgba(59, 130, 246, 0.08)', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}
-                                        >
-                                          {item.reply ? '修改答复' : '处理/答复此反馈'}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '0.25rem', textAlign: 'right' }}>
-                                  提交于 {new Date(item.created_at).toLocaleString()}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* 分页组件 */}
-                      {feedbacksTotalPages > 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                          <button
-                            disabled={feedbacksPage <= 1}
-                            onClick={() => fetchFeedbacks(feedbacksPage - 1)}
-                            style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', cursor: feedbacksPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', opacity: feedbacksPage <= 1 ? 0.5 : 1 }}
-                          >
-                            上一页
-                          </button>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            第 {feedbacksPage} / {feedbacksTotalPages} 页
-                          </span>
-                          <button
-                            disabled={feedbacksPage >= feedbacksTotalPages}
-                            onClick={() => fetchFeedbacks(feedbacksPage + 1)}
-                            style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', cursor: feedbacksPage >= feedbacksTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', opacity: feedbacksPage >= feedbacksTotalPages ? 0.5 : 1 }}
-                          >
-                            下一页
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
     </div>
   );
 }
@@ -1623,6 +1127,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/docs/*" element={<DeveloperDocs />} />
+            <Route path="/feedback/*" element={<FeedbackCenter />} />
             <Route path="/oauth2/callback" element={<OAuthCallback />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/teams" element={<TeamManagement />} />

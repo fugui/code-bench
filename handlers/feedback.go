@@ -1,8 +1,15 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 	"unicode/utf8"
 
 	"code-bench/database"
@@ -11,12 +18,60 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UploadFeedbackImage 处理贴图上传并保存至服务器本地目录
+func UploadFeedbackImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "上传图片文件不能为空: " + err.Error()})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
+	if !allowedExts[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "仅支持 JPG, PNG, GIF, WEBP 格式图片"})
+		return
+	}
+
+	// 限制文件大小为 10MB
+	if file.Size > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "单张图片大小不能超过 10MB"})
+		return
+	}
+
+	uploadDir := "./uploads/feedback"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建文件保存目录失败"})
+		return
+	}
+
+	// 生成安全唯一文件名
+	filename := fmt.Sprintf("%d_%d%s", time.Now().UnixNano(), rand.Intn(100000), ext)
+	savePath := filepath.Join(uploadDir, filename)
+
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存贴图文件失败: " + err.Error()})
+		return
+	}
+
+	imageURL := fmt.Sprintf("/uploads/feedback/%s", filename)
+	c.JSON(http.StatusOK, gin.H{
+		"url":     imageURL,
+		"name":    file.Filename,
+		"size":    file.Size,
+		"message": "图片上传成功",
+	})
+}
+
 // CreateFeedback 提交改进建议反馈
 func CreateFeedback(c *gin.Context) {
 	var req struct {
-		Module  string `json:"module" binding:"required"`
-		Title   string `json:"title" binding:"required"`
-		Content string `json:"content" binding:"required"`
+		Category string `json:"category"`
+		Module   string `json:"module" binding:"required"`
+		Priority string `json:"priority"`
+		Title    string `json:"title" binding:"required"`
+		Content  string `json:"content" binding:"required"`
+		Images   any    `json:"images"` // 支持字符串或字符串数组
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -48,12 +103,43 @@ func CreateFeedback(c *gin.Context) {
 		return
 	}
 
+	category := req.Category
+	if category == "" {
+		category = "feature"
+	}
+
+	priority := req.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+
+	// 处理图片数组格式化存储
+	imagesJSON := ""
+	if req.Images != nil {
+		switch v := req.Images.(type) {
+		case string:
+			imagesJSON = v
+		case []any:
+			var imgUrls []string
+			for _, item := range v {
+				if str, ok := item.(string); ok && str != "" {
+					imgUrls = append(imgUrls, str)
+				}
+			}
+			bytes, _ := json.Marshal(imgUrls)
+			imagesJSON = string(bytes)
+		}
+	}
+
 	feedback := models.Feedback{
-		UserID:  userID,
-		Module:  req.Module,
-		Title:   req.Title,
-		Content: req.Content,
-		Status:  "pending", // 默认为待处理
+		UserID:   userID,
+		Category: category,
+		Module:   req.Module,
+		Priority: priority,
+		Title:    req.Title,
+		Content:  req.Content,
+		Images:   imagesJSON,
+		Status:   "pending", // 默认为待处理
 	}
 
 	if err := database.DB.Create(&feedback).Error; err != nil {
@@ -71,7 +157,10 @@ func CreateFeedback(c *gin.Context) {
 func GetFeedbacks(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+	category := c.Query("category")
 	module := c.Query("module")
+	priority := c.Query("priority")
+	q := c.Query("q")
 
 	if page < 1 {
 		page = 1
@@ -113,9 +202,24 @@ func GetFeedbacks(c *gin.Context) {
 		}
 	}
 
+	// 按分类筛选
+	if category != "" {
+		query = query.Where("category = ?", category)
+	}
+
 	// 按模块筛选
 	if module != "" {
 		query = query.Where("module = ?", module)
+	}
+
+	// 按优先级筛选
+	if priority != "" {
+		query = query.Where("priority = ?", priority)
+	}
+
+	// 关键词搜索 (标题或内容)
+	if q != "" {
+		query = query.Where("title LIKE ? OR content LIKE ?", "%"+q+"%", "%"+q+"%")
 	}
 
 	// 按状态筛选
