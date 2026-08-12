@@ -113,6 +113,16 @@ export default function FeedbackCenter() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Tab 切换处理逻辑：当进入管理员处理面板时，默认筛选状态为“待处理” (pending)
+  const handleTabChange = (tab: 'submit' | 'history' | 'admin') => {
+    setActiveTab(tab);
+    if (tab === 'admin') {
+      setFilterStatus('pending');
+    } else if (tab === 'history') {
+      setFilterStatus('');
+    }
+  };
+
   // Fetch current logged in user details
   useEffect(() => {
     fetch('/api/me', {
@@ -400,7 +410,7 @@ export default function FeedbackCenter() {
         {/* 顶部 Tab 切换控制 */}
         <div style={{ display: 'flex', background: 'var(--card-bg)', padding: '6px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
           <button
-            onClick={() => setActiveTab('submit')}
+            onClick={() => handleTabChange('submit')}
             style={{
               padding: '0.625rem 1.25rem', border: 'none', borderRadius: '10px',
               background: activeTab === 'submit' ? 'var(--primary-color)' : 'transparent',
@@ -412,7 +422,7 @@ export default function FeedbackCenter() {
             <Plus size={16} /> 提报建议与反馈
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => handleTabChange('history')}
             style={{
               padding: '0.625rem 1.25rem', border: 'none', borderRadius: '10px',
               background: activeTab === 'history' ? 'var(--primary-color)' : 'transparent',
@@ -425,7 +435,7 @@ export default function FeedbackCenter() {
           </button>
           {isAdmin && (
             <button
-              onClick={() => setActiveTab('admin')}
+              onClick={() => handleTabChange('admin')}
               style={{
                 padding: '0.625rem 1.25rem', border: 'none', borderRadius: '10px',
                 background: activeTab === 'admin' ? 'var(--primary-color)' : 'transparent',
@@ -828,7 +838,7 @@ export default function FeedbackCenter() {
               <Sparkles size={40} style={{ opacity: 0.5, marginBottom: '1rem' }} />
               <p style={{ margin: 0, fontSize: '0.95rem' }}>暂无符合条件的反馈记录哦~</p>
               <button
-                onClick={() => setActiveTab('submit')}
+                onClick={() => handleTabChange('submit')}
                 style={{ marginTop: '1rem', padding: '0.5rem 1.25rem', border: 'none', background: 'var(--primary-color)', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
               >
                 去提第一个建议 &rarr;
