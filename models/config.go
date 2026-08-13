@@ -1,9 +1,9 @@
 package models
 
 import (
+	commonModels "code-common/backend/models"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -12,75 +12,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type FieldMappingConfig struct {
-	Username     string `yaml:"username"`
-	Email        string `yaml:"email"`
-	Name         string `yaml:"name"`
-	EmployeeID   string `yaml:"employee_id"`
-	UniqueID     string `yaml:"unique_id"`
-	EmployeeType string `yaml:"employee_type"`
-}
-
-type OAuth2Config struct {
-	Enabled             bool               `yaml:"enabled"`
-	ClientID            string             `yaml:"client_id"`
-	ClientSecret        string             `yaml:"client_secret"`
-	AuthURL             string             `yaml:"auth_url"`
-	TokenURL            string             `yaml:"token_url"`
-	UserInfoURL         string             `yaml:"userinfo_url"`
-	RedirectURL         string             `yaml:"redirect_url"`
-	Scopes              []string           `yaml:"scopes"`
-	AdminList           []string           `yaml:"admin_list"`
-	AllowedEmailDomains []string           `yaml:"allowed_email_domains"`
-	FieldMapping        FieldMappingConfig `yaml:"field_mapping"`
-	DeptAPIURL          string             `yaml:"dept_api_url"`
-}
+type FieldMappingConfig = commonModels.FieldMappingConfig
+type OAuth2Config = commonModels.OAuth2Config
+type DatabaseConfig = commonModels.DatabaseConfig
 
 type SyncConfig struct {
 	Targets       []string `yaml:"targets"` // Endpoints to sync to, e.g. ["http://127.0.0.1:8080"]
 	RepoDetailURL string   `yaml:"repo_detail_url"`
-}
-
-type DatabaseConfig struct {
-	Driver       string `yaml:"driver"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	User         string `yaml:"user"`
-	Password     string `yaml:"password"`
-	DBName       string `yaml:"dbname"`
-	SSLMode      string `yaml:"sslmode"`
-	TimeZone     string `yaml:"timezone"`
-	MaxOpenConns int    `yaml:"max_open_conns"`
-	MaxIdleConns int    `yaml:"max_idle_conns"`
-}
-
-func (d *DatabaseConfig) GetDSN() string {
-	host := d.Host
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	port := d.Port
-	if port <= 0 {
-		port = 5432
-	}
-	user := d.User
-	if user == "" {
-		user = "postgres"
-	}
-	dbname := d.DBName
-	if dbname == "" {
-		dbname = "code_shield"
-	}
-	sslmode := d.SSLMode
-	if sslmode == "" {
-		sslmode = "disable"
-	}
-	timezone := d.TimeZone
-	if timezone == "" {
-		timezone = "Asia/Shanghai"
-	}
-	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-		host, user, d.Password, dbname, port, sslmode, timezone)
 }
 
 type DocsConfig struct {
