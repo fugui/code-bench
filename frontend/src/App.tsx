@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, AlertCircle, RefreshCw, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
@@ -11,67 +11,8 @@ import { ToastProvider } from './components/Toast';
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
 
-// Error Boundary for chunk/remote load failures
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback?: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+import { ErrorBoundary } from '@code/common';
 
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error("Micro-frontend integration error caught:", error, errorInfo);
-  }
-
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    window.location.reload();
-  };
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback || (
-        <div style={{
-          padding: '2.5rem', background: 'var(--card-bg)', borderRadius: '12px',
-          border: '1px solid #ef4444', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: '1.25rem', maxWidth: '500px', margin: '4rem auto', textAlign: 'center'
-        }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertCircle size={24} color="#ef4444" />
-          </div>
-          <div>
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-color)' }}>子应用加载失败</h3>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              无法连接到对应的子系统模块。这可能是由于子服务未启动或网络连接问题导致的。
-            </p>
-          </div>
-          <button
-            onClick={this.handleReset}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem',
-              background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px',
-              fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#3b82f6'}
-          >
-            <RefreshCw size={16} />
-            重试加载
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string; icon: any; label: string; activePattern?: RegExp; onClick?: (e: React.MouseEvent) => void }) {
   const location = useLocation();
