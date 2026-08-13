@@ -69,6 +69,7 @@ func InitDB() {
 			Password:   string(hashed),
 			Roles:      datatypes.JSON([]byte("[\"super_admin\"]")),
 			IsActive:   true,
+			IsAdmin:    true,
 			RegMethod:  "local",
 		}
 		if err := DB.Create(&admin).Error; err != nil {
