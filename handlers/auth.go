@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	commonAuth "code-common/backend/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -14,15 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Claims struct {
-	UserID     uint     `json:"user_id"`
-	Username   string   `json:"username"`
-	Email      string   `json:"email"`
-	Name       string   `json:"name"`
-	EmployeeID string   `json:"employee_id"`
-	Roles      []string `json:"roles"`
-	jwt.RegisteredClaims
-}
+type Claims = commonAuth.PortalClaims
 
 func getJWTSecret() []byte {
 	return []byte(models.AppConfig.Auth.JWTSecret)
@@ -53,21 +45,7 @@ func GenerateToken(user models.User) (string, error) {
 }
 
 func ParseToken(tokenString string) (*Claims, error) {
-	secret := getJWTSecret()
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return secret, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
-	}
-	return claims, nil
+	return commonAuth.ParseToken(tokenString, models.AppConfig.Auth.JWTSecret)
 }
 
 func AuthMiddleware() gin.HandlerFunc {
