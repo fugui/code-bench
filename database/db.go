@@ -59,7 +59,7 @@ func InitDB() {
 
 	// Seed admin user
 	var count int64
-	DB.Model(&models.User{}).Count(&count)
+	DB.Model(&models.User{}).Where("email = ?", "admin@code-shield.com").Count(&count)
 	if count == 0 {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 		admin := models.User{
