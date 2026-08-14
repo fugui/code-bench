@@ -1,185 +1,171 @@
-# CodeBench 开发者综合工作台 (Portal)
+# CodeBench 开发者综合工作台 (Portal) 🖥️
 
-> **当前版本**：`v0.4.0`
+> **当前版本**：`v0.5.0`
 
-CodeBench 是面向研发效能与安全管理的一站式综合工作台主应用容器。项目采用微前端（Micro-frontends） Host 架构进行设计，聚合了包括代码质量管理（Code Shield）、大模型网关（ModelGate）以及接口联调管理（ProtoHub）等子系统模块。
+CodeBench 是面向研发效能与安全管理的一站式综合工作台主应用容器（Host）。项目采用**微前端（Micro-frontends）模块联邦**架构进行设计，聚合了包括代码质量管理（Code Shield）、流水线与检查（Code Pipeline）、接口文稿（Code Proto）以及产品数据管理（Code PDM）等子系统模块。
 
-后端使用 Go 语言搭建，提供轻量的高并发微前端集成环境、统一认证中心及请求转发网关（Gateway）。
+后端使用 Go 语言搭建，提供轻量的高并发微前端集成环境、统一认证中心（SSO / JWT）、全平台主数据管理及透明反向代理网关（Gateway）。
 
 ---
 
 ## 🧩 系统架构与微前端集成
 
-CodeBench 采用**微前端宿主（Host）模式**，将多个异构子应用动态拼装为一个统一的控制台：
+CodeBench 采用**微前端宿主（Host）模式**，将多个异构子应用动态拼装为一个统一的高质感控制台：
 
-*   **宿主主应用 (Host)**：`code-bench` 负责整体布局、路由管理、暗黑/明亮主题切换、系统账户及团队/代码仓管理。
-*   **子应用 (Remote)**：利用 **Vite Module Federation (模块联邦)** 在浏览器运行时动态拉取子应用组件（例如代码质量微应用 `ShieldApp` 由 `shield/App` 远程模块呈现，并动态载入 `shield/menu` 获取菜单选项）。
-*   **统一网关 (Gateway)**：后端内置反向代理机制，将前端发往主应用的子系统 API 请求（如 `/api/shield/*`）自动透明分流转发给后台对应的独立服务（如 `code-shield-server`）。
+*   **宿主主应用 (Host)**：`code-bench` 负责整体布局、全局路由导航、暗黑/明亮主题切换、系统账户、团队组织架构及代码仓全生命周期管理。
+*   **子应用 (Remote)**：利用 **Vite Module Federation (模块联邦)** 在浏览器运行时动态拉取子应用组件（如 `shield/App`、`pipeline/App`、`proto/App`、`pdm/App`），并根据 `ModuleMenuConfig` 规范动态解析和渲染子系统的侧边栏二级菜单与 SVG 图标。
+*   **统一网关 (Gateway)**：后端内置高性能反向代理机制，将前端发往主应用的子系统 API 请求（如 `/api/shield/*`、`/api/pipeline/*`、`/api/proto/*`、`/api/pdm/*`）透明分流转发给后台对应的独立微服务，并对客户端主动断开连接进行静默容错。
 
 ---
 
 ## 🔐 统一认证与 SSO 机制
 
-主应用接管了全站的身份认证工作，保证了用户只需一次登录，即可无缝穿梭于所有子应用中：
+主应用接管了全站的身份认证工作，保证了用户只需一次登录，即可无缝穿梭于所有子系统：
 
 *   **OAuth2 / OIDC 单点登录**：支持企业级单点登录系统。授权通过后，自动获取用户信息及所属部门。
-*   **统一用户与基础数据模型**：主应用与各子系统直连同一个 PostgreSQL 数据库，共享 `users`、`departments` 和 `repositories` 核心表。SSO 登录或用户变更直接作用于共享数据库，保障全平台数据强一致性，无需跨服务广播同步。
+*   **统一数据模型与公共库下沉**：主应用与各子系统直连同一个 PostgreSQL 数据库，通过 `code-common` 统一管理 `users`、`departments` 和 `repositories` 核心表，实现主数据强一致性。
+*   **管理员种子初始化优化**：系统启动时基于邮箱精确匹配初始化默认管理员账号，并赋予 `super_admin` 角色与 `IsAdmin` 标记。
 *   **统一令牌验证**：主应用与各子系统之间共享同一个 `jwt_secret` 进行对称签名。主应用负责签发 JWT，子应用作为被动消费端，直接在中间件中对传入的 Bearer Token 进行快速验签鉴权。
+
+---
+
+## 🌟 核心功能模块
+
+### 1. 改进建议与反馈中心 (Feedback Center)
+- **富文本与贴图支持**：支持用户在线提交改进建议与缺陷反馈，支持 Markdown 编辑与剪贴板截图直接粘贴上传。
+- **全生命周期状态流转**：支持反馈状态流转（待处理 → 处理中 → 已完成 / 已关闭），管理员面板默认智能筛选“待处理”事项，支持多维过滤与检索。
+
+### 2. 代码仓与组织架构主数据管理
+- **代码仓全局管理**：负责全平台代码仓的录入、状态维护、成员权限分配。创建仓库时提前校验 `name` 唯一性，返回友好 409 提示。
+- **部门与用户管理**：提供部门树形结构维护、成员导入与权限配置，支持分配子系统专属管理角色。
+
+### 3. 开发人员手册 (Developer Handbook)
+- **GFM Markdown 渲染引擎**：前端内建自定义 Markdown 解析器，支持代码块（带行号与高亮）、表格、引用块及任务列表。
+- **Mermaid 图表支持**：支持在 Markdown 代码块中嵌入 Mermaid 图表语法（`mermaid`），在线渲染流程图、时序图与类图。
+- **自动链接与下载优化**：完善 `<URL>` 与 `<email>` 自动链接解析，支持原生流式文件下载与免密 Raw 文档接口（`/api/docs/raw`），自动为 Markdown 图片注入 Bearer Token。
 
 ---
 
 ## ⚙️ 系统配置指南 (config.yaml)
 
-系统默认加载根目录下的 `config.yaml` 配置文件（模版参考 `config.yaml.example`），包含以下关键配置版块：
-
-### 1. HTTP 服务配置 (server)
 ```yaml
 server:
   port: ":8000"                      # 服务监听端口
-  gin_log: true                      # 是否打印 GIN 框架路由日志
-  external_url: "http://127.0.0.1:8000" # 服务的外部访问基准 URL（供重定向及 callback 解析）
-```
+  gin_log: false                     # 是否打印 GIN 框架路由日志
+  external_url: "http://192.168.56.18:8000" # 服务的外部访问基准 URL
 
-### 2. 认证配置 (auth)
-```yaml
+# ── 统一数据库配置 (PostgreSQL) ──
+database:
+  host: "127.0.0.1"
+  port: 5432
+  user: "postgres"
+  password: "YOUR_POSTGRES_PASSWORD"
+  dbname: "code_shield"
+  sslmode: "disable"
+
+# ── 认证配置 (接入 code-common) ──
 auth:
-  jwt_secret: "YOUR_JWT_SECRET_KEY_HERE" # 统一共享的 JWT 签名密钥（生产环境请务必修改且两边保持一致，留空则随机生成临时密钥）
-  password_login_enabled: true        # 是否启用传统用户名/密码本地登录
+  jwt_secret: "YOUR_JWT_SECRET_KEY_HERE" # 统一共享的 JWT 签名密钥
+  password_login_enabled: true        # 是否启用本地用户名/密码登录
   
   # OAuth2 单点登录配置
   oauth2:
-    enabled: false                   # 是否启用单点登录
-    client_id: "code-bench"          # 在 SSO 平台注册的 Client ID
-    client_secret: "YOUR_CLIENT_SECRET" # SSO 客户端密钥
-    auth_url: "https://sso.com/auth"  # 授权端点 URL
-    token_url: "https://sso.com/token" # Token 交换端点
-    userinfo_url: "https://sso.com/userinfo" # 用户数据获取端点
-    redirect_url: ""                 # 回调重定向 URL (留空则根据 external_url 自动推导)
-    scopes:
-      - "openid"
-      - "profile"
-      - "email"
+    enabled: false
+    client_id: "code-bench"
+    client_secret: "YOUR_CLIENT_SECRET"
+    auth_url: "https://sso.com/auth"
+    token_url: "https://sso.com/token"
+    userinfo_url: "https://sso.com/userinfo"
+    redirect_url: ""
+    scopes: ["openid", "profile", "email"]
     admin_list:
-      - "admin@yourcompany.com"      # 管理员账号白名单列表，匹配到的用户登录后自动设为系统管理员
-    field_mapping:
-      username: "preferred_username" # 映射为账号名/英文名
-      email: "email"                 # 映射为邮箱
-      name: "name"                   # 映射为中文名/姓名
-      employee_id: "employee_id"     # 映射为工号
-      unique_id: "unique_id"         # 映射为 SSO 平台唯一标识 UUID
-      employee_type: "employee_type" # 映射为员工类型
-    dept_api_url: ""                 # 用于拉取部门信息的外部 API 接口 (可选)
-```
+      - "admin@yourcompany.com"
 
-### 3. 微服务网关与同步配置 (sync & gateways)
-```yaml
-sync:
-  targets:
-    - "http://127.0.0.1:8080"        # 子服务同步列表
-
+# ── 微服务反向代理网关 (Gateways) ──
 gateways:
-  shield: "http://127.0.0.1:8080"    # 代码质量微服务后台转发终点
-  pipeline: "http://127.0.0.1:8082" # 流水线微服务后台转发终点
-  proto: "http://127.0.0.1:8083"    # 接口文稿微服务后台转发终点
-  pdm: "http://127.0.0.1:8085"      # 产品数据管理微服务后台转发终点
+  shield: "http://127.0.0.1:8080"    # 代码质量微服务
+  pipeline: "http://127.0.0.1:8082"  # 流水线微服务
+  proto: "http://127.0.0.1:8083"     # 接口文稿微服务
+  pdm: "http://127.0.0.1:8085"       # 产品数据管理微服务
 ```
 
 ---
 
-## 🛠️ 开发者指南
+## 🛠️ 快速开始
 
-我们提供了 `Makefile` 进行一键构建、开发以及依赖管理。
-
-### 1. 安装前端依赖
-在执行开发和编译前，必须拉取并安装前端项目依赖：
+### 1. 一键全系统构建
 ```bash
-make install
-```
-
-### 2. 启动本地开发调试服务器
-启动前端 Vite 开发服务器（支持热重载 HMR），本地调试默认端口为 `:5173`，后端 Go 服务默认在 `:8000`：
-```bash
-make dev
-```
-
-### 3. 一键全系统打包构建
-打包前端生成生产环境的压缩静态资产（输出到 `frontend/dist/`），并把 Go 后端编译为可执行文件（在根目录下生成 `code-bench-portal`）：
-```bash
+# 安装前端依赖、打包静态资源，并编译 Go 后端二进制
 make build
 ```
 
-### 4. 本地生产环境预览
-在本地以生产环境模式运行并预览构建出的静态资产：
+### 2. 运行服务
 ```bash
-make preview
+make run
+```
+默认监听 `:8000` 端口。管理员初始账号：`admin@code-shield.com` / `admin123`。
+
+### 3. 前端独立调试
+```bash
+cd frontend
+npm install
+npm run dev  # Vite 调试服务器，默认端口 :5173
 ```
 
-### 5. 清理构建产物
-删除所有编译生成的中间文件、可执行二进制文件及前端 `dist/` 文件夹：
-```bash
-make clean
+---
+
+## 📁 目录结构
+
+```text
+code-bench/
+├── config.yaml             # 系统配置文件
+├── main.go                 # 程序入口与反向代理网关配置
+├── models/                 # 数据模型（引用 code-common/backend）
+│   ├── config.go           # 本地配置解析
+│   └── models.go           # Feedback / Repo / Doc 等实体
+├── handlers/               # API 控制层
+│   ├── auth.go             # 认证与用户信息
+│   ├── oauth2.go           # SSO 单点登录流程
+│   ├── repo.go             # 代码仓全局管理
+│   ├── user.go             # 用户账号与权限管理
+│   ├── department.go       # 部门组织架构
+│   ├── feedback.go         # 改进建议与反馈处理
+│   └── docs.go             # 开发人员手册与 Raw 路由
+├── database/               # 数据库初始化
+├── templates/              # 成员/部门/代码仓批量导入 CSV 模板
+├── frontend/               # React 前端工程 (接入 @code/common)
+└── Makefile                # 构建与管理脚本
 ```
 
 ---
 
-## 🚀 构建与检查 (Build & Check) 模块重构设计
+## 🏷️ 版本历史
 
-为了提升流水线子系统（`code-pipeline`）的内聚性，同时避免多子系统重复录入代码仓数据而引发的数据一致性冲突，我们对「构建与检查」模块进行了全新重构设计：
-
-### 1. 以代码仓镜像为中心的数据流 (Pull 模式)
-*   **全局数据源对齐**：主应用 `code-bench` 担当底层数据管理控制台，全权负责全局应用代码仓配置的增删改。
-*   **本地只读镜像表**：子应用 `code-pipeline` 本地数据库只保存只读的 `repositories` 镜像表。数据写操作被完全封锁。
-*   **定时主动同步 (Pull)**：`code-pipeline` 弃用被动推送 (Push) 接收模式，通过后台挂载的定时器 (以 5 分钟为周期) 携带系统签发的 Bearer Token 向 `code-bench` 的 `GET /api/repos` 接口发起主动拉取，全量更新本地镜像缓存。支持未入库仓库的单条 Lazy Load 同步保护。
-
-### 2. 分支多流水线绑定架构 (Execution Plan)
-*   **多分支绑定关系**：每个代码仓对应 1 至多个分支。
-*   **流水线方案绑定**：各分支均支持配置多条、单条或零条（例如个人测试分支）流水线配置（`ExecutionPlan`），通过 `repository_id` 外键与本地镜像仓库关联。
-*   **双向交互入口**：
-    *   **以代码仓为中心**：前端 `Repos.tsx` 页面作为首要管理入口，左侧加载只读仓库卡片，右侧直接按分支列表平铺展现绑定方案、最新执行状态及三方日志链接，提供直观的分支覆盖视角。
-    *   **以流水线为中心**：前端 `PipelineConfig.tsx` 页面保留流水线级别的关联展现，但创建/编辑方案时均通过下拉框选择已同步的镜像代码仓，禁止用户自由输入任意 URL。
-
-### 3. 三方系统实时透传与轻量化日志
-*   **废除本地日志库**：`code-pipeline` 彻底剥离本地日志及历史状态表（`ExecutionLog`），消除海量无用文本数据对数据库存储的无谓挤占。
-*   **代理代理透传 API**：当用户在界面（代码仓、最近历史或仪表盘）上查看运行日志和最新状态时，后端 Handler 通过代理调用向真正执行流水线的第三方 CI/CD 系统实时发出查询请求，高保真度向前端进行透传呈现。
-*   **直达超链接**：前端日志弹出窗或操作按钮提供可以直达第三方流水线系统日志页面的超链接，免去重复登录和寻找轨迹的琐碎步骤。
-
----
-
-## 📖 开发人员手册 (Developer Handbook)
-
-`code-bench` 内置了开发人员手册模块，支持基于 Markdown 文件进行团队文档的在线编辑与展示，核心能力如下：
-
-*   **Markdown 渲染引擎**：前端内建自定义 Markdown 解析器，支持完整 GFM 语法，包括代码块（带行号与语言高亮）、表格、引用块、任务列表等。
-*   **Mermaid 图表渲染**：支持 Markdown 代码块中嵌入 Mermaid 图表语法（`mermaid` 语言标签），直接在页面渲染流程图、序列图、类图等。
-*   **自动链接解析（Autolink）**：支持 `<URL>` 与 `<email>` 角括号自动链接语法，并已修复避免误匹配 HTML 闭合标签的正则兼容问题。
-*   **本页大纲导航**：文章右侧渲染基于文档标题（H1–H3）的动态滚动大纲，锚点采用短链模式，支持一键跳转。
-*   **图片鉴权处理**：正确处理 Markdown 中嵌入的相对路径图片 URL 编码，并对原生 `<img>` 标签请求自动注入 Bearer Token 以确保认证访问。
-*   **原生流式文件下载**：支持 Markdown 模板及附件文件的原生流式下载解析，直接拉取并解析 Markdown 文本内容，无需服务端预处理转换。
-*   **免密路由**：`/api/docs/raw` 接口已调整为免密路由，生成无 Token 鉴权参数的干净下载 URL，便于外部系统直接拉取文档资源。
-
----
-
-## 📜 版本历史
+### v0.5.0 (2026-08-14)
+*   **全量接入 `code-common`**：
+    - 后端下沉 `User`、`Department`、`DatabaseConfig` 模型至 `code-common/backend`，统一使用公共鉴权中间件与响应函数。
+    - 前端全面接入 `@code/common`（`ErrorBoundary`、`createApiClient`、`useTheme` 等）。
+*   **改进建议与反馈中心重构**：
+    - 全新重构反馈中心，支持 Markdown 编辑与剪贴板贴图上传。
+    - 管理员面板默认智能筛选“待处理”反馈，支持多维过滤。
+*   **菜单体系与图标规范 (ModuleMenuConfig)**：
+    - 实现基座 Portal 菜单配置解析规范，子菜单支持渲染 SVG 微图标，Header 标题动态映射。
+*   **管理员种子初始化与安全加固**：
+    - 优化 admin 账号种子初始化逻辑，精确匹配邮箱并赋予 `super_admin` 角色与 `IsAdmin` 标记。
+    - 彻底清理 SQLite 遗留依赖，全面收敛至 PostgreSQL 共享架构。
+    - 过滤反向代理中因客户端主动取消造成的 `context.Canceled` 与 `ErrAbortHandler` 错误日志。
 
 ### v0.4.0 (2026-07-27)
-*   **开发人员手册 Mermaid 图表支持**：内置 Markdown 解析器新增 Mermaid 图表渲染能力，支持代码块中直接声明并渲染流程图、序列图、类图等多种图表类型。
-*   **Autolink 解析修复**：修复正则误匹配 HTML 闭合标签的问题，`<URL>` / `<email>` 角括号自动链接解析现已稳定正确。
-*   **附件流式下载**：支持 Markdown 模板及附件文件通过原生流式接口下载，前端直接解析 Markdown 文本内容无需服务端预处理。
-*   **图片鉴权修复**：修复 Markdown 中相对路径图片 URL 编码问题，并对原生 `<img>` 标签请求正确注入 Bearer Token。
-*   **免密文档 Raw 路由**：`/api/docs/raw` 接口重构为免密路由，生成无 Token 鉴权参数的干净文件访问 URL。
-*   **标题短链锚点大纲**：文章右侧本页大纲的所有标题锚点升级为短链模式，解决中文锚点跳转兼容问题。
+*   **开发人员手册增强**：内置 Markdown 解析器支持 Mermaid 图表渲染，修复 Autolink 正则误匹配 HTML 闭合标签问题，支持附件原生流式下载解析及免密 Raw 文档路由（`/api/docs/raw`）。
+*   **图片鉴权处理**：自动注入 Bearer Token 保证 Markdown 相对路径图片加载鉴权。
 
 ### v0.3.0 (2026-07-05)
-*   **主应用全局会话拦截优化**：主应用入口添加了全局 fetch 401 拦截器，以处理子应用嵌入时的会话失效问题，优化微前端宿主健壮性。
-*   **代码仓元数据增强**：`Repository` 数据模型中新增了 `HTTPURL` 字段，且在异步查询时能够补全保存 `ssh_url` 与 `http_url`，若 `project_id` 或 `http_url` 缺失则会触发异步同步补全。
-*   **登录态有效期优化**：调整 local token 签发有效期为 6 小时，以便对齐 SSO 会话。
+*   **会话拦截优化**：全局 fetch 401 拦截器，优化微前端宿主健壮性。
+*   **代码仓元数据增强**：新增 `HTTPURL` 字段与异步同步补全。
 
 ### v0.2.0 (2026-06-08)
-*   **统一登录与 SSO 鉴权机制**：全面集成并打通企业级 SSO 单点登录与常规密码登录流，建立了统一的 JWT 令牌生命周期与会话拦截体系，彻底解决了登录回调过程中的无限重定向等流转缺陷。
-*   **公共数据与底层管理服务**：纳入了统一的用户、团队、代码仓等全局元数据管理，并为所有微前端子应用提供统一的外键绑定和影子账户同步。
-*   **部门信息自动化同步**：实现了基于 Cookie 安全透传的同源代理机制与入库绑定，解决了获取部门信息时所面临的跨域响应体（CORS）读取拦截问题。
+*   **统一登录与 SSO 鉴权机制**：集成 OAuth2 / OIDC 与本地登录，建立统一 JWT 会话拦截体系。
+*   **公共数据与底层管理**：建立统一的用户、部门、代码仓管理服务。
 
 ### v0.1.0 (2026-05-10)
-*   **微前端聚合宿主架构**：建立 CodeBench 统一宿主框架原型，基于 Module Federation 模块联邦实现对 Code Shield 等异构子应用的动态运行时拼装和布局整合。
-*   **轻量化代理分流网关**：后端引入轻量路由代理网关，透明接管并智能分发前端子系统 API 请求，实现微服务无感聚合。
-
+*   **微前端聚合宿主架构**：建立 CodeBench 统一宿主框架，基于 Vite Module Federation 实现微应用动态运行时拼装与网关代理。
