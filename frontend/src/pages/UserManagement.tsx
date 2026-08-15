@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Pagination, usePagination } from '@code/common';
 import { useToast } from '../components/Toast';
 import { AUTH_TOKEN_KEY } from '../config';
 
@@ -22,8 +23,7 @@ function UserManagement() {
   const [departments, setDepartments] = useState<any[]>([]);
 
   // Pagination states
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const { page, pageSize, setPage } = usePagination({ defaultPageSize: 25 });
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -462,92 +462,8 @@ function UserManagement() {
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', padding: '0.5rem 1rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.875rem' }}>
-          <div style={{ color: '#64748b' }}>
-            共 {totalItems} 个系统用户
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-              style={{
-                padding: '0.3rem 0.6rem', border: '1px solid var(--border-color)', background: 'transparent',
-                borderRadius: '4px', cursor: page === 1 ? 'not-allowed' : 'pointer',
-                color: page === 1 ? 'var(--text-secondary)' : 'var(--text-color)', fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => { if (page !== 1) e.currentTarget.style.background = 'rgba(0,0,0,0.02)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              上一页
-            </button>
-
-            {/* Page numbers */}
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum = page;
-              if (page <= 3) pageNum = i + 1;
-              else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-              else pageNum = page - 2 + i;
-
-              if (pageNum < 1 || pageNum > totalPages) return null;
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  style={{
-                    minWidth: '28px', height: '28px', padding: '0 0.3rem',
-                    border: '1px solid',
-                    borderColor: page === pageNum ? 'var(--primary-color)' : 'var(--border-color)',
-                    background: page === pageNum ? 'var(--primary-color)' : 'transparent',
-                    color: page === pageNum ? 'white' : 'var(--text-color)',
-                    borderRadius: '4px', cursor: page === pageNum ? 'not-allowed' : 'pointer',
-                    fontSize: '0.825rem', fontWeight: page === pageNum ? 600 : 400,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={e => { if (page !== pageNum) e.currentTarget.style.background = 'rgba(37,99,235,0.04)'; }}
-                  onMouseLeave={e => { if (page !== pageNum) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-              style={{
-                padding: '0.3rem 0.6rem', border: '1px solid var(--border-color)', background: 'transparent',
-                borderRadius: '4px', cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                color: page === totalPages ? 'var(--text-secondary)' : 'var(--text-color)', fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => { if (page !== totalPages) e.currentTarget.style.background = 'rgba(0,0,0,0.02)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              下一页
-            </button>
-
-            <select
-              value={pageSize}
-              onChange={e => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              style={{
-                padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)',
-                fontSize: '0.825rem', outline: 'none', background: 'transparent', color: 'var(--text-color)', marginLeft: '0.5rem',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="15">15 条/页</option>
-              <option value="25">25 条/页</option>
-              <option value="50">50 条/页</option>
-              <option value="100">100 条/页</option>
-            </select>
-          </div>
-        </div>
+      {totalItems > 0 && (
+        <Pagination totalItems={totalItems} />
       )}
 
       {isUserModalOpen && createPortal(

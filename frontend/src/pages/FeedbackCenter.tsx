@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Pagination, usePagination } from '@code/common';
+import { useToast } from '../components/Toast';
 import {
   MessageSquare, Plus, Search, Filter, Upload, Image as ImageIcon,
   X, CheckCircle2, Clock, AlertCircle, XCircle, Sparkles,
@@ -90,7 +92,7 @@ export default function FeedbackCenter() {
   // History & Filter States
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isLoadingFeedbacks, setIsLoadingFeedbacks] = useState(false);
-  const [page, setPage] = useState(1);
+  const { page, pageSize, setPage } = usePagination({ defaultPageSize: 15 });
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -146,12 +148,12 @@ export default function FeedbackCenter() {
   }, []);
 
   // Fetch feedbacks
-  const fetchFeedbacks = useCallback(async (p: number = 1) => {
+  const fetchFeedbacks = useCallback(async () => {
     setIsLoadingFeedbacks(true);
     try {
       const params = new URLSearchParams();
-      params.append('page', p.toString());
-      params.append('pageSize', '10');
+      params.append('page', page.toString());
+      params.append('pageSize', pageSize.toString());
       if (filterCategory) params.append('category', filterCategory);
       if (filterModule) params.append('module', filterModule);
       if (filterStatus) params.append('status', filterStatus);
@@ -166,18 +168,17 @@ export default function FeedbackCenter() {
         setFeedbacks(data.items || []);
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
-        setPage(p);
       }
     } catch (e) {
       console.error('Failed to fetch feedbacks:', e);
     } finally {
       setIsLoadingFeedbacks(false);
     }
-  }, [filterCategory, filterModule, filterStatus, filterPriority, searchQuery]);
+  }, [page, pageSize, filterCategory, filterModule, filterStatus, filterPriority, searchQuery]);
 
   useEffect(() => {
     if (activeTab === 'history' || activeTab === 'admin') {
-      fetchFeedbacks(1);
+      fetchFeedbacks();
     }
   }, [activeTab, fetchFeedbacks]);
 
@@ -1023,26 +1024,8 @@ export default function FeedbackCenter() {
           )}
 
           {/* 分页组件 */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-              <button
-                disabled={page <= 1}
-                onClick={() => fetchFeedbacks(page - 1)}
-                style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}
-              >
-                上一页
-              </button>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                第 {page} / {totalPages} 页 (共 {totalCount} 条)
-              </span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => fetchFeedbacks(page + 1)}
-                style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}
-              >
-                下一页
-              </button>
-            </div>
+          {totalCount > 0 && (
+            <Pagination totalItems={totalCount} defaultPageSize={15} />
           )}
         </div>
       )}
