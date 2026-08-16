@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '../components/Toast';
-import { useConfirm } from '@code/common';
+import { useConfirm, Modal, EmptyState } from '@code/common';
 import MemberSearchSelect from '../components/MemberSearchSelect';
+
 
 import { AUTH_TOKEN_KEY } from '../config';
 
@@ -181,8 +182,20 @@ function TeamsTab() {
           </thead>
           <tbody>
             {teams.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>暂未录入任何部门</td></tr>
+              <EmptyState
+                inTable
+                colSpan={6}
+                type="data"
+                title="暂未录入任何部门"
+                description="部门用于组织管理代码仓、架构节点与成员权限。"
+                action={
+                  <button className="btn" onClick={openAdd} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+                    新增部门
+                  </button>
+                }
+              />
             ) : teams.map((t, idx) => (
+
               <tr key={t.id}>
                 <td style={{ fontWeight: 500 }}>{idx + 1}</td>
                 <td>{t.name}</td>
@@ -199,32 +212,36 @@ function TeamsTab() {
         </table>
       </div>
 
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ width: '400px', maxWidth: '90%' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>{editingId ? '编辑部门' : '新增部门'}</h3>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>部门名称</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>部门负责人</label>
-                <MemberSearchSelect 
-                  value={formData.leader_id} 
-                  onChange={(id) => setFormData({...formData, leader_id: id})} 
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem' }}>取消</button>
-                <button type="submit" className="btn">{editingId ? '保存' : '确认录入'}</button>
-              </div>
-            </form>
+      {/* 部门新增/编辑 Modal */}
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingId ? '编辑部门' : '新增部门'}
+        width="sm"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
+            <button type="button" onClick={() => setShowModal(false)} style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>取消</button>
+            <button type="button" onClick={handleSubmit} className="btn">{editingId ? '保存' : '确认录入'}</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>部门名称</label>
+            <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>部门负责人</label>
+            <MemberSearchSelect 
+              value={formData.leader_id} 
+              onChange={(id) => setFormData({...formData, leader_id: id})} 
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
 
 export default TeamsTab;
+

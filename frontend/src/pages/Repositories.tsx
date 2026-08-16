@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Pagination, usePagination, Drawer, useConfirm } from '@code/common';
+import { Pagination, usePagination, Drawer, useConfirm, EmptyState } from '@code/common';
+
 
 import { useToast } from '../components/Toast';
 import { sshToHttps } from '../utils/urlUtils';
@@ -62,7 +63,7 @@ function Repositories() {
   // Pagination state
   const { page, pageSize, setPage } = usePagination({ defaultPageSize: 15 });
   const [totalItems, setTotalItems] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(0);
+
 
   useEffect(() => {
     fetchRepos();
@@ -113,9 +114,13 @@ function Repositories() {
     repoFetch(`/api/repos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setRepos(data.items || []);
-        setTotalItems(data.total || 0);
-        setTotalPages(data.totalPages || 0);
+        if (data) {
+          setRepos(data.items || []);
+          setTotalItems(data.total || (data.items ? data.items.length : 0));
+        } else {
+          setRepos([]);
+          setTotalItems(0);
+        }
       })
       .catch(console.error);
   };
@@ -373,8 +378,21 @@ function Repositories() {
           </thead>
           <tbody>
             {repos.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>暂无匹配的记录或未录入任何代码仓</td></tr>
+              <EmptyState
+                inTable
+                colSpan={6}
+                type="data"
+                title="暂无匹配的代码仓记录"
+                description="录入代码仓后即可开展架构关联、自动化巡检与质量分析。"
+                action={
+                  <button className="btn" onClick={openAddDrawer} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+                    录入新代码仓
+                  </button>
+                }
+              />
             ) : repos.map(repo => (
+
+
               <tr key={repo.id}>
                 <td style={{ fontWeight: 500 }}>
                   {repo.url ? (

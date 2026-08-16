@@ -11,7 +11,8 @@ import { ToastProvider } from './components/Toast';
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
 
-import { ErrorBoundary, ConfirmProvider } from '@code/common';
+import { ErrorBoundary, ConfirmProvider, Modal } from '@code/common';
+
 
 
 
@@ -991,27 +992,31 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {showPasswordModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ width: '400px', maxWidth: '90%', padding: '2rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-color)' }}>修改密码</h3>
-            <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)' }}>当前密码</label>
-                <input required type="password" value={passwordForm.oldPassword} onChange={e => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)' }}>新密码</label>
-                <input required type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowPasswordModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem' }}>取消</button>
-                <button type="submit" className="btn" style={{ padding: '0.5rem 1.5rem', border: 'none', background: 'var(--primary-color)', color: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>确认修改</button>
-              </div>
-            </form>
+      {/* 修改密码 Modal */}
+      <Modal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        title="修改密码"
+        width="sm"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
+            <button type="button" onClick={() => setShowPasswordModal(false)} style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>取消</button>
+            <button type="button" onClick={handlePasswordChange} className="btn" style={{ padding: '0.5rem 1.25rem' }}>确认修改</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>当前密码</label>
+            <input required type="password" value={passwordForm.oldPassword} onChange={e => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>新密码</label>
+            <input required type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-color)', boxSizing: 'border-box', outline: 'none' }} />
+          </div>
+        </form>
+      </Modal>
+
 
       {/* Modals */}
     </div>
