@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '@code/common';
 import MemberSearchSelect from '../components/MemberSearchSelect';
+
 import { AUTH_TOKEN_KEY } from '../config';
 
 function TeamsTab() {
@@ -10,6 +12,7 @@ function TeamsTab() {
   const [formData, setFormData] = useState({ name: '', leader_id: '' as string | number });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const repoFetch = (url: string, options: RequestInit = {}) => {
     return fetch(url, {
       ...options,
@@ -58,20 +61,29 @@ function TeamsTab() {
     .catch(console.error);
   };
 
-  const handleDelete = (id: number, name: string) => {
-    if (window.confirm(`确认删除部门 "${name}" 吗？`)) {
-      repoFetch(`/api/departments/${id}`, { method: 'DELETE' })
-        .then(res => {
-          if (res.ok) {
-            showToast('部门已删除', 'success');
-            fetchTeams();
-          } else {
-            res.json().then(data => showToast(data.error || '删除失败', 'error'));
-          }
-        })
-        .catch(console.error);
+  const handleDelete = async (id: number, name: string) => {
+    const ok = await confirm({
+      title: `确认删除部门 "${name}" 吗？`,
+      content: '删除后该部门下绑定的代码仓和成员关联关系将需要重新分配。',
+      type: 'danger',
+      confirmText: '确认删除',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await repoFetch(`/api/departments/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('部门已删除', 'success');
+        fetchTeams();
+      } else {
+        const data = await res.json();
+        showToast(data.error || '删除失败', 'error');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
+
 
   const openAdd = () => {
     setEditingId(null);

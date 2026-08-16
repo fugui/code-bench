@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Pagination, usePagination } from '@code/common';
+import { Pagination, usePagination, Drawer, useConfirm } from '@code/common';
+
 import { useToast } from '../components/Toast';
 import { sshToHttps } from '../utils/urlUtils';
 import MemberSearchSelect from '../components/MemberSearchSelect';
@@ -35,6 +36,7 @@ const getServiceGroupFromUrl = (url: string) => {
 
 function Repositories() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const repoFetch = (url: string, options: RequestInit = {}) => {
     return fetch(url, {
       ...options,
@@ -246,21 +248,28 @@ function Repositories() {
   };
 
   const handleDeleteRepo = async (id: number, name: string) => {
-    if (window.confirm(`确定要删除代码仓 "${name}" 吗？此操作不可恢复。`)) {
-      try {
-        const res = await repoFetch(`/api/repos/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          fetchRepos();
-          showToast('成功删除代码仓', 'success');
-        } else {
-          showToast('删除代码仓失败', 'error');
-        }
-      } catch (err) {
-        console.error('Failed to delete repo', err);
-        showToast('网络错误，删除失败', 'error');
+    const ok = await confirm({
+      title: `确定要删除代码仓 "${name}" 吗？`,
+      content: '删除后所有历史任务记录和扫描数据将同步清理，此操作不可恢复。',
+      type: 'danger',
+      confirmText: '彻底删除',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await repoFetch(`/api/repos/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchRepos();
+        showToast('成功删除代码仓', 'success');
+      } else {
+        showToast('删除代码仓失败', 'error');
       }
+    } catch (err) {
+      console.error('Failed to delete repo', err);
+      showToast('网络错误，删除失败', 'error');
     }
   };
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -415,112 +424,64 @@ function Repositories() {
       )}
 
       {/* Right-side Drawer */}
-      {drawerMode && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={closeDrawer}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 999,
-              animation: 'fadeIn 0.2s ease'
-            }}
-          />
-          {/* Drawer panel */}
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, width: '420px', maxWidth: '90vw',
-            background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-            zIndex: 1000, display: 'flex', flexDirection: 'column',
-            animation: 'slideInRight 0.25s ease'
-          }}>
-            {/* Drawer header */}
-            <div style={{
-              padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                {drawerMode === 'edit' ? '编辑代码仓' : '新增代码仓'}
-              </h3>
-              <button
-                onClick={closeDrawer}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', borderRadius: '4px', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Drawer body */}
-            <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <label style={labelStyle}>代码仓地址 (URL)</label>
-                <input required type="text" placeholder="https://... 或 git@host:path/repo.git" value={formData.url} onChange={handleUrlChange} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>代码仓名称</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>项目责任人</label>
-                <MemberSearchSelect value={formData.owner_id} onChange={handleOwnerChange} />
-              </div>
-              <div>
-                <label style={labelStyle}>相关人员 (最多20人，分析结果将抄送给他们)</label>
-                <MultiMemberSearchSelect value={formData.related_members} onChange={ids => setFormData({...formData, related_members: ids})} />
-              </div>
-              <div>
-                <label style={labelStyle}>主干分支</label>
-                <input required type="text" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>归属部门</label>
-                <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: Number(e.target.value)})} style={inputStyle}>
-                  {teams.length === 0 && <option value="" disabled>无可用部门</option>}
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>归属子系统</label>
-                <select required value={formData.service_group} onChange={e => setFormData({...formData, service_group: e.target.value})} style={inputStyle}>
-                  <option value="">-- 请选择归属子系统 --</option>
-                  {subsystems.map(sub => (
-                    <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Spacer to push button to bottom */}
-              <div style={{ flex: 1 }} />
-
-              {/* Drawer footer */}
-              <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <button type="button" onClick={closeDrawer} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'white', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem', color: '#64748b' }}>取消</button>
-                <button type="submit" className="btn" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
-                  {drawerMode === 'edit' ? '保存修改' : '确认录入'}
-                </button>
-              </div>
-            </form>
+      <Drawer
+        open={!!drawerMode}
+        onClose={closeDrawer}
+        title={drawerMode === 'edit' ? '编辑代码仓' : '新增代码仓'}
+        width="sm"
+        footer={
+          <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+            <button type="button" onClick={closeDrawer} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'var(--bg-color, white)', color: 'var(--text-color, #64748b)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
+            <button type="button" onClick={handleSubmit} className="btn" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
+              {drawerMode === 'edit' ? '保存修改' : '确认录入'}
+            </button>
           </div>
-
-          <style>{`
-            @keyframes slideInRight {
-              from { transform: translateX(100%); }
-              to { transform: translateX(0); }
-            }
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-          `}</style>
-        </>
-      )}
+        }
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label style={labelStyle}>代码仓地址 (URL)</label>
+            <input required type="text" placeholder="https://... 或 git@host:path/repo.git" value={formData.url} onChange={handleUrlChange} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>代码仓名称</label>
+            <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>项目责任人</label>
+            <MemberSearchSelect value={formData.owner_id} onChange={handleOwnerChange} />
+          </div>
+          <div>
+            <label style={labelStyle}>相关人员 (最多20人，分析结果将抄送给他们)</label>
+            <MultiMemberSearchSelect value={formData.related_members} onChange={ids => setFormData({...formData, related_members: ids})} />
+          </div>
+          <div>
+            <label style={labelStyle}>主干分支</label>
+            <input required type="text" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>归属部门</label>
+            <select required value={formData.department_id} onChange={e => setFormData({...formData, department_id: Number(e.target.value)})} style={inputStyle}>
+              {teams.length === 0 && <option value="" disabled>无可用部门</option>}
+              {teams.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>归属子系统</label>
+            <select required value={formData.service_group} onChange={e => setFormData({...formData, service_group: e.target.value})} style={inputStyle}>
+              <option value="">-- 请选择归属子系统 --</option>
+              {subsystems.map(sub => (
+                <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+              ))}
+            </select>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 }
+
 
 export default Repositories;

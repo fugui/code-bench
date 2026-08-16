@@ -11,7 +11,8 @@ import { ToastProvider } from './components/Toast';
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
 
-import { ErrorBoundary } from '@code/common';
+import { ErrorBoundary, ConfirmProvider } from '@code/common';
+
 
 
 function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string; icon: any; label: string; activePattern?: RegExp; onClick?: (e: React.MouseEvent) => void }) {
@@ -1063,60 +1064,63 @@ function OAuthCallback() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/docs/*" element={<DeveloperDocs />} />
-            <Route path="/feedback/*" element={<FeedbackCenter />} />
-            <Route path="/oauth2/callback" element={<OAuthCallback />} />
-            <Route path="/admin/users" element={<UserManagement />} />
-            <Route path="/admin/teams" element={<TeamManagement />} />
-            <Route path="/admin/teams/:tab" element={<TeamManagement />} />
-            <Route path="/shield/*" element={
-              <ErrorBoundary key="shield-eb">
-                <Suspense fallback={
-                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                    <div className="spinner"></div>
-                    <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
-                  </div>
-                }>
-                  {/* @ts-ignore */}
-                  <ShieldApp isEmbedded={true} />
-                </Suspense>
-              </ErrorBoundary>
-            } />
-            <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
-            <Route path="/pipeline/*" element={
-              <ErrorBoundary key="pipeline-eb">
-                <Suspense fallback={
-                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                    <div className="spinner"></div>
-                    <span style={{ fontSize: '0.95rem' }}>正在加载流水线微应用...</span>
-                  </div>
-                }>
-                  {/* @ts-ignore */}
-                  <PipelineApp isEmbedded={true} />
-                </Suspense>
-              </ErrorBoundary>
-            } />
+      <ConfirmProvider>
+        <ToastProvider>
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/docs/*" element={<DeveloperDocs />} />
+              <Route path="/feedback/*" element={<FeedbackCenter />} />
+              <Route path="/oauth2/callback" element={<OAuthCallback />} />
+              <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/admin/teams" element={<TeamManagement />} />
+              <Route path="/admin/teams/:tab" element={<TeamManagement />} />
+              <Route path="/shield/*" element={
+                <ErrorBoundary key="shield-eb">
+                  <Suspense fallback={
+                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                      <div className="spinner"></div>
+                      <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
+                    </div>
+                  }>
+                    {/* @ts-ignore */}
+                    <ShieldApp isEmbedded={true} />
+                  </Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
+              <Route path="/pipeline/*" element={
+                <ErrorBoundary key="pipeline-eb">
+                  <Suspense fallback={
+                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                      <div className="spinner"></div>
+                      <span style={{ fontSize: '0.95rem' }}>正在加载流水线微应用...</span>
+                    </div>
+                  }>
+                    {/* @ts-ignore */}
+                    <PipelineApp isEmbedded={true} />
+                  </Suspense>
+                </ErrorBoundary>
+              } />
 
-            <Route path="/pdm/*" element={
-              <ErrorBoundary key="pdm-eb">
-                <Suspense fallback={
-                  <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                    <div className="spinner"></div>
-                    <span style={{ fontSize: '0.95rem' }}>正在加载产品数据管理微应用...</span>
-                  </div>
-                }>
-                  {/* @ts-ignore */}
-                  <PdmApp isEmbedded={true} />
-                </Suspense>
-              </ErrorBoundary>
-            } />
-          </Routes>
-        </MainLayout>
-      </ToastProvider>
+              <Route path="/pdm/*" element={
+                <ErrorBoundary key="pdm-eb">
+                  <Suspense fallback={
+                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
+                      <div className="spinner"></div>
+                      <span style={{ fontSize: '0.95rem' }}>正在加载产品数据管理微应用...</span>
+                    </div>
+                  }>
+                    {/* @ts-ignore */}
+                    <PdmApp isEmbedded={true} />
+                  </Suspense>
+                </ErrorBoundary>
+              } />
+            </Routes>
+          </MainLayout>
+        </ToastProvider>
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }
+

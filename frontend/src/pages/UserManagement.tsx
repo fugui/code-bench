@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pagination, usePagination } from '@code/common';
+import { Pagination, usePagination, useConfirm } from '@code/common';
+
 import { useToast } from '../components/Toast';
 import { AUTH_TOKEN_KEY } from '../config';
 
 function UserManagement() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const AVAILABLE_ROLES = [
     { key: 'super_admin', label: '超级管理员 (全系统)' },
@@ -25,7 +27,6 @@ function UserManagement() {
   // Pagination states
   const { page, pageSize, setPage } = usePagination({ defaultPageSize: 25 });
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,13 +82,16 @@ function UserManagement() {
       });
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.items || []);
-        setTotalItems(data.total || 0);
-        setTotalPages(data.totalPages || 0);
+        if (data.users) {
+          setUsers(data.users);
+          setTotalItems(data.total || 0);
+        } else {
+          setUsers(data.items || []);
+          setTotalItems(data.total || 0);
+        }
       } else if (res.status === 403) {
         setUsers([]);
         setTotalItems(0);
-        setTotalPages(0);
       }
     } catch (err) {
       console.error('Failed to fetch users:', err);
@@ -248,7 +252,14 @@ function UserManagement() {
   };
 
   const handleUpdateUserStatus = async (id: number, isActive: boolean) => {
-    if (!window.confirm(`确认要${isActive ? '启用' : '禁用'}该用户吗？`)) return;
+    const ok = await confirm({
+      title: `确认要${isActive ? '启用' : '禁用'}该用户吗？`,
+      content: isActive ? '启用后用户将恢复正常访问权限。' : '禁用后该用户将无法登录系统。',
+      type: isActive ? 'info' : 'warning',
+      confirmText: isActive ? '确认启用' : '确认禁用',
+    });
+    if (!ok) return;
+
     try {
       const res = await fetch(`/api/users/${id}/status`, {
         method: 'PATCH',
@@ -267,7 +278,14 @@ function UserManagement() {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (!window.confirm('此操作不可逆，确认删除该用户吗？')) return;
+    const ok = await confirm({
+      title: '确认删除该用户吗？',
+      content: '此操作不可逆，用户数据及其关联权限将被清理。',
+      type: 'danger',
+      confirmText: '确认删除',
+    });
+    if (!ok) return;
+
     try {
       const res = await fetch(`/api/users/${id}`, {
         method: 'DELETE',
@@ -276,13 +294,14 @@ function UserManagement() {
       if (res.ok) {
         const nextUsersLength = users.length - 1;
         if (nextUsersLength === 0 && page > 1) {
-          setPage(prev => prev - 1);
+          setPage(page - 1);
         } else {
           fetchUsers(page, pageSize);
         }
       }
       else {
         const d = await res.json();
+
         showToast('删除失败: ' + d.error, 'error');
       }
     } catch (err) { console.error(err); }

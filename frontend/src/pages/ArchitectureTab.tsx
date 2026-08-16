@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '../components/Toast';
+import { Drawer, useConfirm } from '@code/common';
 import MemberSearchSelect from '../components/MemberSearchSelect';
+
+
 import { AUTH_TOKEN_KEY } from '../config';
 import { 
   ChevronRight, 
@@ -72,6 +75,7 @@ interface ArchElement {
 
 function ArchitectureTab() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [elements, setElements] = useState<ArchElement[]>([]);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [selectedNode, setSelectedNode] = useState<ArchElement | null>(null);
@@ -213,7 +217,13 @@ function ArchitectureTab() {
 
   // Delete handler
   const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`确定要删除架构元素 "${name}" 吗？该操作不可恢复。`)) return;
+    const ok = await confirm({
+      title: `确定要删除架构元素 "${name}" 吗？`,
+      content: '该操作不可恢复，其下属关联关系将同步解除。',
+      type: 'danger',
+      confirmText: '彻底删除',
+    });
+    if (!ok) return;
 
     try {
       const res = await authFetch(`/api/arch-elements/${id}`, { method: 'DELETE' });
@@ -758,202 +768,145 @@ function ArchitectureTab() {
       </div>
 
       {/* DRAWER: Add/Edit Panel */}
-      {drawerMode && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setDrawerMode(null)}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 999,
-              animation: 'fadeIn 0.2s ease'
-            }}
-          />
-          {/* Drawer panel */}
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, width: '1000px', maxWidth: '95vw',
-            background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-            zIndex: 1000, display: 'flex', flexDirection: 'column',
-            animation: 'slideInRight 0.25s ease'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                {drawerMode === 'edit' ? '编辑架构元素' : '新增架构元素'}
-              </h3>
-              <button
-                onClick={() => setDrawerMode(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', borderRadius: '4px', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+      <Drawer
+        open={!!drawerMode}
+        onClose={() => setDrawerMode(null)}
+
+        title={drawerMode === 'edit' ? '编辑架构元素' : '新增架构元素'}
+        width="xl"
+        footer={
+          <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+            <button type="button" onClick={() => setDrawerMode(null)} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'var(--bg-color, white)', color: 'var(--text-color, #64748b)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
+            <button type="button" onClick={handleFormSubmit} className="btn" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
+              {drawerMode === 'edit' ? '保存修改' : '确认新增'}
+            </button>
+          </div>
+        }
+      >
+        <form 
+          onSubmit={handleFormSubmit} 
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem 1.5rem' }}>
+            <div>
+              <label style={labelStyle}>标识名称 (Identifier)</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="例如: SEC, AUTH, API (只允许大写字母、数字、连字符、下划线)" 
+                value={formData.identifier} 
+                onChange={e => setFormData({ ...formData, identifier: e.target.value })} 
+                style={inputStyle} 
+              />
             </div>
 
-            {/* Body Form */}
-            <form 
-              onSubmit={handleFormSubmit} 
-              className="sidebar-form-scrollable"
-              style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem 1.5rem' }}>
-                <div>
-                  <label style={labelStyle}>标识名称 (Identifier)</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="例如: SEC, AUTH, API (只允许大写字母、数字、连字符、下划线)" 
-                    value={formData.identifier} 
-                    onChange={e => setFormData({ ...formData, identifier: e.target.value })} 
-                    style={inputStyle} 
-                  />
-                </div>
+            <div>
+              <label style={labelStyle}>节点类型 (Node Type)</label>
+              <select 
+                required 
+                value={formData.type} 
+                onChange={e => setFormData({ ...formData, type: e.target.value as 'subsystem' | 'group' | 'module' })} 
+                style={inputStyle}
+                disabled={formData.parent_id === '' && drawerMode === 'add'} // Root must be subsystem
+              >
+                <option value="subsystem">子系统 (Subsystem)</option>
+                <option value="group">功能组 (Function Group)</option>
+                <option value="module">功能模块 (Function Module)</option>
+              </select>
+            </div>
 
-                <div>
-                  <label style={labelStyle}>节点类型 (Node Type)</label>
-                  <select 
-                    required 
-                    value={formData.type} 
-                    onChange={e => setFormData({ ...formData, type: e.target.value as 'subsystem' | 'group' | 'module' })} 
-                    style={inputStyle}
-                    disabled={formData.parent_id === '' && drawerMode === 'add'} // Root must be subsystem
-                  >
-                    <option value="subsystem">子系统 (Subsystem)</option>
-                    <option value="group">功能组 (Function Group)</option>
-                    <option value="module">功能模块 (Function Module)</option>
-                  </select>
-                </div>
+            <div>
+              <label style={labelStyle}>中文名称 (Chinese Name)</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="例如: 安全管理" 
+                value={formData.name_cn} 
+                onChange={e => setFormData({ ...formData, name_cn: e.target.value })} 
+                style={inputStyle} 
+              />
+            </div>
 
-                <div>
-                  <label style={labelStyle}>中文名称 (Chinese Name)</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="例如: 安全管理" 
-                    value={formData.name_cn} 
-                    onChange={e => setFormData({ ...formData, name_cn: e.target.value })} 
-                    style={inputStyle} 
-                  />
-                </div>
+            <div>
+              <label style={labelStyle}>英文名称 (English Name)</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="例如: Security Management" 
+                value={formData.name_en} 
+                onChange={e => setFormData({ ...formData, name_en: e.target.value })} 
+                style={inputStyle} 
+              />
+            </div>
 
-                <div>
-                  <label style={labelStyle}>英文名称 (English Name)</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="例如: Security Management" 
-                    value={formData.name_en} 
-                    onChange={e => setFormData({ ...formData, name_en: e.target.value })} 
-                    style={inputStyle} 
-                  />
-                </div>
+            <div>
+              <label style={labelStyle}>父级架构元素 (Parent Node)</label>
+              <select 
+                value={formData.parent_id} 
+                onChange={e => setFormData({ ...formData, parent_id: e.target.value ? Number(e.target.value) : '' })} 
+                style={inputStyle}
+                disabled={formData.type === 'subsystem' && drawerMode === 'add'} // Subsystems at root suggestion
+              >
+                <option value="">-- 无 (设置为顶级节点) --</option>
+                {getPotentialParents().map(parent => (
+                  <option key={parent.id} value={parent.id}>
+                    {parent.name_cn} [{parent.identifier}] ({parent.type === 'subsystem' ? '子系统' : '功能组'})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <div>
-                  <label style={labelStyle}>父级架构元素 (Parent Node)</label>
-                  <select 
-                    value={formData.parent_id} 
-                    onChange={e => setFormData({ ...formData, parent_id: e.target.value ? Number(e.target.value) : '' })} 
-                    style={inputStyle}
-                    disabled={formData.type === 'subsystem' && drawerMode === 'add'} // Subsystems at root suggestion
-                  >
-                    <option value="">-- 无 (设置为顶级节点) --</option>
-                    {getPotentialParents().map(parent => (
-                      <option key={parent.id} value={parent.id}>
-                        {parent.name_cn} [{parent.identifier}] ({parent.type === 'subsystem' ? '子系统' : '功能组'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div>
+              <label style={labelStyle}>责任人 (Owner)</label>
+              <MemberSearchSelect 
+                value={formData.owner_id} 
+                onChange={id => setFormData({ ...formData, owner_id: id || '' })} 
+              />
+            </div>
 
-                <div>
-                  <label style={labelStyle}>责任人 (Owner)</label>
-                  <MemberSearchSelect 
-                    value={formData.owner_id} 
-                    onChange={id => setFormData({ ...formData, owner_id: id || '' })} 
-                  />
-                </div>
+            <div>
+              <label style={labelStyle}>关联代码仓 (Linked Repo)</label>
+              <select 
+                value={formData.repo_id} 
+                onChange={e => setFormData({ ...formData, repo_id: e.target.value ? Number(e.target.value) : '' })} 
+                style={inputStyle}
+              >
+                <option value="">-- 不关联代码仓 --</option>
+                {repos.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+              ))}
+              </select>
+            </div>
 
-                <div>
-                  <label style={labelStyle}>关联代码仓 (Linked Repo)</label>
-                  <select 
-                    value={formData.repo_id} 
-                    onChange={e => setFormData({ ...formData, repo_id: e.target.value ? Number(e.target.value) : '' })} 
-                    style={inputStyle}
-                  >
-                    <option value="">-- 不关联代码仓 --</option>
-                    {repos.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                  ))}
-                  </select>
-                </div>
+            <div>
+              <label style={labelStyle}>子目录路径 (Subdirectory Path)</label>
+              <input 
+                type="text" 
+                placeholder="例如: src/components/security (代码仓内子路径, 选填)" 
+                value={formData.subdirectory} 
+                onChange={e => setFormData({ ...formData, subdirectory: e.target.value })} 
+                style={inputStyle} 
+              />
+            </div>
 
-                <div>
-                  <label style={labelStyle}>子目录路径 (Subdirectory Path)</label>
-                  <input 
-                    type="text" 
-                    placeholder="例如: src/components/security (代码仓内子路径, 选填)" 
-                    value={formData.subdirectory} 
-                    onChange={e => setFormData({ ...formData, subdirectory: e.target.value })} 
-                    style={inputStyle} 
-                  />
-                </div>
-
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={labelStyle}>功能描述 (Description)</label>
-                  <textarea 
-                    placeholder="输入此架构元素的详细描述..." 
-                    value={formData.description} 
-                    onChange={e => setFormData({ ...formData, description: e.target.value })} 
-                    style={{ ...inputStyle, height: '80px', resize: 'vertical' }} 
-                  />
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setDrawerMode(null)} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'white', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem', color: '#64748b' }}>取消</button>
-                <button type="submit" className="btn" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
-                  {drawerMode === 'edit' ? '保存修改' : '确认新增'}
-                </button>
-              </div>
-            </form>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={labelStyle}>功能描述 (Description)</label>
+              <textarea 
+                placeholder="输入此架构元素的详细描述..." 
+                value={formData.description} 
+                onChange={e => setFormData({ ...formData, description: e.target.value })} 
+                style={{ ...inputStyle, height: '80px', resize: 'vertical' }} 
+              />
+            </div>
           </div>
-
-          <style>{`
-            @keyframes slideInRight {
-              from { transform: translateX(100%); }
-              to { transform: translateX(0); }
-            }
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            .sidebar-form-scrollable::-webkit-scrollbar {
-              width: 6px;
-            }
-            .sidebar-form-scrollable::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            .sidebar-form-scrollable::-webkit-scrollbar-thumb {
-              background: var(--border-color, #e2e8f0);
-              border-radius: 4px;
-            }
-            .sidebar-form-scrollable::-webkit-scrollbar-thumb:hover {
-              background: #cbd5e1;
-            }
-          `}</style>
-        </>
-      )}
+        </form>
+      </Drawer>
     </div>
   );
 }
 
 export default ArchitectureTab;
+
+
