@@ -185,34 +185,28 @@
 
 /* ===== Portal Shared styles for Migrated Admin Pages ===== */
 
-:root {
-  --success-color: #10b981;
-  --danger-color: #ef4444;
-  --warning-color: #f59e0b;
-}
-
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-lg, 1.5rem);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .btn {
   background: var(--primary-color);
-  color: white;
+  color: var(--color-text-white, #ffffff);
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs, 4px);
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: var(--transition-fast, background-color 0.2s);
 }
 .btn:hover {
   background: var(--primary-hover);
@@ -233,14 +227,14 @@
 }
 .badge {
   padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-full, 9999px);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
 }
-.badge.success { background: rgba(16, 185, 129, 0.2); color: var(--success-color); }
-.badge.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning-color); }
-.badge.danger { background: rgba(239, 68, 68, 0.2); color: var(--danger-color); }
+.badge.success { background: var(--color-success-subtle); color: var(--success-color); }
+.badge.warning { background: var(--color-warning-subtle); color: var(--warning-color); }
+.badge.danger { background: var(--color-danger-subtle); color: var(--danger-color); }
 
 /* Form controls */
 input[type="text"],
@@ -264,7 +258,7 @@ input[type="search"]:focus,
 select:focus,
 textarea:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
   outline: none;
 }
 
