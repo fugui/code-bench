@@ -1,9 +1,8 @@
 package models
 
 import (
+	"code-common/backend/configutil"
 	commonModels "code-common/backend/models"
-	"crypto/rand"
-	"encoding/hex"
 	"log"
 	"os"
 	"strings"
@@ -69,41 +68,26 @@ func LoadConfig(filename string) error {
 }
 
 func applyDefaults() {
-	if AppConfig.Server.Port == "" {
-		AppConfig.Server.Port = ":8000"
+	serverCfg := configutil.ServerConfig{
+		Port:              AppConfig.Server.Port,
+		GinLog:            AppConfig.Server.GinLog,
+		ReadTimeout:       AppConfig.Server.ReadTimeout,
+		ReadHeaderTimeout: AppConfig.Server.ReadHeaderTimeout,
+		WriteTimeout:      AppConfig.Server.WriteTimeout,
+		IdleTimeout:       AppConfig.Server.IdleTimeout,
+		MaxHeaderBytes:    AppConfig.Server.MaxHeaderBytes,
+		ExternalURL:       AppConfig.Server.ExternalURL,
 	}
-	if AppConfig.Server.ExternalURL == "" {
-		port := AppConfig.Server.Port
-		if strings.HasPrefix(port, ":") {
-			AppConfig.Server.ExternalURL = "http://127.0.0.1" + port
-		} else {
-			AppConfig.Server.ExternalURL = "http://127.0.0.1:8000"
-		}
-	}
-	if AppConfig.Server.ReadTimeout == 0 {
-		AppConfig.Server.ReadTimeout = 15 * time.Second
-	}
-	if AppConfig.Server.ReadHeaderTimeout == 0 {
-		AppConfig.Server.ReadHeaderTimeout = 10 * time.Second
-	}
-	if AppConfig.Server.WriteTimeout == 0 {
-		AppConfig.Server.WriteTimeout = 15 * time.Second
-	}
-	if AppConfig.Server.IdleTimeout == 0 {
-		AppConfig.Server.IdleTimeout = 60 * time.Second
-	}
-	if AppConfig.Server.MaxHeaderBytes == 0 {
-		AppConfig.Server.MaxHeaderBytes = 1 << 20 // 1MB
-	}
+	configutil.ApplyServerDefaults(&serverCfg, ":8000")
+	AppConfig.Server.Port = serverCfg.Port
+	AppConfig.Server.ExternalURL = serverCfg.ExternalURL
+	AppConfig.Server.ReadTimeout = serverCfg.ReadTimeout
+	AppConfig.Server.ReadHeaderTimeout = serverCfg.ReadHeaderTimeout
+	AppConfig.Server.WriteTimeout = serverCfg.WriteTimeout
+	AppConfig.Server.IdleTimeout = serverCfg.IdleTimeout
+	AppConfig.Server.MaxHeaderBytes = serverCfg.MaxHeaderBytes
 
-	if AppConfig.Auth.JWTSecret == "" {
-		randomBytes := make([]byte, 32)
-		if _, err := rand.Read(randomBytes); err != nil {
-			log.Fatalf("Failed to generate random JWT secret: %v", err)
-		}
-		AppConfig.Auth.JWTSecret = hex.EncodeToString(randomBytes)
-		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret. Sessions will be lost on restart.")
-	}
+	configutil.EnsureJWTSecret(&AppConfig.Auth.JWTSecret, "Bench-Auth")
 
 	if !AppConfig.Auth.OAuth2.Enabled && !AppConfig.Auth.PasswordLoginEnabled {
 		AppConfig.Auth.PasswordLoginEnabled = true

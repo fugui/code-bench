@@ -1,43 +1,22 @@
 package database
 
 import (
+	"code-common/backend/gormdb"
 	"log"
-	"os"
-	"time"
 
 	"code-bench/models"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
 func InitDB() {
 	var err error
-	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags),
-		logger.Config{
-			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Warn,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
-		},
-	)
-
-	dsn := models.AppConfig.Database.GetDSN()
-	log.Printf("[Database] Connecting to PostgreSQL database (%s)...", models.AppConfig.Database.DBName)
-	dialector := postgres.New(postgres.Config{
-		DSN:                  dsn,
-		PreferSimpleProtocol: true,
-	})
-
-	DB, err = gorm.Open(dialector, &gorm.Config{
-		Logger:                                   newLogger,
-		DisableForeignKeyConstraintWhenMigrating: true,
+	DB, err = gormdb.Connect(models.AppConfig.Database, gormdb.Options{
+		ServiceName: "Bench-DB",
 	})
 	if err != nil {
 		log.Fatalf("[Database] Failed to connect database: %v", err)
