@@ -180,13 +180,14 @@ function Repositories() {
         related_members: formData.related_members
       })
     })
-    .then(res => {
+    .then(async res => {
       if (res.ok) {
         closeDrawer();
         fetchRepos();
         showToast('成功录入代码仓', 'success');
       } else {
-        showToast('录入代码仓失败', 'error');
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || '录入代码仓失败', 'error');
       }
     })
     .catch(err => {
@@ -210,13 +211,14 @@ function Repositories() {
         related_members: formData.related_members
       })
     })
-    .then(res => {
+    .then(async res => {
       if (res.ok) {
         closeDrawer();
         fetchRepos();
         showToast('代码仓信息已更新', 'success');
       } else {
-        showToast('更新代码仓失败', 'error');
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || '更新代码仓失败', 'error');
       }
     })
     .catch(err => {

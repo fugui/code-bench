@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"code-bench/database"
@@ -480,5 +481,164 @@ func TestImportReposWithNonExistentDepartmentFallback(t *testing.T) {
 
 	if importedRepo.DepartmentID != 10 {
 		t.Errorf("expected DepartmentID to be 10 (owner's dept), got %d", importedRepo.DepartmentID)
+	}
+}
+
+func TestCreateRepoInvalidBranch(t *testing.T) {
+	db := setupTestDB(t)
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]interface{}{
+			"id":               10002,
+			"ssh_url_to_repo":  "git@example.com:test/invalid-branch-repo.git",
+			"http_url_to_repo": "https://example.com/test/invalid-branch-repo.git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
+	dept := models.Department{ID: 1, Name: "测试部"}
+	db.Create(&dept)
+
+	user := models.User{ID: 1, EmployeeID: "user1", Email: "u1@example.com", Name: "用户1"}
+	db.Create(&user)
+
+	// 测试带中文的分支
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+
+	payload := `{"name":"invalid-branch-repo","url":"git@example.com:test/invalid-branch-repo.git","branch":"主分支master","department_id":1,"owner_id":1}`
+	req, _ := http.NewRequest("POST", "/repos", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	ctx.Request = req
+
+	CreateRepo(ctx)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400 for Chinese branch name, got %d", w.Code)
+	}
+
+	var count int64
+	db.Model(&models.Repository{}).Where("name = ?", "invalid-branch-repo").Count(&count)
+	if count != 0 {
+		t.Errorf("expected repository to NOT be created in database, but got count %d", count)
+	}
+}
+
+func TestUpdateRepoInvalidBranch(t *testing.T) {
+	db := setupTestDB(t)
+
+	dept := models.Department{ID: 1, Name: "测试部"}
+	db.Create(&dept)
+
+	user := models.User{ID: 1, EmployeeID: "user1", Email: "u1@example.com", Name: "用户1"}
+	db.Create(&user)
+
+	repo := models.Repository{
+		ID:           1,
+		DepartmentID: 1,
+		OwnerID:      1,
+		Name:         "valid-repo",
+		URL:          "git@example.com:test/valid-repo.git",
+		Branch:       "master",
+	}
+	db.Create(&repo)
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Params = gin.Params{{Key: "id", Value: "1"}}
+
+	payload := `{"branch":"非法..分支"}`
+	req, _ := http.NewRequest("PATCH", "/repos/1", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	ctx.Request = req
+
+	UpdateRepo(ctx)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400 for invalid branch in UpdateRepo, got %d", w.Code)
+	}
+
+	var checkRepo models.Repository
+	db.First(&checkRepo, 1)
+	if checkRepo.Branch != "master" {
+		t.Errorf("expected branch to remain 'master', got %q", checkRepo.Branch)
+	}
+}
+
+func TestImportReposInvalidBranchFallback(t *testing.T) {
+	db := setupTestDB(t)
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10003,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
+	dept := models.Department{ID: 1, Name: "技术部"}
+	db.Create(&dept)
+
+	deptID := dept.ID
+	user := models.User{
+		ID:           1,
+		EmployeeID:   "admin_branch",
+		Email:        "admin_branch@example.com",
+		Name:         "分支管理员",
+		DepartmentID: &deptID,
+	}
+	db.Create(&user)
+
+	// CSV 中包含中文分支 “开发分支” 和非法符号分支 “/invalid//branch”
+	csvContent := "RepoURL,田主,分支,部门名称,子系统\n" +
+		"git@example.com:test/branch-fallback-1.git,admin_branch,开发分支,技术部,code-bench\n" +
+		"git@example.com:test/branch-fallback-2.git,admin_branch,/invalid//branch,技术部,code-bench\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_branch_fallback.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContent))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var repo1 models.Repository
+	if err := db.Where("name = ?", "test/branch-fallback-1").First(&repo1).Error; err != nil {
+		t.Fatalf("failed to find repo1: %v", err)
+	}
+	if repo1.Branch != "master" {
+		t.Errorf("expected repo1 branch to fallback to 'master', got %q", repo1.Branch)
+	}
+
+	var repo2 models.Repository
+	if err := db.Where("name = ?", "test/branch-fallback-2").First(&repo2).Error; err != nil {
+		t.Fatalf("failed to find repo2: %v", err)
+	}
+	if repo2.Branch != "master" {
+		t.Errorf("expected repo2 branch to fallback to 'master', got %q", repo2.Branch)
 	}
 }
