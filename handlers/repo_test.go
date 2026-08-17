@@ -23,6 +23,17 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ArchitectureElement{})
 	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Department{})
 	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.User{})
+
+	// 预置默认子系统 code-bench
+	defaultArch := models.ArchitectureElement{
+		ID:         1,
+		Identifier: "code-bench",
+		NameCn:     "代码度量",
+		NameEn:     "Code Bench",
+		Type:       "subsystem",
+	}
+	database.DB.Create(&defaultArch)
+
 	return database.DB
 }
 
@@ -62,16 +73,6 @@ func TestImportRepos(t *testing.T) {
 		DepartmentID: &deptID,
 	}
 	db.Create(&admin)
-
-	// 创建一个架构元素，类型为 subsystem，英文标识符为 code-bench
-	archElem := models.ArchitectureElement{
-		ID:         1,
-		Identifier: "code-bench",
-		NameCn:     "代码度量",
-		NameEn:     "Code Bench",
-		Type:       "subsystem",
-	}
-	db.Create(&archElem)
 
 	// 创建一个已有仓库，OwnerID = 1
 	oldRepo := models.Repository{
@@ -640,5 +641,149 @@ func TestImportReposInvalidBranchFallback(t *testing.T) {
 	}
 	if repo2.Branch != "master" {
 		t.Errorf("expected repo2 branch to fallback to 'master', got %q", repo2.Branch)
+	}
+}
+
+func TestImportReposSubsystemInvalidFallbackToURL(t *testing.T) {
+	db := setupTestDB(t)
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10004,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
+	dept := models.Department{ID: 1, Name: "技术部"}
+	db.Create(&dept)
+
+	deptID := dept.ID
+	user := models.User{
+		ID:           1,
+		EmployeeID:   "admin_subsys",
+		Email:        "admin_subsys@example.com",
+		Name:         "子系统管理员",
+		DepartmentID: &deptID,
+	}
+	db.Create(&user)
+
+	// 创建已有的架构子系统 "order-service"
+	archElem := models.ArchitectureElement{
+		ID:         5,
+		Identifier: "order-service",
+		NameCn:     "订单服务",
+		NameEn:     "Order Service",
+		Type:       "subsystem",
+	}
+	db.Create(&archElem)
+
+	// CSV 中填写的子系统为“不存在的乱码子系统”，但 URL 路径包含 order-service
+	csvContent := "RepoURL,田主,分支,部门名称,子系统\n" +
+		"git@example.com:group/order-service/order-core.git,admin_subsys,master,技术部,不存在的乱码子系统\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_subsys_fallback.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContent))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var imported models.Repository
+	if err := db.Where("name = ?", "group/order-service/order-core").First(&imported).Error; err != nil {
+		t.Fatalf("failed to find imported repo: %v", err)
+	}
+
+	if imported.ServiceGroup != "order-service" {
+		t.Errorf("expected ServiceGroup to be 'order-service' (URL match), got %q", imported.ServiceGroup)
+	}
+
+	var updatedArch models.ArchitectureElement
+	db.First(&updatedArch, 5)
+	if updatedArch.RepoID == nil || *updatedArch.RepoID != imported.ID {
+		t.Errorf("expected ArchitectureElement to be linked to repo ID %d, got %v", imported.ID, updatedArch.RepoID)
+	}
+}
+
+func TestImportReposSubsystemInvalidAndURLNoMatchRejected(t *testing.T) {
+	db := setupTestDB(t)
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10005,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
+	dept := models.Department{ID: 1, Name: "技术部"}
+	db.Create(&dept)
+
+	deptID := dept.ID
+	user := models.User{
+		ID:           1,
+		EmployeeID:   "admin_subsys2",
+		Email:        "admin_subsys2@example.com",
+		Name:         "子系统管理员2",
+		DepartmentID: &deptID,
+	}
+	db.Create(&user)
+
+	// CSV 中填写的子系统为“未知系统”，且 URL 中所有路径段在架构中均不存在
+	csvContent := "RepoURL,田主,分支,部门名称,子系统\n" +
+		"git@example.com:unknown_group/unknown_subsys/unknown_repo.git,admin_subsys2,master,技术部,未知系统\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_subsys_rejected.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContent))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	// 验证该仓库被拒绝导入（数据库中未创建）
+	var count int64
+	db.Model(&models.Repository{}).Where("name = ?", "unknown_group/unknown_subsys/unknown_repo").Count(&count)
+	if count != 0 {
+		t.Errorf("expected repo to be rejected/skipped, but found in database! count: %d", count)
 	}
 }

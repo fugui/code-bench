@@ -113,6 +113,65 @@ func extractRepoPath(repoURL string) string {
 	return strings.Trim(pathPart, "/")
 }
 
+// extractURLSegments 提取 URL 中所有路径段（用于子系统推断）
+func extractURLSegments(rawURL string) []string {
+	path := extractRepoPath(rawURL)
+	if path == "" {
+		return nil
+	}
+	parts := strings.Split(path, "/")
+	var segments []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			segments = append(segments, p)
+		}
+	}
+	return segments
+}
+
+// resolveSubsystem 校验并解析子系统架构元素：
+// 1. 优先校验传入的 subsystemStr 是否在架构元素中存在（匹配 identifier, name_cn, name_en）；
+// 2. 若不存在或为空，则尝试从 Repo URL 的各级路径段进行默认匹配（优先倒数第二段，再尝试其余路径段）；
+// 3. 若均无法匹配到已有的 subsystem 架构元素，则返回错误。
+func resolveSubsystem(subsystemStr string, repoURL string) (*models.ArchitectureElement, error) {
+	subsystemStr = strings.TrimSpace(subsystemStr)
+
+	// 1. 若提供了子系统名称/标识符，优先匹配已有的架构元素
+	if subsystemStr != "" {
+		var elem models.ArchitectureElement
+		if err := database.DB.Where("type = ? AND (LOWER(identifier) = LOWER(?) OR LOWER(name_cn) = LOWER(?) OR LOWER(name_en) = LOWER(?))", "subsystem", subsystemStr, subsystemStr, subsystemStr).First(&elem).Error; err == nil {
+			return &elem, nil
+		}
+	}
+
+	// 2. 若校验不通过，尝试从 Repo URL 中提取路径段推导匹配
+	segments := extractURLSegments(repoURL)
+	if len(segments) > 0 {
+		var candidates []string
+		// 优先倒数第二段（通常是 service_group / subsystem 名）
+		if len(segments) >= 2 {
+			candidates = append(candidates, segments[len(segments)-2])
+		}
+		// 其次其余路径段（从后往前）
+		for i := len(segments) - 1; i >= 0; i-- {
+			if len(segments) >= 2 && i == len(segments)-2 {
+				continue
+			}
+			candidates = append(candidates, segments[i])
+		}
+
+		for _, cand := range candidates {
+			var elem models.ArchitectureElement
+			if err := database.DB.Where("type = ? AND (LOWER(identifier) = LOWER(?) OR LOWER(name_cn) = LOWER(?) OR LOWER(name_en) = LOWER(?))", "subsystem", cand, cand, cand).First(&elem).Error; err == nil {
+				return &elem, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no matching subsystem architecture element found for %q (or extracted from URL %q)", subsystemStr, repoURL)
+}
+
 // fetchRepoDetailRemote 调用三方接口获取代码仓详情（ID、SSH URL、HTTP URL）
 func fetchRepoDetailRemote(repoURL string, headers map[string]string) (string, string, string, error) {
 	apiURL := models.AppConfig.Sync.RepoDetailURL
@@ -301,6 +360,18 @@ func CreateRepo(c *gin.Context) {
 		return
 	}
 
+	// 校验并匹配归属子系统架构元素
+	var matchedArchElem *models.ArchitectureElement
+	if repo.ServiceGroup != "" || repo.URL != "" {
+		if elem, err := resolveSubsystem(repo.ServiceGroup, repo.URL); err == nil {
+			repo.ServiceGroup = elem.Identifier
+			matchedArchElem = elem
+		} else if repo.ServiceGroup != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("归属子系统 '%s' 在架构元素中不存在，且无法从 URL 自动识别匹配", repo.ServiceGroup)})
+			return
+		}
+	}
+
 	headers := prepareRequestHeaders(c)
 	apiURL := models.AppConfig.Sync.RepoDetailURL
 	if apiURL != "" {
@@ -340,6 +411,12 @@ func CreateRepo(c *gin.Context) {
 	if err := database.DB.Create(&repo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// 关联子系统架构元素
+	if matchedArchElem != nil {
+		matchedArchElem.RepoID = &repo.ID
+		database.DB.Save(matchedArchElem)
 	}
 
 	// Reload with associations to get Owner and Department details for sync
@@ -464,7 +541,22 @@ func UpdateRepo(c *gin.Context) {
 		updates["department_id"] = *input.TeamID
 	}
 	if input.ServiceGroup != nil {
-		updates["service_group"] = *input.ServiceGroup
+		targetURL := repo.URL
+		if input.URL != nil {
+			targetURL = *input.URL
+		}
+		if *input.ServiceGroup != "" {
+			elem, err := resolveSubsystem(*input.ServiceGroup, targetURL)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("归属子系统 '%s' 在架构元素中不存在，且无法从 URL 自动识别匹配", *input.ServiceGroup)})
+				return
+			}
+			updates["service_group"] = elem.Identifier
+			elem.RepoID = &repo.ID
+			database.DB.Save(elem)
+		} else {
+			updates["service_group"] = ""
+		}
 	}
 
 	// 仅在 URL 未改变，或者 URL 改变但同步失败的情况下，才允许手动更新 project_id 和 http_url
@@ -719,6 +811,14 @@ func ImportRepos(c *gin.Context) {
 			continue
 		}
 
+		// 校验并匹配归属子系统：若不存在则尝试从 URL 匹配，若匹配不成功则拒绝导入
+		archElem, err := resolveSubsystem(subsystem, repoURL)
+		if err != nil {
+			log.Printf("Line %d: Subsystem validation failed for repo %s (subsystem: %q, url: %s): %v. Row rejected/skipped.", lineNum+2, repoName, subsystem, repoURL, err)
+			continue
+		}
+		resolvedSubsystem := archElem.Identifier
+
 		// 校验远端仓库是否存在，并拉取最新 ProjectID、HTTP URL 等
 		projectID, remoteSSHURL, httpURL, err := fetchRepoDetailRemote(repoURL, headers)
 		if err != nil {
@@ -733,7 +833,7 @@ func ImportRepos(c *gin.Context) {
 				Name:         repoName,
 				URL:          repoURL,
 				Branch:       branch,
-				ServiceGroup: subsystem,
+				ServiceGroup: resolvedSubsystem,
 				IsActive:     true,
 			}
 			repo.OwnerID = user.ID
@@ -748,17 +848,8 @@ func ImportRepos(c *gin.Context) {
 			}
 			if err := database.DB.Create(&repo).Error; err == nil {
 				successCount++
-
-				// 匹配子系统架构元素并关联
-				if subsystem != "" {
-					var archElem models.ArchitectureElement
-					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
-						archElem.RepoID = &repo.ID
-						database.DB.Save(&archElem)
-						repo.ServiceGroup = archElem.Identifier
-						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
-					}
-				}
+				archElem.RepoID = &repo.ID
+				database.DB.Save(archElem)
 			} else {
 				log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
 			}
@@ -771,7 +862,7 @@ func ImportRepos(c *gin.Context) {
 			}
 			repo.OwnerID = user.ID
 			repo.Branch = branch
-			repo.ServiceGroup = subsystem
+			repo.ServiceGroup = resolvedSubsystem
 			if projectID != "" {
 				repo.ProjectID = projectID
 			}
@@ -780,17 +871,8 @@ func ImportRepos(c *gin.Context) {
 			}
 			if err := database.DB.Save(&repo).Error; err == nil {
 				successCount++
-
-				// 匹配子系统架构元素并关联
-				if subsystem != "" {
-					var archElem models.ArchitectureElement
-					if err := database.DB.Where("type = ? AND (identifier = ? OR name_cn = ? OR name_en = ?)", "subsystem", subsystem, subsystem, subsystem).First(&archElem).Error; err == nil {
-						archElem.RepoID = &repo.ID
-						database.DB.Save(&archElem)
-						repo.ServiceGroup = archElem.Identifier
-						database.DB.Model(&repo).Update("service_group", archElem.Identifier)
-					}
-				}
+				archElem.RepoID = &repo.ID
+				database.DB.Save(archElem)
 			} else {
 				log.Printf("Line %d: Failed to update repository %s: %v", lineNum+2, repoName, err)
 			}
