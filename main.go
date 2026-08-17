@@ -77,20 +77,16 @@ func main() {
 					w.WriteHeader(http.StatusBadGateway)
 				}
 				p := prefix
-				r.Any("/"+p+"/*path", func(c *gin.Context) {
-					path := c.Request.URL.Path
-					if strings.HasPrefix(path, "/"+p+"/api") ||
-						strings.HasPrefix(path, "/"+p+"/assets") ||
-						strings.HasSuffix(path, "remoteEntry.js") {
-						if models.AppConfig.Server.GinLog {
-							log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, path, p)
-						}
-						proxy.ServeHTTP(c.Writer, c.Request)
-					} else {
-						// Delegate to frontend SPA fallback
-						c.Next()
+				forwardHandler := func(c *gin.Context) {
+					if models.AppConfig.Server.GinLog {
+						log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, c.Request.URL.Path, p)
 					}
-				})
+					proxy.ServeHTTP(c.Writer, c.Request)
+				}
+				r.Any("/"+p+"/api", forwardHandler)
+				r.Any("/"+p+"/api/*path", forwardHandler)
+				r.Any("/"+p+"/assets/*path", forwardHandler)
+				r.Any("/"+p+"/remoteEntry.js", forwardHandler)
 			}
 
 			// Register Core APIs (Unprotected)
