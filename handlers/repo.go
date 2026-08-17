@@ -657,28 +657,33 @@ func ImportRepos(c *gin.Context) {
 		}
 
 		var dept models.Department
-		if departmentName == "" {
+		deptFound := false
+
+		// 1. 如果 CSV 中指定了部门名称，优先在系统现有部门中查找
+		if departmentName != "" {
+			if err := database.DB.Where("name = ?", departmentName).First(&dept).Error; err == nil {
+				deptFound = true
+			} else {
+				log.Printf("Line %d: Department %q not found in system, falling back to owner %s's department", lineNum+2, departmentName, ownerName)
+			}
+		}
+
+		// 2. 若未指定部门或指定部门不存在，回退使用田主（责任人）关联的部门，不再自动新增部门
+		if !deptFound {
 			if user.DepartmentID != nil {
-				if err := database.DB.Where("id = ?", *user.DepartmentID).First(&dept).Error; err != nil {
+				if err := database.DB.Where("id = ?", *user.DepartmentID).First(&dept).Error; err == nil {
+					deptFound = true
+				} else {
 					log.Printf("Line %d: Failed to find department by owner's department_id %d: %v", lineNum+2, *user.DepartmentID, err)
-					continue
 				}
 			} else {
-				log.Printf("Line %d: Department name is empty and owner %s has no department associated", lineNum+2, ownerName)
-				continue
+				log.Printf("Line %d: Owner %s has no department associated and CSV department %q not found", lineNum+2, ownerName, departmentName)
 			}
-		} else {
-			if err := database.DB.Where("name = ?", departmentName).First(&dept).Error; err != nil {
-				dept = models.Department{
-					Name:     departmentName,
-					LeaderID: &user.ID,
-				}
-				if err := database.DB.Create(&dept).Error; err == nil {
-				} else {
-					log.Printf("Line %d: Failed to create department %s: %v", lineNum+2, departmentName, err)
-					continue
-				}
-			}
+		}
+
+		if !deptFound {
+			log.Printf("Line %d: No valid department could be resolved for repo %s, row skipped", lineNum+2, repoName)
+			continue
 		}
 
 		// 校验远端仓库是否存在，并拉取最新 ProjectID、HTTP URL 等

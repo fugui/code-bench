@@ -44,12 +44,21 @@ func TestImportRepos(t *testing.T) {
 	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
 
 	// 2. 初始化一些基础数据
+	// 创建一个部门
+	dept := models.Department{
+		ID:   1,
+		Name: "技术部",
+	}
+	db.Create(&dept)
+
 	// 创建一个用户做责任人
+	deptID := dept.ID
 	admin := models.User{
-		ID:         1,
-		EmployeeID: "admin",
-		Email:      "admin@code-shield.com",
-		Name:       "管理员",
+		ID:           1,
+		EmployeeID:   "admin",
+		Email:        "admin@code-shield.com",
+		Name:         "管理员",
+		DepartmentID: &deptID,
 	}
 	db.Create(&admin)
 
@@ -204,11 +213,19 @@ func TestImportReposWithoutRepoName(t *testing.T) {
 	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
 
 	// 2. 初始化一些基础数据
+	dept := models.Department{
+		ID:   1,
+		Name: "技术部",
+	}
+	db.Create(&dept)
+
+	deptID := dept.ID
 	admin := models.User{
-		ID:         1,
-		EmployeeID: "admin",
-		Email:      "admin@code-shield.com",
-		Name:       "管理员",
+		ID:           1,
+		EmployeeID:   "admin",
+		Email:        "admin@code-shield.com",
+		Name:         "管理员",
+		DepartmentID: &deptID,
 	}
 	db.Create(&admin)
 
@@ -384,5 +401,84 @@ func TestGetReposFilterDepartmentAndOwner(t *testing.T) {
 
 	if resp.Total != 1 {
 		t.Errorf("expected total items to be 1, but got %d", resp.Total)
+	}
+}
+
+func TestImportReposWithNonExistentDepartmentFallback(t *testing.T) {
+	// 1. 初始化测试数据库
+	db := setupTestDB(t)
+
+	// 启动 Mock CodeHub 服务
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		resp := map[string]interface{}{
+			"id":               10001,
+			"ssh_url_to_repo":  "git@example.com:" + path + ".git",
+			"http_url_to_repo": "https://example.com/" + path + ".git",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+	models.AppConfig.Sync.RepoDetailURL = mockServer.URL
+
+	// 2. 创建真实存在的部门（研发中心）
+	dept := models.Department{
+		ID:   10,
+		Name: "研发中心",
+	}
+	db.Create(&dept)
+
+	// 创建田主用户并绑定到“研发中心”
+	deptID := dept.ID
+	user := models.User{
+		ID:           10,
+		EmployeeID:   "dev_lead",
+		Email:        "dev_lead@example.com",
+		Name:         "开发组长",
+		DepartmentID: &deptID,
+	}
+	db.Create(&user)
+
+	// 3. 构建 CSV，故意指定一个系统不存在的部门名称（"不存在的部门ABC"）
+	csvContent := "RepoURL,田主,分支,部门名称,子系统\n" +
+		"git@example.com:test/fallback-dept-repo.git,dev_lead,master,不存在的部门ABC,code-bench\n"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test_fallback.csv")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	part.Write([]byte(csvContent))
+	writer.Close()
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", "/repos/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Request = req
+
+	ImportRepos(ctx)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	// 4. 验证是否没有新建“不存在的部门ABC”
+	var nonexistentDept models.Department
+	if err := db.Where("name = ?", "不存在的部门ABC").First(&nonexistentDept).Error; err == nil {
+		t.Errorf("expected '不存在的部门ABC' to NOT be created in database, but it was created!")
+	}
+
+	// 5. 验证仓库是否成功录入并回退到了田主所在的“研发中心” (ID = 10)
+	var importedRepo models.Repository
+	if err := db.Where("name = ?", "test/fallback-dept-repo").First(&importedRepo).Error; err != nil {
+		t.Fatalf("failed to find imported repo: %v", err)
+	}
+
+	if importedRepo.DepartmentID != 10 {
+		t.Errorf("expected DepartmentID to be 10 (owner's dept), got %d", importedRepo.DepartmentID)
 	}
 }
