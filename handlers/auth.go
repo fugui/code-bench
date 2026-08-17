@@ -50,19 +50,11 @@ func ParseToken(tokenString string) (*Claims, error) {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			tokenString = c.Query("token")
-		}
-
+		tokenString := commonAuth.ExtractToken(c)
 		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header or token missing"})
 			c.Abort()
 			return
-		}
-
-		if len(tokenString) > 7 && strings.HasPrefix(tokenString, "Bearer ") {
-			tokenString = tokenString[7:]
 		}
 
 		claims, err := ParseToken(tokenString)
