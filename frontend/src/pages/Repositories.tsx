@@ -624,7 +624,7 @@ function Repositories() {
             <div>
               <label style={labelStyle}>
                 <span>快捷输入 Git 仓库地址 <span style={{ color: '#ef4444' }}>*</span></span>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>支持粘贴 SSH 或 HTTPS 格式</span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>支持粘贴标准 SSH (ssh://git@...) 或 HTTPS 格式</span>
               </label>
               <input
                 required
