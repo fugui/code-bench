@@ -401,6 +401,10 @@ func CreateRepo(c *gin.Context) {
 		}
 	}
 
+	if repo.HTTPURL == "" && repo.URL != "" {
+		repo.HTTPURL = formatURLToHTTPS(repo.URL)
+	}
+
 	// 提前检查 name 唯一性，避免数据库约束错误直接透出
 	var existing models.Repository
 	if err := database.DB.Where("name = ?", repo.Name).First(&existing).Error; err == nil {
