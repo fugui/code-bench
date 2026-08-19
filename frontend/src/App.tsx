@@ -12,7 +12,7 @@ import { ToastProvider } from './components/Toast';
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
 
-import { ErrorBoundary, ConfirmProvider, UserMenu, setupFetchInterceptor } from '@code/common';
+import { ErrorBoundary, ConfirmProvider, UserMenu, setupFetchInterceptor, VersionNotification } from '@code/common';
 
 // Setup unified global fetch interceptor
 setupFetchInterceptor();
@@ -917,6 +917,7 @@ export default function App() {
               } />
             </Routes>
           </MainLayout>
+          <VersionNotification />
         </ToastProvider>
       </ConfirmProvider>
     </BrowserRouter>
