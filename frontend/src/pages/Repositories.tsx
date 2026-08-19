@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Pagination, usePagination, Drawer, useConfirm, EmptyState } from '@code/common';
 
 import { useToast } from '../components/Toast';
-import { sshToHttps, httpsToSsh, detectRepoProtocol } from '../utils/urlUtils';
+import { sshToHttps, httpsToSsh, detectRepoProtocol, extractRepoPath } from '../utils/urlUtils';
 import MemberSearchSelect from '../components/MemberSearchSelect';
 import MultiMemberSearchSelect from '../components/MultiMemberSearchSelect';
 import { AUTH_TOKEN_KEY } from '../config';
@@ -18,6 +18,15 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.875rem',
   transition: 'all 0.2s ease',
   outline: 'none',
+};
+
+const readOnlyInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: 'var(--bg-secondary, rgba(241, 245, 249, 0.7))',
+  color: 'var(--text-color)',
+  cursor: 'default',
+  border: '1px dashed var(--border-color)',
+  userSelect: 'all',
 };
 
 const labelStyle: React.CSSProperties = {
@@ -38,17 +47,6 @@ const cardSectionStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.875rem',
-};
-
-const getRepoNameFromUrl = (url: string) => {
-  if (!url) return '';
-  let trimmed = url.trim().replace(/\/+$/, '');
-  let lastSegment = trimmed.split(/[/: ]+/).pop();
-  if (!lastSegment) return '';
-  if (lastSegment.toLowerCase().endsWith('.git')) {
-    lastSegment = lastSegment.slice(0, -4);
-  }
-  return lastSegment;
 };
 
 const getServiceGroupFromUrl = (url: string) => {
@@ -310,7 +308,7 @@ function Repositories() {
       nextHttps = rawVal ? sshToHttps(rawVal) : '';
     }
 
-    const autoName = getRepoNameFromUrl(rawVal);
+    const autoName = extractRepoPath(rawVal);
     const autoServiceGroup = getServiceGroupFromUrl(rawVal);
 
     setFormData(prev => ({
@@ -669,11 +667,11 @@ function Repositories() {
                   )}
                 </div>
                 <input
+                  readOnly
                   type="text"
-                  placeholder="git@host:group/project.git"
+                  placeholder="自动从 Git 地址解析生成"
                   value={formData.url}
-                  onChange={e => setFormData({ ...formData, url: e.target.value })}
-                  style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '0.8rem', padding: '0.45rem 0.65rem', background: 'var(--bg-color)' }}
+                  style={{ ...readOnlyInputStyle, fontFamily: 'monospace', fontSize: '0.8rem', padding: '0.45rem 0.65rem' }}
                 />
               </div>
 
@@ -682,7 +680,7 @@ function Repositories() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <span style={{ background: '#10b981', color: '#fff', fontSize: '0.65rem', padding: '0.05rem 0.35rem', borderRadius: '3px', fontWeight: 700 }}>HTTPS</span>
-                    HTTPS 访问/克隆地址 (用于网页直达与 Webhook)
+                    HTTPS 访问/克隆地址 (只读，自动解析)
                   </span>
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
                     {formData.http_url && (
@@ -718,25 +716,25 @@ function Repositories() {
                   </div>
                 </div>
                 <input
+                  readOnly
                   type="text"
-                  placeholder="https://host/group/project.git"
+                  placeholder="自动从 Git 地址解析生成"
                   value={formData.http_url}
-                  onChange={e => setFormData({ ...formData, http_url: e.target.value })}
-                  style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '0.8rem', padding: '0.45rem 0.65rem', background: 'var(--bg-color)' }}
+                  style={{ ...readOnlyInputStyle, fontFamily: 'monospace', fontSize: '0.8rem', padding: '0.45rem 0.65rem' }}
                 />
               </div>
 
               {/* 项目 ID (Project ID) */}
               <div style={{ marginTop: '0.2rem' }}>
                 <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>
-                  <span>托管平台项目 ID (Project ID) <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(选填，用于 API 对接)</span></span>
+                  <span>托管平台项目 ID (Project ID) <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(只读，由 Git 托管系统自动查询同步)</span></span>
                 </label>
                 <input
+                  readOnly
                   type="text"
-                  placeholder="例如: 10425 (系统通常会在同步或录入时自动推导识别)"
+                  placeholder="由 Git 托管系统自动查询同步"
                   value={formData.project_id}
-                  onChange={e => setFormData({ ...formData, project_id: e.target.value })}
-                  style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.825rem' }}
+                  style={{ ...readOnlyInputStyle, padding: '0.45rem 0.65rem', fontSize: '0.825rem' }}
                 />
               </div>
 
