@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	commonAudit "code-common/backend/audit"
 	"code-bench/database"
 	"code-bench/models"
 
@@ -426,7 +427,10 @@ func CreateRepo(c *gin.Context) {
 	// Reload with associations to get Owner and Department details for sync
 	database.DB.Preload("Department").Preload("Owner").First(&repo, repo.ID)
 
-	// Broadcast sync
+	commonAudit.SetAuditContext(c, "repo", "create", models.AuditLevelP1,
+		fmt.Sprintf("接入了代码仓: %s (%s)", repo.Name, repo.URL),
+		"repository", fmt.Sprintf("%d", repo.ID), repo.Name,
+		nil, repo)
 
 	c.JSON(http.StatusCreated, repo)
 }
@@ -439,12 +443,21 @@ func DeleteRepo(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Delete(&models.Repository{}, id).Error; err != nil {
+	var repo models.Repository
+	if err := database.DB.First(&repo, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&repo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repository"})
 		return
 	}
 
-	// Broadcast delete
+	commonAudit.SetAuditContext(c, "repo", "delete", models.AuditLevelP1,
+		fmt.Sprintf("删除了代码仓: %s", repo.Name),
+		"repository", fmt.Sprintf("%d", repo.ID), repo.Name,
+		repo, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Repository correctly deleted"})
 }
@@ -457,6 +470,8 @@ func UpdateRepo(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
 		return
 	}
+
+	oldRepo := repo
 
 	var input struct {
 		Name           *string   `json:"name"`
@@ -594,7 +609,10 @@ func UpdateRepo(c *gin.Context) {
 	// Reload with associations
 	database.DB.Preload("Department").Preload("Owner").First(&repo, id)
 
-	// Broadcast sync
+	commonAudit.SetAuditContext(c, "repo", "update", models.AuditLevelP1,
+		fmt.Sprintf("修改了代码仓: %s (%s)", repo.Name, repo.URL),
+		"repository", fmt.Sprintf("%d", repo.ID), repo.Name,
+		oldRepo, repo)
 
 	c.JSON(http.StatusOK, repo)
 }

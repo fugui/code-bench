@@ -1,11 +1,12 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen } from 'lucide-react';
+import { Shield, LayoutDashboard, Brain, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen, ScrollText } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
 import DeveloperDocs from './pages/DeveloperDocs';
 import FeedbackCenter from './pages/FeedbackCenter';
+import AuditManagement from './pages/AuditManagement';
 import { ToastProvider } from './components/Toast';
 
 // Set global environment flag for federated sub-applications
@@ -691,7 +692,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
               )}
               {isSuperAdmin && (
-                <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+                <>
+                  <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+                  <NavLink to="/admin/audit" icon={ScrollText} label="操作审计" activePattern={/^\/admin\/audit/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+                </>
               )}
             </div>
           )}
@@ -724,6 +728,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (pathname.startsWith('/feedback')) return '产品改进与建议反馈中心';
               if (pathname.startsWith('/admin/teams')) return '团队与代码仓管理';
               if (pathname.startsWith('/admin/users')) return '用户管理';
+              if (pathname.startsWith('/admin/audit')) return '全局操作审计';
               if (pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
 
               const modulesMap: Array<{ prefix: string; menu: any[]; defaultTitle: string }> = [
@@ -866,6 +871,7 @@ export default function App() {
               <Route path="/feedback/*" element={<FeedbackCenter />} />
               <Route path="/oauth2/callback" element={<OAuthCallback />} />
               <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/admin/audit" element={<AuditManagement />} />
               <Route path="/admin/teams" element={<TeamManagement />} />
               <Route path="/admin/teams/:tab" element={<TeamManagement />} />
               <Route path="/shield/*" element={

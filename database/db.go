@@ -31,6 +31,7 @@ func InitDB() {
 		&models.Feedback{},
 		&models.DocStat{},
 		&models.DocComment{},
+		&models.SysAuditLog{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)

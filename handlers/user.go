@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	commonAudit "code-common/backend/audit"
 	"code-bench/database"
 	"code-bench/models"
 
@@ -174,6 +175,11 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	commonAudit.SetAuditContext(c, "user", "create", models.AuditLevelP1,
+		fmt.Sprintf("创建了用户: %s (%s)", user.Name, user.Email),
+		"user", fmt.Sprintf("%d", user.ID), user.Name,
+		nil, user)
+
 	c.JSON(http.StatusCreated, user)
 }
 
@@ -211,6 +217,8 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
+
+	oldUser := user
 
 	if req.Email != "" {
 		cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
@@ -260,6 +268,11 @@ func UpdateUser(c *gin.Context) {
 
 	database.DB.Preload("Department").First(&user, user.ID)
 
+	commonAudit.SetAuditContext(c, "user", "update", models.AuditLevelP1,
+		fmt.Sprintf("修改了用户信息: %s (%s)", user.Name, user.Email),
+		"user", fmt.Sprintf("%d", user.ID), user.Name,
+		oldUser, user)
+
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
 }
@@ -282,6 +295,8 @@ func UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
+	oldUser := user
+
 	user.IsActive = req.IsActive
 	if err := database.DB.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
@@ -289,6 +304,16 @@ func UpdateUserStatus(c *gin.Context) {
 	}
 
 	database.DB.Preload("Department").First(&user, user.ID)
+
+	actionDesc := "启用"
+	if !user.IsActive {
+		actionDesc = "禁用"
+	}
+
+	commonAudit.SetAuditContext(c, "user", "update_status", models.AuditLevelP1,
+		fmt.Sprintf("%s了用户账号: %s (%s)", actionDesc, user.Name, user.Email),
+		"user", fmt.Sprintf("%d", user.ID), user.Name,
+		oldUser, user)
 
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
@@ -312,6 +337,11 @@ func DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
+
+	commonAudit.SetAuditContext(c, "user", "delete", models.AuditLevelP1,
+		fmt.Sprintf("删除了用户: %s (%s)", user.Name, user.Email),
+		"user", fmt.Sprintf("%d", user.ID), user.Name,
+		user, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }

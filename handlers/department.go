@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	commonAudit "code-common/backend/audit"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -49,6 +50,11 @@ func CreateDepartment(c *gin.Context) {
 		return
 	}
 
+	commonAudit.SetAuditContext(c, "department", "create", models.AuditLevelP1,
+		fmt.Sprintf("创建了部门: %s", dept.Name),
+		"department", fmt.Sprintf("%d", dept.ID), dept.Name,
+		nil, dept)
+
 	c.JSON(http.StatusCreated, dept)
 }
 
@@ -69,6 +75,8 @@ func UpdateDepartment(c *gin.Context) {
 		return
 	}
 
+	oldDept := dept
+
 	if req.Name != "" {
 		dept.Name = req.Name
 	}
@@ -84,6 +92,11 @@ func UpdateDepartment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update department"})
 		return
 	}
+
+	commonAudit.SetAuditContext(c, "department", "update", models.AuditLevelP1,
+		fmt.Sprintf("修改了部门: %s", dept.Name),
+		"department", fmt.Sprintf("%d", dept.ID), dept.Name,
+		oldDept, dept)
 
 	c.JSON(http.StatusOK, dept)
 }
@@ -124,6 +137,11 @@ func DeleteDepartment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除部门失败"})
 		return
 	}
+
+	commonAudit.SetAuditContext(c, "department", "delete", models.AuditLevelP1,
+		fmt.Sprintf("删除了部门: %s", dept.Name),
+		"department", fmt.Sprintf("%d", dept.ID), dept.Name,
+		dept, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "部门已删除"})
 }

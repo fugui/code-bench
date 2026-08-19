@@ -15,6 +15,7 @@ import (
 	"code-bench/database"
 	"code-bench/handlers"
 	"code-bench/models"
+	commonAudit "code-common/backend/audit"
 	commonAuth "code-common/backend/auth"
 	commonServer "code-common/backend/server"
 
@@ -36,6 +37,9 @@ func main() {
 	// 2. Initialize Database
 	database.InitDB()
 
+	// 初始化系统全局操作审计引擎
+	commonAudit.Init(database.DB)
+
 	// 3. 启动统一服务器
 	err := commonServer.Run(commonServer.Options{
 		ServiceName:       "code-bench Portal",
@@ -48,6 +52,7 @@ func main() {
 		MaxHeaderBytes:    models.AppConfig.Server.MaxHeaderBytes,
 		FrontendFS:        &frontendFS,
 		CustomMiddlewares: []gin.HandlerFunc{
+			commonAudit.Middleware("bench"),
 			gin.CustomRecovery(func(c *gin.Context, err any) {
 				if err == http.ErrAbortHandler {
 					c.Abort()
@@ -61,6 +66,9 @@ func main() {
 				log.Printf("[Recovery] panic recovered: %v", err)
 				c.AbortWithStatus(http.StatusInternalServerError)
 			}),
+		},
+		OnShutdown: func(ctx context.Context) {
+			_ = commonAudit.Close(ctx)
 		},
 		RegisterRoutes: func(r *gin.Engine) {
 			// Setup built-in dynamic reverse proxies for sub microservices
@@ -161,6 +169,18 @@ func main() {
 				apiProtected.POST("/feedbacks", handlers.CreateFeedback)
 				apiProtected.POST("/feedbacks/upload", handlers.UploadFeedbackImage)
 				apiProtected.PATCH("/feedbacks/:id", handlers.UpdateFeedback)
+
+				// Global Operation Audit APIs
+				apiProtected.GET("/audit-logs", handlers.GetAuditLogs)
+				apiProtected.GET("/audit-logs/stats", handlers.GetAuditLogStats)
+				apiProtected.GET("/audit-logs/export", handlers.ExportAuditLogs)
+				apiProtected.GET("/audit-logs/:id", handlers.GetAuditLogDetail)
+
+				adminAudit := apiProtected.Group("/audit-logs")
+				adminAudit.Use(commonAuth.RequireAdmin())
+				{
+					adminAudit.DELETE("", handlers.ClearAuditLogs)
+				}
 			}
 
 			// Serve uploaded images statically
