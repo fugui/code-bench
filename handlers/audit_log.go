@@ -185,20 +185,45 @@ func ExportAuditLogs(c *gin.Context) {
 	if service := c.Query("service"); service != "" {
 		query = query.Where("service = ?", service)
 	}
+	if module := c.Query("module"); module != "" {
+		query = query.Where("module = ?", module)
+	}
 	if level := c.Query("level"); level != "" {
 		query = query.Where("level = ?", level)
+	}
+	if action := c.Query("action"); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if status := c.Query("status"); status != "" {
+		if s, err := strconv.Atoi(status); err == nil {
+			query = query.Where("status_code = ?", s)
+		}
+	}
+	if traceID := c.Query("trace_id"); traceID != "" {
+		query = query.Where("trace_id = ?", traceID)
+	}
+	if operator := c.Query("operator"); operator != "" {
+		query = query.Where("username LIKE ?", "%"+operator+"%")
 	}
 	if search := c.Query("search"); search != "" {
 		query = query.Where("summary LIKE ? OR target_name LIKE ? OR target_id LIKE ? OR request_path LIKE ? OR client_ip LIKE ?",
 			"%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 	if startTime := c.Query("start_time"); startTime != "" {
-		if t, err := time.Parse("2006-01-02", startTime); err == nil {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			query = query.Where("created_at >= ?", t)
+		} else if t, err := time.Parse("2006-01-02 15:04:05", startTime); err == nil {
+			query = query.Where("created_at >= ?", t)
+		} else if t, err := time.Parse("2006-01-02", startTime); err == nil {
 			query = query.Where("created_at >= ?", t)
 		}
 	}
 	if endTime := c.Query("end_time"); endTime != "" {
-		if t, err := time.Parse("2006-01-02", endTime); err == nil {
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			query = query.Where("created_at <= ?", t)
+		} else if t, err := time.Parse("2006-01-02 15:04:05", endTime); err == nil {
+			query = query.Where("created_at <= ?", t)
+		} else if t, err := time.Parse("2006-01-02", endTime); err == nil {
 			query = query.Where("created_at <= ?", t.Add(24*time.Hour-time.Nanosecond))
 		}
 	}

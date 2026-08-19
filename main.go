@@ -173,12 +173,12 @@ func main() {
 				// Global Operation Audit APIs
 				apiProtected.GET("/audit-logs", handlers.GetAuditLogs)
 				apiProtected.GET("/audit-logs/stats", handlers.GetAuditLogStats)
-				apiProtected.GET("/audit-logs/export", handlers.ExportAuditLogs)
 				apiProtected.GET("/audit-logs/:id", handlers.GetAuditLogDetail)
 
 				adminAudit := apiProtected.Group("/audit-logs")
 				adminAudit.Use(commonAuth.RequireAdmin())
 				{
+					adminAudit.GET("/export", handlers.ExportAuditLogs)
 					adminAudit.DELETE("", handlers.ClearAuditLogs)
 				}
 			}

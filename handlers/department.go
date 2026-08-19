@@ -279,10 +279,14 @@ func ImportDepartments(c *gin.Context) {
 			}
 			if err := database.DB.Save(&dept).Error; err == nil {
 				successCount++
-
 			}
 		}
 	}
+
+	commonAudit.SetAuditContext(c, "department", "import", models.AuditLevelP1,
+		fmt.Sprintf("批量导入/更新了部门组织架构数据，成功处理 %d 个部门", successCount),
+		"department", fmt.Sprintf("imported_count=%d", successCount), "部门批量导入",
+		nil, map[string]interface{}{"success_count": successCount})
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully imported/updated %d departments", successCount)})
 }

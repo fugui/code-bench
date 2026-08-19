@@ -175,12 +175,27 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	commonAudit.SetAuditContext(c, "user", "create", models.AuditLevelP1,
+	auditLevel := models.AuditLevelP1
+	if isPrivilegedRoles(req.Roles) {
+		auditLevel = models.AuditLevelP0
+	}
+
+	commonAudit.SetAuditContext(c, "user", "create", auditLevel,
 		fmt.Sprintf("创建了用户: %s (%s)", user.Name, user.Email),
 		"user", fmt.Sprintf("%d", user.ID), user.Name,
 		nil, user)
 
 	c.JSON(http.StatusCreated, user)
+}
+
+func isPrivilegedRoles(roles []string) bool {
+	for _, r := range roles {
+		lower := strings.ToLower(strings.TrimSpace(r))
+		if lower == "super_admin" || lower == "bench_admin" || lower == "admin" {
+			return true
+		}
+	}
+	return false
 }
 
 func UpdateUser(c *gin.Context) {
@@ -268,7 +283,21 @@ func UpdateUser(c *gin.Context) {
 
 	database.DB.Preload("Department").First(&user, user.ID)
 
-	commonAudit.SetAuditContext(c, "user", "update", models.AuditLevelP1,
+	// 解析新旧角色以判定是否涉及管理员权限变更
+	var oldRoles, newRoles []string
+	if len(oldUser.Roles) > 0 {
+		_ = json.Unmarshal(oldUser.Roles, &oldRoles)
+	}
+	if len(user.Roles) > 0 {
+		_ = json.Unmarshal(user.Roles, &newRoles)
+	}
+
+	auditLevel := models.AuditLevelP1
+	if isPrivilegedRoles(oldRoles) || isPrivilegedRoles(newRoles) || req.Roles != nil {
+		auditLevel = models.AuditLevelP0
+	}
+
+	commonAudit.SetAuditContext(c, "user", "update", auditLevel,
 		fmt.Sprintf("修改了用户信息: %s (%s)", user.Name, user.Email),
 		"user", fmt.Sprintf("%d", user.ID), user.Name,
 		oldUser, user)
@@ -310,7 +339,8 @@ func UpdateUserStatus(c *gin.Context) {
 		actionDesc = "禁用"
 	}
 
-	commonAudit.SetAuditContext(c, "user", "update_status", models.AuditLevelP1,
+	// 用户状态启停统一设置为 P0 极高危等级
+	commonAudit.SetAuditContext(c, "user", "update_status", models.AuditLevelP0,
 		fmt.Sprintf("%s了用户账号: %s (%s)", actionDesc, user.Name, user.Email),
 		"user", fmt.Sprintf("%d", user.ID), user.Name,
 		oldUser, user)
@@ -510,6 +540,11 @@ func ImportUsers(c *gin.Context) {
 			}
 		}
 	}
+
+	commonAudit.SetAuditContext(c, "user", "import", models.AuditLevelP1,
+		fmt.Sprintf("批量导入/更新了用户数据，成功处理 %d 位用户", successCount),
+		"user", fmt.Sprintf("imported_count=%d", successCount), "用户批量导入",
+		nil, map[string]interface{}{"success_count": successCount})
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully imported/updated %d users", successCount)})
 }

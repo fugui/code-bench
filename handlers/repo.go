@@ -901,5 +901,10 @@ func ImportRepos(c *gin.Context) {
 		}
 	}
 
+	commonAudit.SetAuditContext(c, "repo", "import", models.AuditLevelP1,
+		fmt.Sprintf("批量导入/更新了代码仓元数据，成功处理 %d 个代码仓", successCount),
+		"repo", fmt.Sprintf("imported_count=%d", successCount), "代码仓批量导入",
+		nil, map[string]interface{}{"success_count": successCount})
+
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully imported %d repositories", successCount)})
 }
