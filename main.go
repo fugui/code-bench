@@ -12,10 +12,11 @@ import (
 	"net/url"
 	"strings"
 
-	commonServer "code-common/backend/server"
 	"code-bench/database"
 	"code-bench/handlers"
 	"code-bench/models"
+	commonAuth "code-common/backend/auth"
+	commonServer "code-common/backend/server"
 
 	"github.com/gin-gonic/gin"
 )
@@ -101,7 +102,11 @@ func main() {
 
 			// Protected Core APIs
 			apiProtected := r.Group("/api")
-			apiProtected.Use(handlers.AuthMiddleware())
+			apiProtected.Use(commonAuth.AuthMiddleware(commonAuth.AuthConfig{
+				JWTSecretGetter: func() string { return models.AppConfig.Auth.JWTSecret },
+				DB:              database.DB,
+				PreloadAssocs:   []string{"Department"},
+			}))
 			{
 				apiProtected.GET("/me", handlers.GetMe)
 				apiProtected.PATCH("/password", handlers.UpdatePassword)
@@ -127,7 +132,7 @@ func main() {
 				apiProtected.GET("/users", handlers.GetUsers)
 
 				adminUsers := apiProtected.Group("/users")
-				adminUsers.Use(handlers.SuperAdminMiddleware())
+				adminUsers.Use(commonAuth.RequireAdmin())
 				{
 					adminUsers.POST("", handlers.CreateUser)
 					adminUsers.PUT("/:id", handlers.UpdateUser)
