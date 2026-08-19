@@ -298,7 +298,7 @@ function Repositories() {
     let nextHttps = formData.http_url;
 
     if (protocol === 'ssh') {
-      nextSsh = rawVal;
+      nextSsh = httpsToSsh(rawVal);
       nextHttps = sshToHttps(rawVal);
     } else if (protocol === 'https') {
       nextHttps = rawVal;
@@ -629,7 +629,7 @@ function Repositories() {
               <input
                 required
                 type="text"
-                placeholder="例如: git@code.example.com:group/project.git 或 https://code.example.com/group/project.git"
+                placeholder="例如: ssh://git@code.example.com/group/project.git 或 https://code.example.com/group/project.git"
                 value={formData.url || formData.http_url}
                 onChange={handleMainUrlChange}
                 style={inputStyle}

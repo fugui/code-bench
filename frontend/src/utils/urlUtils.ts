@@ -3,12 +3,26 @@ import { sshToHttps } from '@code/common';
 export { sshToHttps };
 
 /**
- * 将 HTTPS 或 HTTP URL 转换为标准 SSH 克隆地址 (git@host:group/project.git)
+ * 将 HTTPS 或 HTTP URL (或 SCP 格式) 转换为标准 SSH URI 克隆地址 (ssh://git@host/group/project.git)
  */
 export function httpsToSsh(url: string): string {
   if (!url) return '';
   const trimmed = url.trim();
-  if (trimmed.startsWith('git@') || trimmed.startsWith('ssh://')) {
+  if (trimmed.startsWith('ssh://')) {
+    return trimmed;
+  }
+
+  // 若输入为 SCP 格式 git@host:path/repo.git，统一转为标准 URI 风格 ssh://git@host/path/repo.git
+  if (trimmed.startsWith('git@')) {
+    const scpMatch = trimmed.match(/^git@([^:]+):(?:\d+\/)?(.+)$/);
+    if (scpMatch) {
+      const host = scpMatch[1];
+      let repoPath = scpMatch[2].replace(/\/+$/, '');
+      if (!repoPath.toLowerCase().endsWith('.git')) {
+        repoPath = `${repoPath}.git`;
+      }
+      return `ssh://git@${host}/${repoPath}`;
+    }
     return trimmed;
   }
 
@@ -22,11 +36,12 @@ export function httpsToSsh(url: string): string {
     repoPath = `${repoPath}.git`;
   }
 
-  return `git@${host}:${repoPath}`;
+  return `ssh://git@${host}/${repoPath}`;
 }
 
 /**
  * 提取仓库的完整路径（去除 host、前导 / 和末尾的 .git）
+ * 例如: ssh://git@host/group/subgroup/project.git -> group/subgroup/project
  * 例如: git@host:group/subgroup/project.git -> group/subgroup/project
  * 例如: https://host/group/project.git -> group/project
  */
