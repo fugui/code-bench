@@ -87,6 +87,8 @@ func main() {
 				}
 				p := prefix
 				forwardHandler := func(c *gin.Context) {
+					// 反向代理微服务请求，由目标微服务自身审计中间件负责记录，bench 网关层跳过
+					commonAudit.Skip(c)
 					if models.AppConfig.Server.GinLog {
 						log.Printf("[Proxy] Forwarding request %s %s to %s", c.Request.Method, c.Request.URL.Path, p)
 					}

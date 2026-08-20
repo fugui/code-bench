@@ -16,9 +16,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	commonAudit "code-common/backend/audit"
 	"code-bench/database"
 	"code-bench/models"
+	commonAudit "code-common/backend/audit"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/encoding/simplifiedchinese"
