@@ -1,10 +1,14 @@
 package handlers
 
 import (
-	commonAuth "code-common/backend/auth"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	commonAudit "code-common/backend/audit"
+	commonAuth "code-common/backend/auth"
+	commonModels "code-common/backend/models"
 
 	"code-bench/database"
 	"code-bench/models"
@@ -65,17 +69,26 @@ func Login(c *gin.Context) {
 
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
-	if err := database.DB.Where("LOWER(email) = LOWER(?)", cleanEmail).First(&user).Error; err != nil {
+	if err := database.DB.Preload("Department").Where("LOWER(email) = LOWER(?)", cleanEmail).First(&user).Error; err != nil {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 用户不存在", cleanEmail),
+			"user", "", cleanEmail, nil, nil)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
 	if !user.IsActive {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 账号已被禁用", cleanEmail),
+			"user", fmt.Sprintf("%d", user.ID), user.Name, nil, nil)
 		c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 密码错误", cleanEmail),
+			"user", fmt.Sprintf("%d", user.ID), user.Name, nil, nil)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
@@ -94,6 +107,31 @@ func Login(c *gin.Context) {
 	})
 	user.LastLogin = &now
 	user.LastIP = clientIP
+
+	// 注入标准化用户上下文及审计上下文
+	deptName := ""
+	if user.Department != nil {
+		deptName = user.Department.Name
+	}
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+
+	commonAuth.SetUserContext(c, &commonAuth.UserContext{
+		UserID:         user.ID,
+		Username:       user.Email,
+		Name:           user.Name,
+		Email:          user.Email,
+		EmployeeID:     user.EmployeeID,
+		Roles:          user.GetRoles(),
+		DepartmentID:   user.DepartmentID,
+		DepartmentName: deptName,
+	})
+
+	commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+		fmt.Sprintf("用户 [%s] 登录系统成功 (IP: %s)", displayName, clientIP),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
@@ -147,6 +185,14 @@ func UpdatePassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
 	}
+
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+	commonAudit.SetAuditContext(c, "auth", "update_password", commonModels.AuditLevelP1,
+		fmt.Sprintf("用户 [%s] 修改个人密码成功", displayName),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }

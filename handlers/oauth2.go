@@ -11,6 +11,10 @@ import (
 	"strings"
 	"time"
 
+	commonAudit "code-common/backend/audit"
+	commonAuth "code-common/backend/auth"
+	commonModels "code-common/backend/models"
+
 	"code-bench/database"
 	"code-bench/models"
 
@@ -274,6 +278,31 @@ func OAuth2Callback(c *gin.Context) {
 	})
 	user.LastLogin = &now
 	user.LastIP = clientIP
+
+	// 注入标准化用户上下文及审计上下文
+	deptName := ""
+	if user.Department != nil {
+		deptName = user.Department.Name
+	}
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+
+	commonAuth.SetUserContext(c, &commonAuth.UserContext{
+		UserID:         user.ID,
+		Username:       user.Email,
+		Name:           user.Name,
+		Email:          user.Email,
+		EmployeeID:     user.EmployeeID,
+		Roles:          user.GetRoles(),
+		DepartmentID:   user.DepartmentID,
+		DepartmentName: deptName,
+	})
+
+	commonAudit.SetAuditContext(c, "auth", "sso_login", commonModels.AuditLevelP2,
+		fmt.Sprintf("用户 [%s] SSO单点登录系统成功 (IP: %s)", displayName, clientIP),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	// Generate local JWT token
 	tokenString, err := GenerateToken(user)
