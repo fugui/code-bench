@@ -649,8 +649,11 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
                       {group.items.map((item: any) => {
-                        const fullPath = `/pdm${item.path}`;
-                        const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
+                        const fullPath = `/pdm${item.path === '/' ? '' : item.path}`;
+                        const isDefault = item.path === '/device-type';
+                        const isActive = isDefault
+                          ? (location.pathname === '/pdm' || location.pathname === '/pdm/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                          : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
                         return (
                           <Link
                             key={item.path}
@@ -667,8 +670,11 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 ))
               ) : (
                 pdmMenu.map((item: any) => {
-                  const fullPath = `/pdm${item.path}`;
-                  const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
+                  const fullPath = `/pdm${item.path === '/' ? '' : item.path}`;
+                  const isDefault = item.path === '/device-type';
+                  const isActive = isDefault
+                    ? (location.pathname === '/pdm' || location.pathname === '/pdm/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                    : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
                   return (
                     <Link
                       key={item.path}
@@ -745,6 +751,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   });
                   if (matchedItem) {
                     return matchedItem.headerTitle || matchedItem.label;
+                  }
+                  if (mod.prefix === '/pdm' && (pathname === '/pdm' || pathname === '/pdm/')) {
+                    const defaultItem = mod.menu.find((item: any) => item.path === '/device-type');
+                    if (defaultItem) return defaultItem.headerTitle || defaultItem.label;
                   }
                   return mod.defaultTitle;
                 }
