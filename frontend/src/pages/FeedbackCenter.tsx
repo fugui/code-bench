@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Pagination, usePagination } from '@code/common';
+import { Pagination, usePagination, Modal } from '@code/common';
 import { useToast } from '../components/Toast';
 import {
   MessageSquare, Plus, Search, Filter, Upload, Image as ImageIcon,
@@ -1030,37 +1030,24 @@ export default function FeedbackCenter() {
         </div>
       )}
 
-      {/* 图片 Lightbox 浮层 */}
-      {lightboxImage && (
-        <div
-          onClick={() => setLightboxImage(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 2000,
-            background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '2rem'
-          }}
-        >
-          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+      {/* 图片 Lightbox 模态框 */}
+      <Modal
+        open={!!lightboxImage}
+        onClose={() => setLightboxImage(null)}
+        title="截图大图预览"
+        width="lg"
+        footer={null}
+      >
+        {lightboxImage && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0.5rem' }}>
             <img
               src={lightboxImage}
               alt="enlarged_screenshot"
-              style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
+              style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: '8px', objectFit: 'contain' }}
             />
-            <button
-              onClick={() => setLightboxImage(null)}
-              style={{
-                position: 'absolute', top: '-16px', right: '-16px', width: '36px', height: '36px',
-                borderRadius: '50%', background: 'white', color: 'black', border: 'none',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-              }}
-            >
-              <X size={20} />
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
     </div>
   );

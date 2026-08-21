@@ -4,6 +4,7 @@ import {
   AuditStatsCard,
   AuditLogTable,
   AuditDiffDrawer,
+  Modal,
   useToast,
   useConfirm,
 } from '@code/common';
@@ -193,100 +194,78 @@ export default function AuditManagement() {
         auditLog={selectedLog}
       />
 
-      {/* 日志清理确认模态框 */}
-      {cleanModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border-color, #e2e8f0)',
-              borderRadius: '12px',
-              padding: '1.75rem',
-              width: '420px',
-              maxWidth: '90vw',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-            }}
-          >
-            <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-color)' }}>
-              清理历史审计日志
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-              清理将永久物理删除指定天数之前的操作审计日志。该项维护操作本身将作为一条 <strong>P0 级极高危自审计记录</strong> 写入日志库。
-            </p>
+      {/* 日志清理确认模态框 Modal */}
+      <Modal
+        open={cleanModalOpen}
+        onClose={() => setCleanModalOpen(false)}
+        title="清理历史审计日志"
+        width="sm"
+        footer={(
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setCleanModalOpen(false)}
+              disabled={cleaning}
+              style={{
+                padding: '0.55rem 1.1rem',
+                border: '1px solid var(--border-color, #cbd5e1)',
+                borderRadius: '6px',
+                background: 'transparent',
+                color: 'var(--text-color)',
+                cursor: 'pointer',
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={handleExecuteClean}
+              disabled={cleaning}
+              style={{
+                padding: '0.55rem 1.1rem',
+                border: 'none',
+                borderRadius: '6px',
+                background: '#ef4444',
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: cleaning ? 'not-allowed' : 'pointer',
+                opacity: cleaning ? 0.7 : 1,
+              }}
+            >
+              {cleaning ? '正在清理...' : '确认执行清理'}
+            </button>
+          </div>
+        )}
+      >
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 1.25rem 0' }}>
+          清理将永久物理删除指定天数之前的操作审计日志。该项维护操作本身将作为一条 <strong>P0 级极高危自审计记录</strong> 写入日志库。
+        </p>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-color)', marginBottom: '0.5rem' }}>
-                保留最近天数：
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input
-                  type="number"
-                  min="1"
-                  max="3650"
-                  value={cleanDays}
-                  onChange={(e) => setCleanDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={{
-                    flex: 1,
-                    padding: '0.6rem 0.8rem',
-                    border: '1px solid var(--border-color, #cbd5e1)',
-                    borderRadius: '6px',
-                    background: 'var(--bg-color, #f8fafc)',
-                    color: 'var(--text-color)',
-                    fontSize: '0.9rem',
-                  }}
-                />
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>天以前的日志将被删除</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button
-                type="button"
-                onClick={() => setCleanModalOpen(false)}
-                disabled={cleaning}
-                style={{
-                  padding: '0.55rem 1.1rem',
-                  border: '1px solid var(--border-color, #cbd5e1)',
-                  borderRadius: '6px',
-                  background: 'transparent',
-                  color: 'var(--text-color)',
-                  cursor: 'pointer',
-                }}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteClean}
-                disabled={cleaning}
-                style={{
-                  padding: '0.55rem 1.1rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  cursor: cleaning ? 'not-allowed' : 'pointer',
-                  opacity: cleaning ? 0.7 : 1,
-                }}
-              >
-                {cleaning ? '正在清理...' : '确认执行清理'}
-              </button>
-            </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-color)', marginBottom: '0.5rem' }}>
+            保留最近天数：
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="number"
+              min="1"
+              max="3650"
+              value={cleanDays}
+              onChange={(e) => setCleanDays(Math.max(1, parseInt(e.target.value) || 1))}
+              style={{
+                flex: 1,
+                padding: '0.6rem 0.8rem',
+                border: '1px solid var(--border-color, #cbd5e1)',
+                borderRadius: '6px',
+                background: 'var(--bg-color, #f8fafc)',
+                color: 'var(--text-color)',
+                fontSize: '0.9rem',
+              }}
+            />
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>天以前的日志将被删除</span>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
