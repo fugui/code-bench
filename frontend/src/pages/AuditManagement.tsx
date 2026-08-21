@@ -197,7 +197,9 @@ export default function AuditManagement() {
       {/* 日志清理确认模态框 Modal */}
       <Modal
         open={cleanModalOpen}
-        onClose={() => setCleanModalOpen(false)}
+        onClose={() => !cleaning && setCleanModalOpen(false)}
+        maskClosable={!cleaning}
+        keyboard={!cleaning}
         title="清理历史审计日志"
         width="sm"
         footer={(
