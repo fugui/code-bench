@@ -5,9 +5,18 @@ import {
   MessageSquare, Plus, Search, Filter, Upload, Image as ImageIcon,
   X, CheckCircle2, Clock, AlertCircle, XCircle, Sparkles,
   ChevronDown, ChevronUp, RefreshCw, Send, Zap, Bug,
-  Lightbulb, Palette, Layers, Trash2, Maximize2, ShieldCheck, Tag, Flag
+  Lightbulb, Palette, Layers, Trash2, Maximize2, ShieldCheck, Tag, Flag,
+  Copy, Check, Code, Info
 } from 'lucide-react';
 import { AUTH_TOKEN_KEY } from '../config';
+
+export interface VersionMeta {
+  appName: string;
+  version: string;
+  gitHash: string;
+  buildTime: string;
+  timestamp?: number;
+}
 
 export interface FeedbackUser {
   id: number;
@@ -113,7 +122,71 @@ export default function FeedbackCenter() {
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
+  // Version Metadata States
+  const [portalVersion, setPortalVersion] = useState<VersionMeta | null>(null);
+  const [subModuleVersions, setSubModuleVersions] = useState<Record<string, VersionMeta | null>>({});
+  const [showAllModules, setShowAllModules] = useState(false);
+  const [copiedVersion, setCopiedVersion] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 获取门户自身版本
+  useEffect(() => {
+    fetch(`/version.json?_t=${Date.now()}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setPortalVersion(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // 当展开微服务矩阵时拉取各微服务版本
+  const fetchSubModuleVersions = useCallback(async () => {
+    const endpoints: Record<string, string> = {
+      'Code Shield': '/shield/version.json',
+      'Code Pipeline': '/pipeline/version.json',
+      'Code PDM': '/pdm/version.json',
+    };
+    const results: Record<string, VersionMeta | null> = {};
+    await Promise.all(
+      Object.entries(endpoints).map(async ([name, url]) => {
+        try {
+          const res = await fetch(`${url}?_t=${Date.now()}`);
+          if (res.ok) {
+            results[name] = await res.json();
+          } else {
+            results[name] = null;
+          }
+        } catch {
+          results[name] = null;
+        }
+      })
+    );
+    setSubModuleVersions(results);
+  }, []);
+
+  const toggleShowAllModules = () => {
+    if (!showAllModules && Object.keys(subModuleVersions).length === 0) {
+      void fetchSubModuleVersions();
+    }
+    setShowAllModules(prev => !prev);
+  };
+
+  const handleCopyVersion = () => {
+    let text = `【Code Bench 现网环境信息】\n- 综合门户 (Portal): v${portalVersion?.version || '0.2.0'} (Commit: ${portalVersion?.gitHash || 'unknown'}, 构建时间: ${portalVersion?.buildTime || '—'})`;
+    if (Object.keys(subModuleVersions).length > 0) {
+      Object.entries(subModuleVersions).forEach(([name, meta]) => {
+        if (meta) {
+          text += `\n- ${name}: v${meta.version} (Commit: ${meta.gitHash}, 构建时间: ${meta.buildTime})`;
+        }
+      });
+    }
+    text += `\n- 客户端 UA: ${navigator.userAgent}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedVersion(true);
+      setTimeout(() => setCopiedVersion(false), 2000);
+    }).catch(() => {});
+  };
 
   // Tab 切换处理逻辑：当进入管理员处理面板时，默认筛选状态为“待处理” (pending)
   const handleTabChange = (tab: 'submit' | 'history' | 'admin') => {
@@ -294,6 +367,11 @@ export default function FeedbackCenter() {
 
     const imageUrls = attachedImages.filter(img => !img.uploading).map(img => img.url);
 
+    let submitContent = content.trim();
+    if (portalVersion) {
+      submitContent += `\n\n---\n> 📌 **提报环境元数据**：Code Bench v${portalVersion.version} (${portalVersion.gitHash}) · 构建于 ${portalVersion.buildTime}`;
+    }
+
     try {
       const res = await fetch('/api/feedbacks', {
         method: 'POST',
@@ -306,7 +384,7 @@ export default function FeedbackCenter() {
           module,
           priority,
           title: title.trim(),
-          content: content.trim(),
+          content: submitContent,
           images: imageUrls
         })
       });
@@ -717,7 +795,12 @@ export default function FeedbackCenter() {
           </div>
 
           {/* 提交按钮栏 */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.775rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+              <Info size={14} />
+              <span>当前运行版本: v{portalVersion?.version || '0.2.0'} ({portalVersion?.gitHash || '未知'} · {portalVersion?.buildTime || '—'})</span>
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -1029,6 +1112,105 @@ export default function FeedbackCenter() {
           )}
         </div>
       )}
+
+      {/* 页面底部极简微注 (Subtle Footer) */}
+      <footer style={{
+        marginTop: '2.5rem',
+        paddingTop: '1.25rem',
+        borderTop: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.75rem',
+        color: 'var(--text-secondary)',
+        fontSize: '0.75rem',
+        opacity: 0.8
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'center' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Code size={13} style={{ opacity: 0.8 }} />
+            <span>Code Bench v{portalVersion?.version || '0.2.0'} ({portalVersion?.gitHash || '未知'})</span>
+          </span>
+          <span>•</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Clock size={13} style={{ opacity: 0.8 }} />
+            <span>构建时间: {portalVersion?.buildTime || '—'}</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyVersion}
+            title="复制当前环境版本与构建信息"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid var(--border-color)',
+              color: 'inherit',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '0.725rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            {copiedVersion ? <Check size={12} style={{ color: '#10b981' }} /> : <Copy size={12} />}
+            <span>{copiedVersion ? '已复制' : '复制环境信息'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={toggleShowAllModules}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--primary-color)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '0.725rem',
+              fontWeight: 600
+            }}
+          >
+            <span>{showAllModules ? '收起微服务矩阵' : '查看各微服务构建版本'}</span>
+            {showAllModules ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+
+        {showAllModules && (
+          <div style={{
+            marginTop: '0.25rem',
+            padding: '0.875rem 1.25rem',
+            borderRadius: '10px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '1.5rem',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-color)' }}>综合门户 (Portal)</span>
+              <span style={{ color: 'var(--text-secondary)' }}>Commit: {portalVersion?.gitHash || '未知'}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>构建: {portalVersion?.buildTime || '—'}</span>
+            </div>
+            {['Code Shield', 'Code Pipeline', 'Code PDM'].map(name => {
+              const meta = subModuleVersions[name];
+              return (
+                <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-color)' }}>{name}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Commit: {meta?.gitHash || '未知 / 未单独构建'}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>构建: {meta?.buildTime || '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </footer>
 
       {/* 图片 Lightbox 模态框 */}
       <Modal
