@@ -280,22 +280,33 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   };
   React.useEffect(() => {
     // Dynamically load remote menu metadata from code-shield micro-frontend
+    const updateShieldMenu = (config: any) => {
+      if (config && Array.isArray(config.groups)) {
+        setShieldMenuGroups(config.groups);
+        setShieldMenu(config.groups.flatMap((g: any) => g.items));
+      } else if (config && Array.isArray(config)) {
+        setShieldMenu(config);
+      }
+    };
+
     // @ts-ignore
     import('shield/menu')
-      .then(mod => {
+      .then(async mod => {
         if (mod) {
           const config = mod.shieldMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
-          if (config && Array.isArray(config.groups)) {
-            setShieldMenuGroups(config.groups);
-            setShieldMenu(config.groups.flatMap((g: any) => g.items));
-          } else {
-            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-              setShieldMenuGroups(mod.menuGroups);
+          if (config) {
+            updateShieldMenu(config);
+          }
+          if (typeof mod.fetchShieldMenuConfig === 'function') {
+            try {
+              const dynamicConfig = await mod.fetchShieldMenuConfig();
+              updateShieldMenu(dynamicConfig);
+            } catch (e) {
+              console.warn("Failed to fetch dynamic shield menu:", e);
             }
-            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-            if (items && Array.isArray(items)) {
-              setShieldMenu(items);
-            }
+          }
+          if (typeof mod.subscribeMenuChanges === 'function') {
+            mod.subscribeMenuChanges(updateShieldMenu);
           }
         }
       })
@@ -311,6 +322,16 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           { path: '/admin/activity', label: '执行日志', adminOnly: true }
         ]);
       });
+
+    const handleShieldChanged = () => {
+      // @ts-ignore
+      import('shield/menu').then(mod => {
+        if (mod && typeof mod.fetchShieldMenuConfig === 'function') {
+          mod.fetchShieldMenuConfig().then(updateShieldMenu).catch(() => {});
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('shield-task-types-changed', handleShieldChanged);
 
     // Dynamically load remote menu metadata from code-pipeline micro-frontend
     // @ts-ignore
@@ -367,6 +388,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           { path: '/device', label: '设备ID管理' }
         ]);
       });
+
+    return () => {
+      window.removeEventListener('shield-task-types-changed', handleShieldChanged);
+    };
   }, []);
 
   const isPublicRoute = location.pathname.startsWith('/shield/public/');
