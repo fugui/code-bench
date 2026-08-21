@@ -1,6 +1,9 @@
 server:
   port: ":8000"
   gin_log: true
+  read_timeout: 120s                    # 读取 HTTP 请求超时时间，默认 120s
+  write_timeout: 120s                   # 写入响应超时时间，默认 120s
+  idle_timeout: 180s                    # keep-alive 空闲连接超时时间，默认 180s
   external_url: "http://127.0.0.1:8000" # 生产环境部署时必须配置为外部可访问的基准域名（如 http://code.cndev.net，含协议，末尾无斜杠）
 
 # ── 数据库配置 (PostgreSQL) ──
