@@ -130,11 +130,11 @@ func GetAuditLogStats(c *gin.Context) {
 	database.DB.Model(&models.SysAuditLog{}).Where("level = ?", models.AuditLevelP2).Count(&p2Count)
 
 	c.JSON(http.StatusOK, gin.H{
-		"total_count": totalCount,
-		"today_count": todayCount,
-		"p0_count":    p0Count,
-		"p1_count":    p1Count,
-		"p2_count":    p2Count,
+		"total_logs": totalCount,
+		"today_logs": todayCount,
+		"p0_count":   p0Count,
+		"p1_count":   p1Count,
+		"p2_count":   p2Count,
 	})
 }
 
