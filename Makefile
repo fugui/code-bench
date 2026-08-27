@@ -1,36 +1,59 @@
-.PHONY: all install build dev clean lint preview
+BINARY          := code-bench-portal
+FRONTEND_DIR    := frontend
+DIST_DIR        := $(FRONTEND_DIR)/dist
+NODE_MODULES    := $(FRONTEND_DIR)/node_modules
+
+# 自动收集前端与后端源码依赖
+FRONTEND_SRCS   := $(shell find $(FRONTEND_DIR) -type f -not -path "*/node_modules/*" -not -path "*/dist/*" 2>/dev/null)
+BACKEND_SRCS    := $(shell find . -type f \( -name "*.go" -o -name "go.mod" -o -name "go.sum" \) -not -path "*/$(FRONTEND_DIR)/*" -not -path "*/.git/*")
+
+.PHONY: all build install frontend backend dev clean lint preview
 
 # 默认运行目标
 all: build
 
-# 安装依赖 (node_modules)
-install:
-	@echo "Installing Portal dependencies..."
-	cd frontend && ( [ -d node_modules ] || npm install )
+# 完整打包构建
+build: $(BINARY)
 
-# 编译构建静态资产 (dist/) 与后端可执行文件
-build: install
+# 依赖安装 (node_modules)
+install: $(NODE_MODULES)
+
+$(NODE_MODULES): $(FRONTEND_DIR)/package.json
+	@echo "Installing Portal dependencies..."
+	cd $(FRONTEND_DIR) && ( [ -d node_modules ] || npm install )
+	@touch $(NODE_MODULES)
+
+# 编译构建前端静态资产 (dist/)
+frontend: $(DIST_DIR)
+
+$(DIST_DIR): $(NODE_MODULES) $(FRONTEND_SRCS)
 	@echo "Building code-bench Portal..."
-	cd frontend && npm run build
+	cd $(FRONTEND_DIR) && npm run build
+	@touch $(DIST_DIR)
+
+# 编译后端可执行文件
+backend: $(BINARY)
+
+$(BINARY): $(BACKEND_SRCS) $(DIST_DIR)
 	@echo "Building code-bench Go backend..."
-	go build -o code-bench-portal
+	go build -o $(BINARY)
 
 # 启动本地开发调试服务器
-dev: install
+dev: $(NODE_MODULES)
 	@echo "Starting dev server..."
-	cd frontend && npm run dev
+	cd $(FRONTEND_DIR) && npm run dev
 
 # 执行代码风格与语法检查
-lint: install
+lint: $(NODE_MODULES)
 	@echo "Running linter..."
-	cd frontend && npm run lint
+	cd $(FRONTEND_DIR) && npm run lint
 
 # 启动本地生产预览
-preview: build
+preview: $(DIST_DIR)
 	@echo "Starting production preview..."
-	cd frontend && npm run preview
+	cd $(FRONTEND_DIR) && npm run preview
 
 # 清理构建产物
 clean:
-	@echo "Cleaning dist directory..."
-	rm -rf frontend/dist
+	@echo "Cleaning build artifacts..."
+	rm -rf $(DIST_DIR) $(BINARY)
