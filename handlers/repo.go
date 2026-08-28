@@ -346,6 +346,110 @@ func GetRepos(c *gin.Context) {
 	})
 }
 
+// findExistingRepo 检查系统是否已存在相同托管平台项目 (ProjectID)、相同 URL 或相同名称的代码仓
+// 优先以托管平台信息（ProjectID）与代码仓 URL（及标准化路径）为准，次之检查代码仓名称
+func findExistingRepo(name, repoURL, httpURL, projectID string, excludeID uint) (*models.Repository, string) {
+	name = strings.TrimSpace(name)
+	repoURL = strings.TrimSpace(repoURL)
+	httpURL = strings.TrimSpace(httpURL)
+	projectID = strings.TrimSpace(projectID)
+
+	// 1. 优先按托管平台 ProjectID 检查（若存在且非空）
+	if projectID != "" && projectID != "0" {
+		var existing models.Repository
+		query := database.DB.Where("project_id = ? AND project_id != ''", projectID)
+		if excludeID > 0 {
+			query = query.Where("id != ?", excludeID)
+		}
+		if err := query.First(&existing).Error; err == nil {
+			return &existing, fmt.Sprintf("托管平台项目 (ProjectID: %s) 已存在于代码仓 '%s' 中，请勿重复添加", projectID, existing.Name)
+		}
+	}
+
+	// 2. 按仓库 URL 与规范化变体检查
+	var candidateURLs []string
+	addCandidate := func(u string) {
+		u = strings.TrimSpace(u)
+		if u == "" {
+			return
+		}
+		candidateURLs = append(candidateURLs, u)
+		if strings.HasSuffix(u, ".git") {
+			candidateURLs = append(candidateURLs, strings.TrimSuffix(u, ".git"))
+		} else {
+			candidateURLs = append(candidateURLs, u+".git")
+		}
+		httpsU := formatURLToHTTPS(u)
+		if httpsU != "" {
+			candidateURLs = append(candidateURLs, httpsU)
+			if strings.HasSuffix(httpsU, ".git") {
+				candidateURLs = append(candidateURLs, strings.TrimSuffix(httpsU, ".git"))
+			} else {
+				candidateURLs = append(candidateURLs, httpsU+".git")
+			}
+		}
+	}
+
+	addCandidate(repoURL)
+	addCandidate(httpURL)
+
+	uniqueCandidates := make([]string, 0, len(candidateURLs))
+	candidateMap := make(map[string]bool)
+	for _, u := range candidateURLs {
+		if !candidateMap[u] {
+			candidateMap[u] = true
+			uniqueCandidates = append(uniqueCandidates, u)
+		}
+	}
+
+	if len(uniqueCandidates) > 0 {
+		var existing models.Repository
+		query := database.DB.Where("url IN (?) OR http_url IN (?)", uniqueCandidates, uniqueCandidates)
+		if excludeID > 0 {
+			query = query.Where("id != ?", excludeID)
+		}
+		if err := query.First(&existing).Error; err == nil {
+			return &existing, fmt.Sprintf("代码仓地址已存在于已有仓库 '%s' (URL: %s) 中，请勿重复添加", existing.Name, existing.URL)
+		}
+	}
+
+	// 3. 基于标准化仓库路径对比（避免端口号或协议差异未命中）
+	targetPath := extractRepoPath(repoURL)
+	if targetPath == "" && httpURL != "" {
+		targetPath = extractRepoPath(httpURL)
+	}
+	if targetPath != "" {
+		var repos []models.Repository
+		query := database.DB.Select("id, name, url, http_url, project_id")
+		if excludeID > 0 {
+			query = query.Where("id != ?", excludeID)
+		}
+		query.Find(&repos)
+		for _, r := range repos {
+			if r.URL != "" && extractRepoPath(r.URL) == targetPath {
+				return &r, fmt.Sprintf("代码仓路径 '%s' 已存在于已有仓库 '%s' 中，请勿重复添加", targetPath, r.Name)
+			}
+			if r.HTTPURL != "" && extractRepoPath(r.HTTPURL) == targetPath {
+				return &r, fmt.Sprintf("代码仓路径 '%s' 已存在于已有仓库 '%s' 中，请勿重复添加", targetPath, r.Name)
+			}
+		}
+	}
+
+	// 4. 检查代码仓名称 (Name) 是否重复（数据库唯一索引约束）
+	if name != "" {
+		var existing models.Repository
+		query := database.DB.Where("LOWER(name) = LOWER(?)", name)
+		if excludeID > 0 {
+			query = query.Where("id != ?", excludeID)
+		}
+		if err := query.First(&existing).Error; err == nil {
+			return &existing, fmt.Sprintf("代码仓名称 '%s' 已存在，请勿重复添加", name)
+		}
+	}
+
+	return nil, ""
+}
+
 func CreateRepo(c *gin.Context) {
 	var repo models.Repository
 	if err := c.ShouldBindJSON(&repo); err != nil {
@@ -406,10 +510,9 @@ func CreateRepo(c *gin.Context) {
 		repo.HTTPURL = formatURLToHTTPS(repo.URL)
 	}
 
-	// 提前检查 name 唯一性，避免数据库约束错误直接透出
-	var existing models.Repository
-	if err := database.DB.Where("name = ?", repo.Name).First(&existing).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("仓库名称 '%s' 已存在，请勿重复添加", repo.Name)})
+	// 全面防重校验（优先托管平台 ProjectID 与 URL，次之 Name）
+	if existing, reason := findExistingRepo(repo.Name, repo.URL, repo.HTTPURL, repo.ProjectID, 0); existing != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": reason})
 		return
 	}
 
@@ -601,6 +704,29 @@ func UpdateRepo(c *gin.Context) {
 		return
 	}
 
+	// 防重校验：排除当前仓库自身
+	targetName := repo.Name
+	if val, ok := updates["name"].(string); ok && val != "" {
+		targetName = val
+	}
+	targetURL := repo.URL
+	if val, ok := updates["url"].(string); ok && val != "" {
+		targetURL = val
+	}
+	targetHTTPURL := repo.HTTPURL
+	if val, ok := updates["http_url"].(string); ok && val != "" {
+		targetHTTPURL = val
+	}
+	targetProjectID := repo.ProjectID
+	if val, ok := updates["project_id"].(string); ok && val != "" {
+		targetProjectID = val
+	}
+
+	if existing, reason := findExistingRepo(targetName, targetURL, targetHTTPURL, targetProjectID, repo.ID); existing != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": reason})
+		return
+	}
+
 	if err := database.DB.Model(&repo).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update repository"})
 		return
@@ -765,6 +891,7 @@ func ImportRepos(c *gin.Context) {
 	}
 
 	successCount := 0
+	duplicateCount := 0
 	for lineNum, record := range records {
 		if len(record) == 0 {
 			continue
@@ -848,63 +975,54 @@ func ImportRepos(c *gin.Context) {
 			continue
 		}
 
-		var repo models.Repository
-		if err := database.DB.Where("name = ?", repoName).First(&repo).Error; err != nil {
-			repo = models.Repository{
-				DepartmentID: dept.ID,
-				Name:         repoName,
-				URL:          repoURL,
-				Branch:       branch,
-				ServiceGroup: resolvedSubsystem,
-				IsActive:     true,
-			}
-			repo.OwnerID = user.ID
-			if projectID != "" {
-				repo.ProjectID = projectID
-			}
-			if remoteSSHURL != "" {
-				repo.URL = remoteSSHURL
-			}
-			if httpURL != "" {
-				repo.HTTPURL = httpURL
-			}
-			if err := database.DB.Create(&repo).Error; err == nil {
-				successCount++
-				archElem.RepoID = &repo.ID
-				database.DB.Save(archElem)
-			} else {
-				log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
-			}
+		canonicalURL := repoURL
+		if remoteSSHURL != "" {
+			canonicalURL = remoteSSHURL
+		}
+		if httpURL == "" {
+			httpURL = formatURLToHTTPS(canonicalURL)
+		}
+
+		// 检查代码仓是否已存在（优先托管平台 ProjectID、仓库 URL 及名称）
+		if existing, reason := findExistingRepo(repoName, canonicalURL, httpURL, projectID, 0); existing != nil {
+			log.Printf("Line %d: Repository %s (%s) already exists (%s). Skipping duplicate addition.", lineNum+2, repoName, canonicalURL, reason)
+			duplicateCount++
+			continue
+		}
+
+		repo := models.Repository{
+			DepartmentID: dept.ID,
+			Name:         repoName,
+			URL:          canonicalURL,
+			HTTPURL:      httpURL,
+			ProjectID:    projectID,
+			OwnerID:      user.ID,
+			Branch:       branch,
+			ServiceGroup: resolvedSubsystem,
+			IsActive:     true,
+		}
+		if err := database.DB.Create(&repo).Error; err == nil {
+			successCount++
+			archElem.RepoID = &repo.ID
+			database.DB.Save(archElem)
 		} else {
-			repo.DepartmentID = dept.ID
-			if remoteSSHURL != "" {
-				repo.URL = remoteSSHURL
-			} else {
-				repo.URL = repoURL
-			}
-			repo.OwnerID = user.ID
-			repo.Branch = branch
-			repo.ServiceGroup = resolvedSubsystem
-			if projectID != "" {
-				repo.ProjectID = projectID
-			}
-			if httpURL != "" {
-				repo.HTTPURL = httpURL
-			}
-			if err := database.DB.Save(&repo).Error; err == nil {
-				successCount++
-				archElem.RepoID = &repo.ID
-				database.DB.Save(archElem)
-			} else {
-				log.Printf("Line %d: Failed to update repository %s: %v", lineNum+2, repoName, err)
-			}
+			log.Printf("Line %d: Failed to create repository %s: %v", lineNum+2, repoName, err)
 		}
 	}
 
-	commonAudit.SetAuditContext(c, "repo", "import", models.AuditLevelP1,
-		fmt.Sprintf("批量导入/更新了代码仓元数据，成功处理 %d 个代码仓", successCount),
-		"repo", fmt.Sprintf("imported_count=%d", successCount), "代码仓批量导入",
-		nil, map[string]interface{}{"success_count": successCount})
+	msg := fmt.Sprintf("Successfully imported %d repositories", successCount)
+	if duplicateCount > 0 {
+		msg = fmt.Sprintf("Successfully imported %d repositories (%d duplicate repositories skipped)", successCount, duplicateCount)
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully imported %d repositories", successCount)})
+	commonAudit.SetAuditContext(c, "repo", "import", models.AuditLevelP1,
+		fmt.Sprintf("批量导入代码仓元数据，成功新增 %d 个代码仓，跳过 %d 个已存在代码仓", successCount, duplicateCount),
+		"repo", fmt.Sprintf("imported_count=%d, duplicate_count=%d", successCount, duplicateCount), "代码仓批量导入",
+		nil, map[string]interface{}{"success_count": successCount, "duplicate_count": duplicateCount})
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":         msg,
+		"imported_count":  successCount,
+		"duplicate_count": duplicateCount,
+	})
 }
