@@ -105,7 +105,7 @@ body {
 .card-btn:hover {
   background: var(--primary-color);
   border-color: var(--primary-color);
-  color: var(--color-text-white, #ffffff);
+  color: var(--color-text-white);
   box-shadow: var(--shadow-md);
 }
 
