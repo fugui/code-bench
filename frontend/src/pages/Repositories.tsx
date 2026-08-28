@@ -407,9 +407,24 @@ function Repositories() {
   const commonBranches = ['master', 'main', 'dev', 'release'];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+    <div className="flex-col gap-lg w-full">
+      <div className="flex-between flex-wrap gap-md">
+        <div className="flex-center gap-md flex-wrap">
+          <select value={filterTeam} onChange={e => handleFilterChange(setFilterTeam, e.target.value)} className="code-select">
+            <option value="">全部部门</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <select value={filterServiceGroup} onChange={e => handleFilterChange(setFilterServiceGroup, e.target.value)} className="code-select">
+            <option value="">全部子系统</option>
+            {subsystems.map(sub => (
+              <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+            ))}
+          </select>
+          <input type="text" placeholder="按名称过滤..." value={filterName} onChange={e => handleFilterChange(setFilterName, e.target.value)} className="code-input" />
+          <input type="text" placeholder="按责任人过滤..." value={filterOwner} onChange={e => handleFilterChange(setFilterOwner, e.target.value)} className="code-input" />
+        </div>
+
+        <div className="flex-center gap-sm">
           <input 
             type="file" 
             accept=".csv" 
@@ -417,17 +432,17 @@ function Repositories() {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button className="btn" onClick={openAddDrawer}>新增代码仓</button>
+          <button type="button" className="btn btn-primary" onClick={openAddDrawer}>新增代码仓</button>
           <button 
-            className="btn" 
-            style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
+            type="button"
+            className="btn btn-secondary" 
             onClick={() => fileInputRef.current?.click()}
           >
             批量导入
           </button>
           <button 
-            className="btn" 
-            style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
+            type="button"
+            className="btn btn-secondary" 
             onClick={() => {
               repoFetch('/api/repos/export')
                 .then(res => res.blob())
@@ -447,93 +462,81 @@ function Repositories() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <select value={filterTeam} onChange={e => handleFilterChange(setFilterTeam, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
-          <option value="">全部部门</option>
-          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select value={filterServiceGroup} onChange={e => handleFilterChange(setFilterServiceGroup, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)', cursor: 'pointer' }}>
-          <option value="">全部子系统</option>
-          {subsystems.map(sub => (
-            <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
-          ))}
-        </select>
-        <input type="text" placeholder="按名称过滤..." value={filterName} onChange={e => handleFilterChange(setFilterName, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
-        <input type="text" placeholder="按责任人过滤..." value={filterOwner} onChange={e => handleFilterChange(setFilterOwner, e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)' }} />
-      </div>
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>名称</th>
-              <th>归属部门</th>
-              <th>负责人</th>
-              <th>分支</th>
-              <th>子系统</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {repos.length === 0 ? (
-              <EmptyState
-                inTable
-                colSpan={6}
-                type="data"
-                title="暂无匹配的代码仓记录"
-                description="录入代码仓后即可开展架构关联、自动化巡检与质量分析。"
-                action={
-                  <button className="btn" onClick={openAddDrawer} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
-                    录入新代码仓
-                  </button>
-                }
-              />
-            ) : repos.map(repo => {
-              const targetUrl = repo.http_url || (repo.url ? sshToHttps(repo.url) : '');
-              return (
-                <tr key={repo.id}>
-                  <td style={{ fontWeight: 500 }}>
-                    {targetUrl ? (
-                      <a
-                        href={targetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-                        onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                        onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-                        title={repo.url || repo.http_url}
-                      >
-                        {repo.name}
-                        {repo.project_id && <span style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.3rem', fontWeight: 'normal' }}>(ID: {repo.project_id})</span>}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
-                          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                          <polyline points="15 3 21 3 21 9"/>
-                          <line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                      </a>
-                    ) : (
-                      <span style={{ color: 'var(--primary-color)' }}>{repo.name}</span>
-                    )}
-                  </td>
-                  <td>{repo.department?.name || '未知'}</td>
-                  <td>
-                    {repo.owner ? (
-                      <span title={repo.owner.id}>{repo.owner.name}<span style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.3rem' }}>({repo.owner.employee_id || repo.owner.id})</span></span>
-                    ) : (
-                      <span style={{ color: '#94a3b8' }}>{repo.owner_id || '-'}</span>
-                    )}
-                  </td>
-                  <td><span className="badge" style={{ background: 'var(--border-color)', color: 'white' }}>{repo.branch}</span></td>
-                  <td>{repo.service_group}</td>
-                  <td style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn" onClick={() => openEditDrawer(repo)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>编辑</button>
-                    <button className="btn" onClick={() => handleDeleteRepo(repo.id, repo.name)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="code-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="code-table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>归属部门</th>
+                <th>负责人</th>
+                <th>分支</th>
+                <th>子系统</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {repos.length === 0 ? (
+                <EmptyState
+                  inTable
+                  colSpan={6}
+                  type="data"
+                  title="暂无匹配的代码仓记录"
+                  description="录入代码仓后即可开展架构关联、自动化巡检与质量分析。"
+                  action={
+                    <button type="button" className="btn btn-primary" onClick={openAddDrawer}>
+                      录入新代码仓
+                    </button>
+                  }
+                />
+              ) : repos.map(repo => {
+                const targetUrl = repo.http_url || (repo.url ? sshToHttps(repo.url) : '');
+                return (
+                  <tr key={repo.id}>
+                    <td style={{ fontWeight: 500 }}>
+                      {targetUrl ? (
+                        <a
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-center"
+                          style={{ justifyContent: 'flex-start', color: 'var(--color-primary)', textDecoration: 'none', gap: 4 }}
+                          title={repo.url || repo.http_url}
+                        >
+                          <span>{repo.name}</span>
+                          {repo.project_id && <span className="text-muted" style={{ fontSize: '0.8rem' }}>(ID: {repo.project_id})</span>}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                          </svg>
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--color-primary)' }}>{repo.name}</span>
+                      )}
+                    </td>
+                    <td>{repo.department?.name || '未知'}</td>
+                    <td>
+                      {repo.owner ? (
+                        <span title={repo.owner.id}>{repo.owner.name}<span className="text-muted" style={{ fontSize: '0.8rem', marginLeft: 4 }}>({repo.owner.employee_id || repo.owner.id})</span></span>
+                      ) : (
+                        <span className="text-muted">{repo.owner_id || '-'}</span>
+                      )}
+                    </td>
+                    <td><span className="code-badge code-badge--muted">{repo.branch}</span></td>
+                    <td>{repo.service_group || '-'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="flex-center gap-xs" style={{ justifyContent: 'flex-end' }}>
+                        <button type="button" className="btn btn-secondary" onClick={() => openEditDrawer(repo)} style={{ padding: '4px 8px', fontSize: 12 }}>编辑</button>
+                        <button type="button" className="btn btn-danger" onClick={() => handleDeleteRepo(repo.id, repo.name)} style={{ padding: '4px 8px', fontSize: 12 }}>删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {totalItems > 0 && (

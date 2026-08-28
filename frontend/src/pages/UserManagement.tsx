@@ -308,10 +308,10 @@ function UserManagement() {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="flex-col gap-lg w-full" style={{ padding: '2rem' }}>
+      <div className="flex-between flex-wrap gap-md">
         <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="flex-center gap-md">
           <input
             type="text"
             placeholder="搜索姓名、工号、邮箱..."
@@ -320,7 +320,8 @@ function UserManagement() {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
-            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', width: '220px', background: 'var(--bg-color)', color: 'var(--text-color)' }}
+            className="code-input"
+            style={{ width: 220 }}
           />
           <select
             value={filterDept}
@@ -328,7 +329,7 @@ function UserManagement() {
               setFilterDept(e.target.value);
               setPage(1);
             }}
-            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', background: 'var(--bg-color)', color: 'var(--text-color)', cursor: 'pointer' }}
+            className="code-select"
           >
             <option value="">全部部门</option>
             {departments.map(d => (
@@ -336,10 +337,10 @@ function UserManagement() {
             ))}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn" onClick={() => setIsUserModalOpen(true)}>+ 分配新系统账号</button>
-          <button className="btn" style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }} onClick={() => fileInputRef.current?.click()}>批量导入</button>
-          <button className="btn" style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }} onClick={() => {
+        <div className="flex-center gap-sm">
+          <button type="button" className="btn btn-primary" onClick={() => setIsUserModalOpen(true)}>+ 分配新系统账号</button>
+          <button type="button" className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>批量导入</button>
+          <button type="button" className="btn btn-secondary" onClick={() => {
             fetch('/api/users/export', {
               headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
             })
@@ -357,137 +358,142 @@ function UserManagement() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 0 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)', color: '#64748b', fontSize: '0.875rem', textAlign: 'left' }}>
-              <th style={{ padding: '1rem' }}>系统 ID</th>
-              {renderSortHeader('登录邮箱', 'email')}
-              {renderSortHeader('姓名', 'name')}
-              {renderSortHeader('工号', 'employee_id')}
-              <th style={{ padding: '1rem' }}>归属部门</th>
-              <th style={{ padding: '1rem' }}>录入方式</th>
-              {renderSortHeader('角色标识', 'roles')}
-              {renderSortHeader('账号状态', 'is_active')}
-              {renderSortHeader('最近登录', 'last_login')}
-              <th style={{ padding: '1rem', textAlign: 'right' }}>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <EmptyState
-                inTable
-                colSpan={10}
-                type="permission"
-                title="无法获取人员列表或暂无数据"
-                description="可能当前登录用户非管理员权限，或系统尚未录入任何账号。"
-                action={
-                  <button className="btn" onClick={() => setIsUserModalOpen(true)} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
-                    分配新账号
-                  </button>
-                }
-              />
-            ) : (
-
-              users.map(u => (
-                <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '1rem' }}>#{u.id}</td>
-                  <td style={{ padding: '1rem', fontWeight: 500 }}>{u.email || u.username}</td>
-                  <td style={{ padding: '1rem' }}>{u.name || '-'}</td>
-                  <td style={{ padding: '1rem' }}>{u.employee_id || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</span>}</td>
-                  <td style={{ padding: '1rem' }}>{u.department?.name || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</span>}</td>
-                  <td style={{ padding: '1rem' }}>
-                    {u.reg_method === 'sso' ?
-                      <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600 }}>SSO 单点</span> :
-                      u.reg_method === 'imported' ?
-                        <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(107,114,128,0.1)', color: '#6b7280', fontSize: '0.75rem', fontWeight: 600 }}>被动导入</span> :
-                        <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>本地录入</span>}
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    {(() => {
-                      let rList: string[] = [];
-                      if (Array.isArray(u.roles)) rList = u.roles;
-                      else if (typeof u.roles === 'string') {
-                        try { rList = JSON.parse(u.roles); } catch (e) {}
-                      }
-                      if (rList.includes('super_admin')) {
-                        return <span style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>超级管理员</span>;
-                      }
-
-                      if (rList.length === 0) {
-                        return <span style={{ display: 'inline-flex', padding: '0.2rem 0.6rem', borderRadius: '4px', background: 'var(--bg-color)', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>普通骨干</span>;
-                      }
-
-                      const roleMap: Record<string, { label: string; bg: string; color: string }> = {
-                        pdm_admin: { label: 'PDM管理员', bg: '#e0f2fe', color: '#0284c7' },
-                        pipeline_admin: { label: 'Pipeline管理员', bg: '#f3e8ff', color: '#7e22ce' },
-                        shield_admin: { label: 'Shield管理员', bg: '#dcfce7', color: '#15803d' },
-                        bench_admin: { label: 'Bench管理员', bg: '#ffe4e6', color: '#be123c' }
-                      };
-
-                      return (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                          {rList.map((rk: string) => {
-                            const info = roleMap[rk] || { label: rk, bg: 'var(--bg-color)', color: '#64748b' };
-                            return (
-                              <span key={rk} style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px', background: info.bg, color: info.color, fontSize: '0.75rem', fontWeight: 600 }}>
-                                {info.label}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    {u.is_active ?
-                      <span style={{ color: 'var(--success-color)', fontSize: '0.875rem', fontWeight: 500 }}>正常使用</span> :
-                      <span style={{ color: 'var(--danger-color)', fontSize: '0.875rem', fontWeight: 500 }}>已被禁用</span>}
-                  </td>
-                  <td style={{ padding: '1rem', fontSize: '0.8125rem', color: '#64748b', lineHeight: '1.4' }}>
-                    <div>{u.last_login ? new Date(u.last_login).toLocaleString() : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>从未登录</span>}</div>
-                    {u.last_ip ? (
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.125rem' }}>IP: {u.last_ip}</div>
-                    ) : null}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                    <button
-                      title="编辑用户"
-                      onClick={() => handleEditUser(u)}
-                      style={{ padding: '0.4rem', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px', color: 'var(--primary-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.08)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+      <div className="code-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="code-table">
+            <thead>
+              <tr>
+                <th style={{ width: 70 }}>系统 ID</th>
+                {renderSortHeader('登录邮箱', 'email')}
+                {renderSortHeader('姓名', 'name')}
+                {renderSortHeader('工号', 'employee_id')}
+                <th>归属部门</th>
+                <th>录入方式</th>
+                {renderSortHeader('角色标识', 'roles')}
+                {renderSortHeader('账号状态', 'is_active')}
+                {renderSortHeader('最近登录', 'last_login')}
+                <th style={{ textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <EmptyState
+                  inTable
+                  colSpan={10}
+                  type="permission"
+                  title="无法获取人员列表或暂无数据"
+                  description="可能当前登录用户非管理员权限，或系统尚未录入任何账号。"
+                  action={
+                    <button type="button" className="btn btn-primary" onClick={() => setIsUserModalOpen(true)}>
+                      分配新账号
                     </button>
-                    <button
-                      title={u.is_active ? '封禁用户' : '解封用户'}
-                      onClick={() => handleUpdateUserStatus(u.id, !u.is_active)}
-                      style={{ padding: '0.4rem', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px', color: u.is_active ? '#f59e0b' : 'var(--success-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = u.is_active ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      {u.is_active ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
+                  }
+                />
+              ) : (
+                users.map(u => (
+                  <tr key={u.id}>
+                    <td className="text-secondary">#{u.id}</td>
+                    <td style={{ fontWeight: 500 }}>{u.email || u.username}</td>
+                    <td>{u.name || '-'}</td>
+                    <td>{u.employee_id || <span className="text-muted">-</span>}</td>
+                    <td>{u.department?.name || <span className="text-muted">-</span>}</td>
+                    <td>
+                      {u.reg_method === 'sso' ? (
+                        <span className="code-badge code-badge--primary">SSO 单点</span>
+                      ) : u.reg_method === 'imported' ? (
+                        <span className="code-badge code-badge--muted">被动导入</span>
                       ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                        <span className="code-badge code-badge--success">本地录入</span>
                       )}
-                    </button>
-                    <button
-                      title="注销用户"
-                      onClick={() => handleDeleteUser(u.id)}
-                      style={{ padding: '0.4rem', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    </td>
+                    <td>
+                      {(() => {
+                        let rList: string[] = [];
+                        if (Array.isArray(u.roles)) rList = u.roles;
+                        else if (typeof u.roles === 'string') {
+                          try { rList = JSON.parse(u.roles); } catch (e) {}
+                        }
+                        if (rList.includes('super_admin')) {
+                          return <span className="code-badge code-badge--warning">超级管理员</span>;
+                        }
+
+                        if (rList.length === 0) {
+                          return <span className="code-badge code-badge--muted">普通骨干</span>;
+                        }
+
+                        const roleMap: Record<string, { label: string; badge: string }> = {
+                          pdm_admin: { label: 'PDM管理员', badge: 'code-badge--primary' },
+                          pipeline_admin: { label: 'Pipeline管理员', badge: 'code-badge--warning' },
+                          shield_admin: { label: 'Shield管理员', badge: 'code-badge--success' },
+                          bench_admin: { label: 'Bench管理员', badge: 'code-badge--danger' }
+                        };
+
+                        return (
+                          <div className="flex-center gap-xs flex-wrap" style={{ justifyContent: 'flex-start' }}>
+                            {rList.map((rk: string) => {
+                              const info = roleMap[rk] || { label: rk, badge: 'code-badge--muted' };
+                              return (
+                                <span key={rk} className={`code-badge ${info.badge}`}>
+                                  {info.label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td>
+                      <span className={`code-badge ${u.is_active ? 'code-badge--success' : 'code-badge--danger'}`}>
+                        {u.is_active ? '正常使用' : '已被禁用'}
+                      </span>
+                    </td>
+                    <td className="text-secondary" style={{ fontSize: '0.8125rem' }}>
+                      <div>{u.last_login ? new Date(u.last_login).toLocaleString() : <span className="text-muted">从未登录</span>}</div>
+                      {u.last_ip ? (
+                        <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 2 }}>IP: {u.last_ip}</div>
+                      ) : null}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="flex-center gap-xs" style={{ justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          title="编辑用户"
+                          onClick={() => handleEditUser(u)}
+                          className="btn btn-secondary"
+                          style={{ padding: '4px 6px' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                        </button>
+                        <button
+                          type="button"
+                          title={u.is_active ? '封禁用户' : '解封用户'}
+                          onClick={() => handleUpdateUserStatus(u.id, !u.is_active)}
+                          className={`btn ${u.is_active ? 'btn-secondary' : 'btn-primary'}`}
+                          style={{ padding: '4px 6px' }}
+                        >
+                          {u.is_active ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          title="注销用户"
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="btn btn-danger"
+                          style={{ padding: '4px 6px' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination Controls */}
