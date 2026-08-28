@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -17,19 +18,31 @@ import (
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
-	database.DB.Exec("TRUNCATE TABLE architecture_elements, repositories, users, departments CASCADE")
-
-	// 预置默认子系统 code-bench
-	defaultArch := models.ArchitectureElement{
-		ID:         1,
-		Identifier: "code-bench",
-		NameCn:     "代码度量",
-		NameEn:     "Code Bench",
-		Type:       "subsystem",
+	testDSN := os.Getenv("TEST_DB_DSN")
+	if testDSN != "" {
+		_ = models.LoadConfig("../config.yaml")
+		database.InitDB()
+		database.DB.Exec("TRUNCATE TABLE architecture_elements, repositories, users, departments CASCADE")
+	} else {
+		_ = models.LoadConfig("../config.yaml")
+		database.InitDB()
+		// 安全保护：未显式指定测试数据库时，禁止清空主库，仅清理测试用例相关测试数据
+		database.DB.Exec("DELETE FROM repositories WHERE id IN (1, 2, 10001, 10002, 10003, 10004, 10005, 99999)")
 	}
-	database.DB.Create(&defaultArch)
+
+	// 预置默认子系统 code-bench (若不存在)
+	var count int64
+	database.DB.Model(&models.ArchitectureElement{}).Where("id = ?", 1).Count(&count)
+	if count == 0 {
+		defaultArch := models.ArchitectureElement{
+			ID:         1,
+			Identifier: "code-bench",
+			NameCn:     "代码度量",
+			NameEn:     "Code Bench",
+			Type:       "subsystem",
+		}
+		database.DB.Create(&defaultArch)
+	}
 
 	return database.DB
 }
@@ -991,6 +1004,11 @@ func TestUpdateRepoRejectDuplicate(t *testing.T) {
 	}
 	db.Create(&repo1)
 	db.Create(&repo2)
+
+	defer func() {
+		db.Exec("DELETE FROM repositories WHERE id IN (1, 2)")
+		db.Exec("DELETE FROM users WHERE id = 1 AND employee_id = 'user_upd'")
+	}()
 
 	// 尝试将 repo2 的名称修改为已存在的 repo1 名称
 	gin.SetMode(gin.TestMode)
