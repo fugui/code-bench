@@ -509,10 +509,10 @@ function UserManagement() {
         title="分配新系统账号"
         width="md"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
-            <button type="button" onClick={() => setIsUserModalOpen(false)} style={{ padding: '0.5rem 1.25rem', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-color)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
-            <button type="button" onClick={handleCreateUser} className="btn" style={{ padding: '0.5rem 1.25rem' }}>确认创建</button>
-          </div>
+          <>
+            <button type="button" onClick={() => setIsUserModalOpen(false)} className="btn btn-secondary">取消</button>
+            <button type="button" onClick={handleCreateUser} className="btn btn-primary">确认创建</button>
+          </>
         }
       >
         <form onSubmit={handleCreateUser} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', boxSizing: 'border-box' }}>
@@ -584,10 +584,10 @@ function UserManagement() {
         title="编辑用户"
         width="md"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
-            <button type="button" onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }} style={{ padding: '0.5rem 1.25rem', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-color)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
-            <button type="button" onClick={handleSaveEditUser} className="btn" style={{ padding: '0.5rem 1.25rem' }}>保存修改</button>
-          </div>
+          <>
+            <button type="button" onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }} className="btn btn-secondary">取消</button>
+            <button type="button" onClick={handleSaveEditUser} className="btn btn-primary">保存修改</button>
+          </>
         }
       >
         <form onSubmit={handleSaveEditUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', boxSizing: 'border-box' }}>

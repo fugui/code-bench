@@ -219,10 +219,10 @@ function TeamsTab() {
         title={editingId ? '编辑部门' : '新增部门'}
         width="sm"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
-            <button type="button" onClick={() => setShowModal(false)} style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#64748b', cursor: 'pointer', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>取消</button>
-            <button type="button" onClick={handleSubmit} className="btn">{editingId ? '保存' : '确认录入'}</button>
-          </div>
+          <>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">取消</button>
+            <button type="button" onClick={handleSubmit} className="btn btn-primary">{editingId ? '保存' : '确认录入'}</button>
+          </>
         }
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
