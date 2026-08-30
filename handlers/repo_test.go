@@ -6,43 +6,42 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
 	"code-bench/database"
 	"code-bench/models"
+	"code-common/backend/testdb"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	testDSN := os.Getenv("TEST_DB_DSN")
-	if testDSN != "" {
-		_ = models.LoadConfig("../config.yaml")
-		database.InitDB()
-		database.DB.Exec("TRUNCATE TABLE architecture_elements, repositories, users, departments CASCADE")
-	} else {
-		_ = models.LoadConfig("../config.yaml")
-		database.InitDB()
-		// 安全保护：未显式指定测试数据库时，禁止清空主库，仅清理测试用例相关测试数据
-		database.DB.Exec("DELETE FROM repositories WHERE id IN (1, 2, 10001, 10002, 10003, 10004, 10005, 99999)")
+	db := testdb.SetupIsolatedDB(t, "code_bench",
+		&models.User{},
+		&models.Department{},
+		&models.Repository{},
+		&models.ArchitectureElement{},
+		&models.Feedback{},
+		&models.DocStat{},
+		&models.DocComment{},
+		&models.SysAuditLog{},
+	)
+	if db == nil {
+		return nil
 	}
+	database.DB = db
 
-	// 预置默认子系统 code-bench (若不存在)
-	var count int64
-	database.DB.Model(&models.ArchitectureElement{}).Where("id = ?", 1).Count(&count)
-	if count == 0 {
-		defaultArch := models.ArchitectureElement{
-			ID:         1,
-			Identifier: "code-bench",
-			NameCn:     "代码度量",
-			NameEn:     "Code Bench",
-			Type:       "subsystem",
-		}
-		database.DB.Create(&defaultArch)
+	// 预置默认子系统 code-bench
+	defaultArch := models.ArchitectureElement{
+		ID:         1,
+		Identifier: "code-bench",
+		NameCn:     "代码度量",
+		NameEn:     "Code Bench",
+		Type:       "subsystem",
 	}
+	database.DB.Create(&defaultArch)
 
 	return database.DB
 }
