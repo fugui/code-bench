@@ -755,6 +755,7 @@ export default function DeveloperDocs() {
             CAUTION: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444', color: '#ef4444', label: '危险' }
           };
           const cfg = alertConfig[type] || alertConfig.NOTE;
+          const bodyLines = alertBody.split('\n').filter((l, idx) => idx > 0 || l.trim().length > 0);
 
           elements.push(
             <div key={`alert-${i}`} style={{
@@ -770,7 +771,18 @@ export default function DeveloperDocs() {
               <div style={{ fontWeight: 600, color: cfg.color, marginBottom: '0.4rem', fontSize: '0.85rem' }}>
                 {cfg.label}
               </div>
-              <div>{parseInlineMarkdown(alertBody)}</div>
+              <div>
+                {bodyLines.map((bLine, bIdx) => {
+                  if (!bLine.trim()) {
+                    return <div key={bIdx} style={{ height: '0.4rem' }} />;
+                  }
+                  return (
+                    <div key={bIdx} style={{ marginBottom: bIdx < bodyLines.length - 1 ? '0.3rem' : '0' }}>
+                      {parseInlineMarkdown(bLine)}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         } else {
@@ -779,13 +791,21 @@ export default function DeveloperDocs() {
               margin: '1rem 0',
               padding: '0.75rem 1.25rem',
               borderLeft: '4px solid var(--primary-color, #3b82f6)',
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: isLightTheme ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.03)',
               borderRadius: '0 8px 8px 0',
               color: 'var(--text-secondary)',
-              fontStyle: 'italic',
-              lineHeight: 1.6
+              lineHeight: 1.7
             }}>
-              {parseInlineMarkdown(fullQuote)}
+              {quoteLines.map((qLine, qIdx) => {
+                if (!qLine.trim()) {
+                  return <div key={qIdx} style={{ height: '0.5rem' }} />;
+                }
+                return (
+                  <div key={qIdx} style={{ marginBottom: qIdx < quoteLines.length - 1 ? '0.35rem' : '0' }}>
+                    {parseInlineMarkdown(qLine)}
+                  </div>
+                );
+              })}
             </blockquote>
           );
         }
