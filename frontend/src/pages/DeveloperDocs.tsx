@@ -5,6 +5,7 @@ import {
   Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2
 } from 'lucide-react';
 import { MermaidDiagram } from '../components/MermaidDiagram';
+import { LatexFormula, renderLatexToHtml } from '../components/LatexFormula';
 
 interface DocNode {
   id?: string;
@@ -662,6 +663,53 @@ export default function DeveloperDocs() {
         continue;
       }
 
+      // Math Block ($$ ... $$)
+      if (line.trim().startsWith('$$')) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length > 2) {
+          const mathCode = trimmed.slice(2, -2).trim();
+          elements.push(
+            <LatexFormula
+              key={`math-block-${i}`}
+              formula={mathCode}
+              displayMode={true}
+              isLightTheme={isLightTheme}
+            />
+          );
+          i++;
+          continue;
+        }
+
+        // Multi-line $$ ... $$
+        let mathLines: string[] = [];
+        const firstLineRest = trimmed.substring(2).trim();
+        if (firstLineRest) {
+          mathLines.push(firstLineRest);
+        }
+        i++;
+        while (i < lines.length && !lines[i].trim().endsWith('$$')) {
+          mathLines.push(lines[i]);
+          i++;
+        }
+        if (i < lines.length) {
+          const lastLineRest = lines[i].trim().slice(0, -2).trim();
+          if (lastLineRest) {
+            mathLines.push(lastLineRest);
+          }
+          i++; // skip closing $$
+        }
+        const fullFormula = mathLines.join('\n').trim();
+        elements.push(
+          <LatexFormula
+            key={`math-block-${i}`}
+            formula={fullFormula}
+            displayMode={true}
+            isLightTheme={isLightTheme}
+          />
+        );
+        continue;
+      }
+
       // Headings (#, ##, ###)
       const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
       if (headingMatch) {
@@ -960,6 +1008,20 @@ export default function DeveloperDocs() {
       }
 
       let subContent = part;
+
+      // 0. LaTeX Math formulas ($$...$$ and $...$)
+      // Display math $$...$$
+      subContent = subContent.replace(/\$\$([\s\S]+?)\$\$/g, (_match, math) => {
+        const { html } = renderLatexToHtml(math, true);
+        return html ? `<div class="katex-display-wrapper" style="margin: 0.75rem 0; overflow-x: auto; text-align: center;">${html}</div>` : `$$${math}$$`;
+      });
+
+      // Inline math $...$ (avoid false matches with standard currencies or blank dollar pairs)
+      subContent = subContent.replace(/(?<!\\)\$(?!\s)([^\$\n\r]+?)(?<!\s)\$/g, (_match, math) => {
+        const { html } = renderLatexToHtml(math, false);
+        return html || `$${math}$`;
+      });
+
       subContent = subContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       subContent = subContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
