@@ -505,6 +505,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                 // Grouped Menu Layout
                 shieldMenuGroups
                   .filter((group: any) => {
+                    if (group.superAdminOnly && !isSuperAdmin) {
+                      return false;
+                    }
                     if (group.adminOnly) {
                       return isShieldAdmin;
                     }
@@ -514,6 +517,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                     const visibleItems = (group.items || []).filter((item: any) => {
                       if (item.path === '/admin/teams' || item.path === '/admin/users') {
                         return false;
+                      }
+                      if (item.superAdminOnly) {
+                        return isSuperAdmin;
                       }
                       if (item.adminOnly) {
                         return isShieldAdmin;
@@ -553,6 +559,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   .filter((item: any) => {
                     if (item.path === '/admin/teams' || item.path === '/admin/users') {
                       return false;
+                    }
+                    if (item.superAdminOnly) {
+                      return isSuperAdmin;
                     }
                     if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
                       return isShieldAdmin;
