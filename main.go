@@ -72,8 +72,8 @@ func main() {
 		},
 		RegisterRoutes: func(r *gin.Engine) {
 			// Setup built-in dynamic reverse proxies for sub microservices
-			for prefix, targetURL := range models.AppConfig.Gateways {
-				target, err := url.Parse(targetURL)
+			for prefix, item := range models.AppConfig.Gateways {
+				target, err := url.Parse(item.URL)
 				if err != nil {
 					log.Fatalf("Invalid target URL for prefix %s: %v", prefix, err)
 				}
@@ -105,6 +105,7 @@ func main() {
 			{
 				api.POST("/login", handlers.Login)
 				api.GET("/auth/config", handlers.GetAuthConfig)
+				api.GET("/modules", handlers.GetModules)
 				api.GET("/oauth2/authorize", handlers.StartOAuth2Flow)
 				api.GET("/oauth2/callback", handlers.OAuth2Callback)
 				api.GET("/docs/raw", handlers.GetDocRaw)

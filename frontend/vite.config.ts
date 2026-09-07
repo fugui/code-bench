@@ -11,12 +11,7 @@ export default defineConfig({
     versionTrackerPlugin({ appName: 'code-bench' }),
     federation({
       name: 'portal',
-      remotes: {
-        shield: '/shield/assets/remoteEntry.js',
-        proto: '/proto/assets/remoteEntry.js',
-        pipeline: '/pipeline/assets/remoteEntry.js',
-        pdm: '/pdm/assets/remoteEntry.js',
-      },
+      remotes: {},
       shared: ['react', 'react-dom', 'react-router-dom'],
     }),
   ],

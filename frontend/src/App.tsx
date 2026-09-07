@@ -1,6 +1,21 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Brain, Sun, Moon, Users, UserCheck, Activity, MessageSquare, ClipboardList, BookOpen, ScrollText } from 'lucide-react';
+import { 
+  Shield, 
+  LayoutDashboard, 
+  Brain, 
+  Sun, 
+  Moon, 
+  Users, 
+  UserCheck, 
+  Activity, 
+  MessageSquare, 
+  ClipboardList, 
+  BookOpen, 
+  ScrollText, 
+  Layers, 
+  FileCode 
+} from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
 import TeamManagement from './pages/TeamManagement';
@@ -8,14 +23,37 @@ import DeveloperDocs from './pages/DeveloperDocs';
 import FeedbackCenter from './pages/FeedbackCenter';
 import AuditManagement from './pages/AuditManagement';
 import { ToastProvider } from './components/Toast';
+import { DynamicRemoteApp } from './components/DynamicRemoteApp';
+import { fetchActiveModules, loadRemoteModule, DEFAULT_FALLBACK_MODULES, type ModuleMeta } from './utils/moduleLoader';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
 
-import { ErrorBoundary, ConfirmProvider, UserMenu, setupFetchInterceptor, VersionNotification } from '@code/common';
+import { ConfirmProvider, UserMenu, setupFetchInterceptor, VersionNotification } from '@code/common';
 
 // Setup unified global fetch interceptor
 setupFetchInterceptor();
+
+const ICON_MAP: Record<string, any> = {
+  Shield,
+  Activity,
+  ClipboardList,
+  FileCode,
+  Brain,
+  Layers,
+  Users,
+  MessageSquare,
+  BookOpen,
+  ScrollText,
+};
+
+function getModuleIcon(iconName?: string) {
+  if (iconName && ICON_MAP[iconName]) {
+    return ICON_MAP[iconName];
+  }
+  return Layers;
+}
+
 function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string; icon: any; label: string; activePattern?: RegExp; onClick?: (e: React.MouseEvent) => void }) {
   const location = useLocation();
   const isActive = activePattern 
@@ -39,20 +77,7 @@ function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string
   );
 }
 
-
-
-
-// Lazy loading remote App from module federation
-// @ts-ignore
-const ShieldApp = React.lazy(() => import('shield/App'));
-// @ts-ignore
-const ProtoApp = React.lazy(() => import('proto/App'));
-// @ts-ignore
-const PipelineApp = React.lazy(() => import('pipeline/App'));
-// @ts-ignore
-const PdmApp = React.lazy(() => import('pdm/App'));
-
-function Home() {
+function Home({ modules }: { modules: ModuleMeta[] }) {
   return (
     <div style={{ padding: '2.5rem' }}>
       <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
@@ -61,96 +86,215 @@ function Home() {
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        <div className="portal-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-              <Shield size={24} />
+        {modules.map((mod) => {
+          const Icon = getModuleIcon(mod.icon);
+          return (
+            <div key={mod.key} className="portal-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                  <Icon size={24} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>{mod.title}</h3>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
+                {mod.description || '一站式微前端业务应用系统。'}
+              </p>
+              <Link to={mod.path} className="card-btn">进入系统 &rarr;</Link>
             </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>代码质量 (Code Shield)</h3>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。
-          </p>
-          <Link to="/shield" className="card-btn">进入系统 &rarr;</Link>
-        </div>
-
-        <div className="portal-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="card-icon" style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-              <Activity size={24} />
-            </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>持续构建 (Code Pipeline)</h3>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。
-          </p>
-          <Link to="/pipeline" className="card-btn">进入系统 &rarr;</Link>
-        </div>
-
-        <div className="portal-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-              <ClipboardList size={24} />
-            </div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>产品数据管理 (PDM)</h3>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-            规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产 spreadsheet 数据导出。
-          </p>
-          <Link to="/pdm" className="card-btn">进入系统 &rarr;</Link>
-        </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function MainLayout({ children }: { children: React.ReactNode }) {
+const subNavLinkStyle = (isActive: boolean) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  padding: '0.45rem 0.65rem',
+  borderRadius: '8px',
+  textDecoration: 'none',
+  fontSize: '0.85rem',
+  color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
+  background: isActive ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
+  fontWeight: isActive ? 600 : 500,
+  transition: 'all 0.2s',
+} as React.CSSProperties);
+
+const renderSubIcon = (item: any, isActive: boolean) => {
+  if (!item || !item.icon) return null;
+  return (
+    <svg
+      width="14"
+      height="14"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }}
+    >
+      <path d={item.icon} />
+    </svg>
+  );
+};
+
+interface ModuleNavSectionProps {
+  module: ModuleMeta;
+  menuData?: { items: any[]; groups: any[] };
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  location: any;
+  user: any;
+  isSuperAdmin: boolean;
+}
+
+function ModuleNavSection({
+  module,
+  menuData,
+  collapsed,
+  onToggleCollapse,
+  location,
+  user,
+  isSuperAdmin,
+}: ModuleNavSectionProps) {
+  const modPath = module.path;
+  const isMatch = location.pathname === modPath || location.pathname.startsWith(modPath + '/');
+  const Icon = getModuleIcon(module.icon);
+
+  let userRoles: string[] = [];
+  if (user) {
+    if (Array.isArray(user.roles)) {
+      userRoles = user.roles;
+    } else if (typeof user.roles === 'string') {
+      try { userRoles = JSON.parse(user.roles); } catch (e) { userRoles = []; }
+    }
+  }
+  const isModAdmin = isSuperAdmin || userRoles.includes(`${module.key}_admin`);
+
+  const groups = menuData?.groups || [];
+  const flatItems = menuData?.items || [];
+  const hasSubmenu = groups.length > 0 || flatItems.length > 0;
+
+  return (
+    <>
+      <NavLink
+        to={modPath}
+        icon={Icon}
+        label={module.title}
+        activePattern={new RegExp(`^${modPath}`)}
+        onClick={(e) => {
+          if (location.pathname.startsWith(modPath)) {
+            e.preventDefault();
+            onToggleCollapse();
+          } else {
+            onToggleCollapse();
+          }
+        }}
+      />
+      {isMatch && !collapsed && hasSubmenu && (
+        <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+          {groups.length > 0 ? (
+            groups.map((group: any) => {
+              if (group.superAdminOnly && !isSuperAdmin) return null;
+              if (group.adminOnly && !isModAdmin) return null;
+
+              const visibleItems = (group.items || []).filter((item: any) => {
+                if (item.path === '/admin/teams' || item.path === '/admin/users') return false;
+                if (item.superAdminOnly) return isSuperAdmin;
+                if (item.adminOnly) return isModAdmin;
+                return true;
+              });
+
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {group.title}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
+                    {visibleItems.map((item: any) => {
+                      const fullPath = `${modPath}${item.path === '/' ? '' : item.path}`;
+                      const isRoot = item.path === '/' || item.path === '/dashboard';
+                      const isActive = isRoot
+                        ? (location.pathname === modPath || location.pathname === `${modPath}/` || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                        : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
+                      return (
+                        <Link
+                          key={item.path}
+                          to={fullPath}
+                          style={subNavLinkStyle(isActive)}
+                        >
+                          {renderSubIcon(item, isActive)}
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            flatItems.map((item: any) => {
+              if (item.path === '/admin/teams' || item.path === '/admin/users') return false;
+              if (item.superAdminOnly && !isSuperAdmin) return null;
+              if (item.adminOnly && !isModAdmin) return null;
+
+              const fullPath = `${modPath}${item.path === '/' ? '' : item.path}`;
+              const isRoot = item.path === '/' || item.path === '/dashboard';
+              const isActive = isRoot
+                ? (location.pathname === modPath || location.pathname === `${modPath}/` || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
+                : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
+              return (
+                <Link
+                  key={item.path}
+                  to={fullPath}
+                  style={subNavLinkStyle(isActive)}
+                >
+                  {renderSubIcon(item, isActive)}
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function MainLayout({ children, modules }: { children: React.ReactNode; modules: ModuleMeta[] }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [shieldMenu, setShieldMenu] = React.useState<any[]>([]);
-  const [shieldMenuGroups, setShieldMenuGroups] = React.useState<any[]>([]);
-  const [pipelineMenu, setPipelineMenu] = React.useState<any[]>([]);
-  const [pipelineMenuGroups, setPipelineMenuGroups] = React.useState<any[]>([]);
-  const [pdmMenu, setPdmMenu] = React.useState<any[]>([]);
-  const [pdmMenuGroups, setPdmMenuGroups] = React.useState<any[]>([]);
-  const [shieldMenuCollapsed, setShieldMenuCollapsed] = React.useState(true);
-  const [pipelineMenuCollapsed, setPipelineMenuCollapsed] = React.useState(true);
-  const [pdmMenuCollapsed, setPdmMenuCollapsed] = React.useState(true);
+  const [moduleMenus, setModuleMenus] = React.useState<Record<string, { items: any[]; groups: any[] }>>({});
+  const [collapsedState, setCollapsedState] = React.useState<Record<string, boolean>>({});
   const prevModuleRef = React.useRef<string>('');
 
   React.useEffect(() => {
-    const getModule = (path: string) => {
-      if (path.startsWith('/shield')) return 'shield';
-      if (path.startsWith('/proto')) return 'proto';
-      if (path.startsWith('/pipeline')) return 'pipeline';
-      if (path.startsWith('/pdm')) return 'pdm';
-      return 'other';
-    };
-
-    const currentModule = getModule(location.pathname);
-    const prevModule = prevModuleRef.current;
-
-    if (currentModule !== prevModule) {
-      if (currentModule === 'shield') {
-        setShieldMenuCollapsed(false);
-        setPipelineMenuCollapsed(true);
-        setPdmMenuCollapsed(true);
-      } else if (currentModule === 'pipeline') {
-        setPipelineMenuCollapsed(false);
-        setShieldMenuCollapsed(true);
-        setPdmMenuCollapsed(true);
-      } else if (currentModule === 'pdm') {
-        setPdmMenuCollapsed(false);
-        setShieldMenuCollapsed(true);
-        setPipelineMenuCollapsed(true);
-      } else {
-        setShieldMenuCollapsed(true);
-        setPipelineMenuCollapsed(true);
-        setPdmMenuCollapsed(true);
-      }
-      prevModuleRef.current = currentModule;
+    const activeMod = modules.find(m => location.pathname === m.path || location.pathname.startsWith(m.path + '/'));
+    const currentKey = activeMod ? activeMod.key : '';
+    if (currentKey !== prevModuleRef.current) {
+      setCollapsedState(_prev => {
+        const next: Record<string, boolean> = {};
+        modules.forEach(m => {
+          next[m.key] = m.key !== currentKey;
+        });
+        return next;
+      });
+      prevModuleRef.current = currentKey;
     }
-  }, [location.pathname]);
+  }, [location.pathname, modules]);
+
+  const collapseAll = () => {
+    setCollapsedState(_prev => {
+      const next: Record<string, boolean> = {};
+      modules.forEach(m => { next[m.key] = true; });
+      return next;
+    });
+  };
 
   const [theme, setTheme] = React.useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('code-theme') as 'dark' | 'light') || 'light';
@@ -188,7 +332,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         if (data) {
           setUser(data);
 
-          // 自动拉取并同步部门信息逻辑
           const activeConfig = authConfigRef.current;
           if (activeConfig?.dept_api_url && !data.department_id && !sessionStorage.getItem('dept_synced')) {
             sessionStorage.setItem('dept_synced', 'true');
@@ -216,15 +359,13 @@ function MainLayout({ children }: { children: React.ReactNode }) {
                   .then(updateRes => {
                     if (updateRes.ok) {
                       console.log('[MainLayout] Department sync successful');
-                      loadUser(); // 重新加载用户状态以刷新界面上的部门显示
+                      loadUser();
                     }
                   })
                   .catch(err => console.error('[MainLayout] Failed to update user department:', err));
-                } else {
-                  console.warn('[MainLayout] Department field empty in API response:', deptData);
                 }
               })
-              .catch(err => console.error('[MainLayout] Failed to fetch department from API:', err));
+              .catch(err => console.error('[MainLayout] Failed to proxy department fetch:', err));
           }
         } else {
           setUser(null);
@@ -240,12 +381,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     loadUser();
 
-    // 拉取 auth/config 以缓存 dept_api_url
     fetch('/api/auth/config', { headers: { 'X-Portal-Request': 'true' } })
       .then(res => res.json())
       .then(configData => {
         authConfigRef.current = configData;
-        // 如果在此之前 loadUser 已经执行完，且 user 已经拿到但未绑定部门，手动触发一次拉取
         if (localStorage.getItem('code_shield_token')) {
           loadUser();
         }
@@ -278,121 +417,97 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
-  React.useEffect(() => {
-    // Dynamically load remote menu metadata from code-shield micro-frontend
-    const updateShieldMenu = (config: any) => {
-      if (config && Array.isArray(config.groups)) {
-        setShieldMenuGroups(config.groups);
-        setShieldMenu(config.groups.flatMap((g: any) => g.items));
-      } else if (config && Array.isArray(config)) {
-        setShieldMenu(config);
-      }
-    };
 
-    // @ts-ignore
-    import('shield/menu')
-      .then(async mod => {
-        if (mod) {
-          const config = mod.shieldMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
-          if (config) {
-            updateShieldMenu(config);
-          }
-          if (typeof mod.fetchShieldMenuConfig === 'function') {
-            try {
-              const dynamicConfig = await mod.fetchShieldMenuConfig();
-              updateShieldMenu(dynamicConfig);
-            } catch (e) {
-              console.warn("Failed to fetch dynamic shield menu:", e);
+  React.useEffect(() => {
+    if (modules.length === 0) return;
+    const unsubs: Array<() => void> = [];
+
+    modules.forEach((mod) => {
+      loadRemoteModule(mod.entry, './menu')
+        .then((menuMod) => {
+          const updateMenu = (cfg: any) => {
+            let groups: any[] = [];
+            let items: any[] = [];
+            const c = cfg || menuMod.menuConfig || (menuMod.default?.groups ? menuMod.default : (menuMod[`${mod.key}MenuConfig`] || menuMod.default));
+            if (c && Array.isArray(c.groups)) {
+              groups = c.groups;
+              items = c.groups.flatMap((g: any) => g.items || []);
+            } else if (menuMod.menuGroups && Array.isArray(menuMod.menuGroups)) {
+              groups = menuMod.menuGroups;
+              items = menuMod.menuItems || groups.flatMap((g: any) => g.items || []);
+            } else {
+              const rawItems = menuMod.menuItems || menuMod.default || (Array.isArray(menuMod) ? menuMod : []);
+              if (Array.isArray(rawItems)) items = rawItems;
             }
+            setModuleMenus((prev) => ({
+              ...prev,
+              [mod.key]: { items, groups },
+            }));
+          };
+
+          updateMenu(menuMod);
+
+          if (typeof menuMod.subscribeMenuChanges === 'function') {
+            const unsub = menuMod.subscribeMenuChanges(updateMenu);
+            if (typeof unsub === 'function') unsubs.push(unsub);
           }
-          if (typeof mod.subscribeMenuChanges === 'function') {
-            mod.subscribeMenuChanges(updateShieldMenu);
+        })
+        .catch((err) => {
+          console.warn(`[MainLayout] Failed to dynamically load menu for ${mod.key}:`, err);
+          let fallbackItems: any[] = [{ path: '/', label: '控制中心' }];
+          if (mod.key === 'shield') {
+            fallbackItems = [
+              { path: '/reports', label: '报告概览' },
+              { path: '/analysis/ut', label: '测试有效性' },
+              { path: '/admin/scan', label: '扫描任务', adminOnly: true },
+              { path: '/admin/task-types', label: '任务类型', adminOnly: true },
+              { path: '/admin/teams', label: '团队与代码仓', adminOnly: true },
+              { path: '/admin/users', label: '用户管理', adminOnly: true },
+              { path: '/admin/activity', label: '执行日志', adminOnly: true }
+            ];
+          } else if (mod.key === 'pipeline') {
+            fallbackItems = [
+              { path: '/dashboard', label: '控制中心' },
+              { path: '/repos', label: '仓库配置' }
+            ];
+          } else if (mod.key === 'pdm') {
+            fallbackItems = [
+              { path: '/device-type', label: '设备类型管理' },
+              { path: '/device', label: '设备ID管理' }
+            ];
           }
-        }
-      })
-      .catch(err => {
-        console.warn("Failed to dynamically load shield menu, using robust fallback:", err);
-        setShieldMenu([
-          { path: '/reports', label: '报告概览' },
-          { path: '/analysis/ut', label: '测试有效性' },
-          { path: '/admin/scan', label: '扫描任务', adminOnly: true },
-          { path: '/admin/task-types', label: '任务类型', adminOnly: true },
-          { path: '/admin/teams', label: '团队与代码仓', adminOnly: true },
-          { path: '/admin/users', label: '用户管理', adminOnly: true },
-          { path: '/admin/activity', label: '执行日志', adminOnly: true }
-        ]);
-      });
+          setModuleMenus((prev) => ({
+            ...prev,
+            [mod.key]: { items: fallbackItems, groups: [] },
+          }));
+        });
+    });
 
     const handleShieldChanged = () => {
-      // @ts-ignore
-      import('shield/menu').then(mod => {
-        if (mod && typeof mod.fetchShieldMenuConfig === 'function') {
-          mod.fetchShieldMenuConfig().then(updateShieldMenu).catch(() => {});
-        }
-      }).catch(() => {});
+      const shieldMod = modules.find((m) => m.key === 'shield');
+      if (!shieldMod) return;
+      loadRemoteModule(shieldMod.entry, './menu')
+        .then((mod) => {
+          if (mod && typeof mod.fetchShieldMenuConfig === 'function') {
+            mod.fetchShieldMenuConfig().then((cfg: any) => {
+              if (cfg && Array.isArray(cfg.groups)) {
+                setModuleMenus((prev) => ({
+                  ...prev,
+                  shield: { items: cfg.groups.flatMap((g: any) => g.items || []), groups: cfg.groups },
+                }));
+              }
+            }).catch(() => {});
+          }
+        })
+        .catch(() => {});
     };
     window.addEventListener('shield-task-types-changed', handleShieldChanged);
 
-    // Dynamically load remote menu metadata from code-pipeline micro-frontend
-    // @ts-ignore
-    import('pipeline/menu')
-      .then(mod => {
-        if (mod) {
-          const config = mod.pipelineMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
-          if (config && Array.isArray(config.groups)) {
-            setPipelineMenuGroups(config.groups);
-            setPipelineMenu(config.groups.flatMap((g: any) => g.items));
-          } else {
-            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-              setPipelineMenuGroups(mod.menuGroups);
-            }
-            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-            if (items && Array.isArray(items)) {
-              setPipelineMenu(items);
-            }
-          }
-        }
-      })
-      .catch(err => {
-        console.warn("Failed to dynamically load pipeline menu, using robust fallback:", err);
-        setPipelineMenu([
-          { path: '/dashboard', label: '控制中心' },
-          { path: '/repos', label: '仓库配置' }
-        ]);
-      });
-
-    // Dynamically load remote menu metadata from code-pdm micro-frontend
-    // @ts-ignore
-    import('pdm/menu')
-      .then(mod => {
-        if (mod) {
-          const config = mod.pdmMenuConfig || (mod.default && mod.default.groups ? mod.default : null);
-          if (config && Array.isArray(config.groups)) {
-            setPdmMenuGroups(config.groups);
-            setPdmMenu(config.groups.flatMap((g: any) => g.items));
-          } else {
-            if (mod.menuGroups && Array.isArray(mod.menuGroups)) {
-              setPdmMenuGroups(mod.menuGroups);
-            }
-            const items = mod.menuItems || mod.default || (Array.isArray(mod) ? mod : null);
-            if (items && Array.isArray(items)) {
-              setPdmMenu(items);
-            }
-          }
-        }
-      })
-      .catch(err => {
-        console.warn("Failed to dynamically load pdm menu, using fallback:", err);
-        setPdmMenu([
-          { path: '/device-type', label: '设备类型管理' },
-          { path: '/device', label: '设备ID管理' }
-        ]);
-      });
-
     return () => {
+      unsubs.forEach((fn) => fn());
       window.removeEventListener('shield-task-types-changed', handleShieldChanged);
     };
-  }, []);
+  }, [modules]);
 
   const isPublicRoute = location.pathname.startsWith('/shield/public/');
 
@@ -422,39 +537,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     return <Login onLoginSuccess={loadUser} />;
   }
 
-  const subNavLinkStyle = (isActive: boolean) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.45rem 0.65rem',
-    borderRadius: '8px',
-    textDecoration: 'none',
-    fontSize: '0.85rem',
-    color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
-    background: isActive ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
-    fontWeight: isActive ? 600 : 500,
-    transition: 'all 0.2s',
-  } as React.CSSProperties);
-
-  const renderSubIcon = (item: any, isActive: boolean) => {
-    if (!item || !item.icon) return null;
-    return (
-      <svg
-        width="14"
-        height="14"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }}
-      >
-        <path d={item.icon} />
-      </svg>
-    );
-  };
-
   let userRoles: string[] = [];
   if (user) {
     if (Array.isArray(user.roles)) {
@@ -465,7 +547,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   }
   const isSuperAdmin = !!(user && userRoles.includes('super_admin'));
   const canManageTeams = !!(user && (isSuperAdmin || userRoles.includes('bench_admin')));
-  const isShieldAdmin = !!(user && (isSuperAdmin || userRoles.includes('shield_admin')));
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
@@ -482,259 +563,38 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-          <NavLink 
-            to="/shield" 
-            icon={Shield} 
-            label="代码质量 (Code Shield)" 
-            activePattern={/^\/shield/} 
-            onClick={(e) => {
-              if (location.pathname.startsWith('/shield')) {
-                e.preventDefault();
-                setShieldMenuCollapsed(!shieldMenuCollapsed);
-              } else {
-                setShieldMenuCollapsed(false);
-                setPipelineMenuCollapsed(true);
-                setPdmMenuCollapsed(true);
-              }
-            }}
-          />
-          {location.pathname.startsWith('/shield') && !shieldMenuCollapsed && (shieldMenuGroups.length > 0 || shieldMenu.length > 0) && (
-            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-              {shieldMenuGroups.length > 0 ? (
-                // Grouped Menu Layout
-                shieldMenuGroups
-                  .filter((group: any) => {
-                    if (group.superAdminOnly && !isSuperAdmin) {
-                      return false;
-                    }
-                    if (group.adminOnly) {
-                      return isShieldAdmin;
-                    }
-                    return true;
-                  })
-                  .map((group: any) => {
-                    const visibleItems = (group.items || []).filter((item: any) => {
-                      if (item.path === '/admin/teams' || item.path === '/admin/users') {
-                        return false;
-                      }
-                      if (item.superAdminOnly) {
-                        return isSuperAdmin;
-                      }
-                      if (item.adminOnly) {
-                        return isShieldAdmin;
-                      }
-                      return true;
-                    });
+          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={collapseAll} />
 
-                    if (visibleItems.length === 0) return null;
-
-                    return (
-                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {group.title}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                          {visibleItems.map((item: any) => {
-                            const fullPath = `/shield${item.path}`;
-                            const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
-                            return (
-                              <Link
-                                key={item.path}
-                                to={fullPath}
-                                style={subNavLinkStyle(isActive)}
-                              >
-                                {renderSubIcon(item, isActive)}
-                                <span>{item.label}</span>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-              ) : (
-                // Flat Menu Fallback Layout
-                shieldMenu
-                  .filter((item: any) => {
-                    if (item.path === '/admin/teams' || item.path === '/admin/users') {
-                      return false;
-                    }
-                    if (item.superAdminOnly) {
-                      return isSuperAdmin;
-                    }
-                    if (item.adminOnly || item.path === '/config' || item.path?.startsWith('/admin')) {
-                      return isShieldAdmin;
-                    }
-                    return true;
-                  })
-                  .map((item: any) => {
-                    const fullPath = `/shield${item.path}`;
-                    const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
-                    return (
-                      <Link
-                        key={item.path}
-                        to={fullPath}
-                        style={subNavLinkStyle(isActive)}
-                      >
-                        {renderSubIcon(item, isActive)}
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })
-              )}
-            </div>
-          )}
-
-
-          <>
-            <NavLink 
-              to="/pipeline" 
-              icon={Activity} 
-              label="持续构建(Code Pipeline)" 
-              activePattern={/^\/pipeline/} 
-              onClick={(e) => {
-                if (location.pathname.startsWith('/pipeline')) {
-                  e.preventDefault();
-                  setPipelineMenuCollapsed(!pipelineMenuCollapsed);
-                } else {
-                  setPipelineMenuCollapsed(false);
-                  setShieldMenuCollapsed(true);
-                  setPdmMenuCollapsed(true);
-                }
+          {modules.map((mod) => (
+            <ModuleNavSection
+              key={mod.key}
+              module={mod}
+              menuData={moduleMenus[mod.key]}
+              collapsed={collapsedState[mod.key] ?? false}
+              onToggleCollapse={() => {
+                setCollapsedState((prev) => ({
+                  ...prev,
+                  [mod.key]: !(prev[mod.key] ?? false),
+                }));
               }}
+              location={location}
+              user={user}
+              isSuperAdmin={isSuperAdmin}
             />
-            {location.pathname.startsWith('/pipeline') && !pipelineMenuCollapsed && (pipelineMenuGroups.length > 0 || pipelineMenu.length > 0) && (
-              <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                {pipelineMenuGroups.length > 0 ? (
-                  pipelineMenuGroups.map((group: any) => (
-                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {group.title}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                        {group.items.map((item: any) => {
-                          const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
-                          const isDashboard = item.path === '/' || item.path === '/dashboard';
-                          const isActive = isDashboard
-                            ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                            : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                          return (
-                            <Link
-                              key={item.path}
-                              to={fullPath}
-                              style={subNavLinkStyle(isActive)}
-                            >
-                              {renderSubIcon(item, isActive)}
-                              <span>{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  pipelineMenu.map((item: any) => {
-                    const fullPath = `/pipeline${item.path === '/' ? '' : item.path}`;
-                    const isDashboard = item.path === '/' || item.path === '/dashboard';
-                    const isActive = isDashboard
-                      ? (location.pathname === '/pipeline' || location.pathname === '/pipeline/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                      : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                    return (
-                      <Link
-                        key={item.path}
-                        to={fullPath}
-                        style={subNavLinkStyle(isActive)}
-                      >
-                        {renderSubIcon(item, isActive)}
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })
-                )}
-              </div>
-            )}
-          </>
+          ))}
 
-          {/* 产品数据管理 (PDM) */}
-          <NavLink 
-            to="/pdm" 
-            icon={ClipboardList} 
-            label="产品数据管理 (PDM)" 
-            activePattern={/^\/pdm/} 
-            onClick={(e) => {
-              if (location.pathname.startsWith('/pdm')) {
-                e.preventDefault();
-                setPdmMenuCollapsed(!pdmMenuCollapsed);
-              } else {
-                setPdmMenuCollapsed(false);
-                setShieldMenuCollapsed(true);
-                setPipelineMenuCollapsed(true);
-              }
-            }}
-          />
-          {location.pathname.startsWith('/pdm') && !pdmMenuCollapsed && (pdmMenuGroups.length > 0 || pdmMenu.length > 0) && (
-            <div style={{ paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-              {pdmMenuGroups.length > 0 ? (
-                pdmMenuGroups.map((group: any) => (
-                  <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, padding: '0.25rem 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {group.title}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '0.25rem' }}>
-                      {group.items.map((item: any) => {
-                        const fullPath = `/pdm${item.path === '/' ? '' : item.path}`;
-                        const isDefault = item.path === '/device-type';
-                        const isActive = isDefault
-                          ? (location.pathname === '/pdm' || location.pathname === '/pdm/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                          : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                        return (
-                          <Link
-                            key={item.path}
-                            to={fullPath}
-                            style={subNavLinkStyle(isActive)}
-                          >
-                            {renderSubIcon(item, isActive)}
-                            <span>{item.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                pdmMenu.map((item: any) => {
-                  const fullPath = `/pdm${item.path === '/' ? '' : item.path}`;
-                  const isDefault = item.path === '/device-type';
-                  const isActive = isDefault
-                    ? (location.pathname === '/pdm' || location.pathname === '/pdm/' || location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'))
-                    : (location.pathname === fullPath || location.pathname.startsWith(fullPath + '/'));
-                  return (
-                    <Link
-                      key={item.path}
-                      to={fullPath}
-                      style={subNavLinkStyle(isActive)}
-                    >
-                      {renderSubIcon(item, isActive)}
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          )}
           {user && (canManageTeams || isSuperAdmin) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6, paddingLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                 系统管理
               </div>
               {canManageTeams && (
-                <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+                <NavLink to="/admin/teams" icon={Users} label="团队与代码仓" activePattern={/^\/admin\/teams/} onClick={collapseAll} />
               )}
               {isSuperAdmin && (
                 <>
-                  <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-                  <NavLink to="/admin/audit" icon={ScrollText} label="操作审计" activePattern={/^\/admin\/audit/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+                  <NavLink to="/admin/users" icon={UserCheck} label="用户管理" activePattern={/^\/admin\/users/} onClick={collapseAll} />
+                  <NavLink to="/admin/audit" icon={ScrollText} label="操作审计" activePattern={/^\/admin\/audit/} onClick={collapseAll} />
                 </>
               )}
             </div>
@@ -742,8 +602,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         </nav>
         {user && (
           <div style={{ padding: '1.25rem 1rem', borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <NavLink to="/docs" icon={BookOpen} label="开发人员手册" activePattern={/^\/docs/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
-            <NavLink to="/feedback" icon={MessageSquare} label="改进建议与反馈" activePattern={/^\/feedback/} onClick={() => { setShieldMenuCollapsed(true); setPipelineMenuCollapsed(true); setPdmMenuCollapsed(true); }} />
+            <NavLink to="/docs" icon={BookOpen} label="开发人员手册" activePattern={/^\/docs/} onClick={collapseAll} />
+            <NavLink to="/feedback" icon={MessageSquare} label="改进建议与反馈" activePattern={/^\/feedback/} onClick={collapseAll} />
           </div>
         )}
       </aside>
@@ -771,26 +631,18 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               if (pathname.startsWith('/admin/audit')) return '全局操作审计';
               if (pathname.startsWith('/modelgate')) return '大模型网关 (ModelGate)';
 
-              const modulesMap: Array<{ prefix: string; menu: any[]; defaultTitle: string }> = [
-                { prefix: '/pipeline', menu: pipelineMenu, defaultTitle: '持续构建 (Code Pipeline)' },
-                { prefix: '/shield', menu: shieldMenu, defaultTitle: '代码质量 (Code Shield)' },
-                { prefix: '/pdm', menu: pdmMenu, defaultTitle: '产品数据管理 (PDM)' },
-              ];
-
-              for (const mod of modulesMap) {
-                if (pathname.startsWith(mod.prefix)) {
-                  const matchedItem = mod.menu.find((item: any) => {
-                    const fullPath = `${mod.prefix}${item.path === '/' ? '' : item.path}`;
+              for (const mod of modules) {
+                if (pathname.startsWith(mod.path)) {
+                  const menuData = moduleMenus[mod.key];
+                  const items = menuData?.items || [];
+                  const matchedItem = items.find((item: any) => {
+                    const fullPath = `${mod.path}${item.path === '/' ? '' : item.path}`;
                     return pathname === fullPath || pathname.startsWith(fullPath + '/');
                   });
                   if (matchedItem) {
                     return matchedItem.headerTitle || matchedItem.label;
                   }
-                  if (mod.prefix === '/pdm' && (pathname === '/pdm' || pathname === '/pdm/')) {
-                    const defaultItem = mod.menu.find((item: any) => item.path === '/device-type');
-                    if (defaultItem) return defaultItem.headerTitle || defaultItem.label;
-                  }
-                  return mod.defaultTitle;
+                  return mod.title;
                 }
               }
 
@@ -904,13 +756,19 @@ function OAuthCallback() {
 }
 
 export default function App() {
+  const [modules, setModules] = React.useState<ModuleMeta[]>(DEFAULT_FALLBACK_MODULES);
+
+  React.useEffect(() => {
+    fetchActiveModules().then(setModules);
+  }, []);
+
   return (
     <BrowserRouter>
       <ConfirmProvider>
         <ToastProvider>
-          <MainLayout>
+          <MainLayout modules={modules}>
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<Home modules={modules} />} />
               <Route path="/docs/*" element={<DeveloperDocs />} />
               <Route path="/feedback/*" element={<FeedbackCenter />} />
               <Route path="/oauth2/callback" element={<OAuthCallback />} />
@@ -918,47 +776,22 @@ export default function App() {
               <Route path="/admin/audit" element={<AuditManagement />} />
               <Route path="/admin/teams" element={<TeamManagement />} />
               <Route path="/admin/teams/:tab" element={<TeamManagement />} />
-              <Route path="/shield/*" element={
-                <ErrorBoundary key="shield-eb">
-                  <Suspense fallback={
-                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                      <div className="spinner"></div>
-                      <span style={{ fontSize: '0.95rem' }}>正在加载代码质量微应用...</span>
-                    </div>
-                  }>
-                    {/* @ts-ignore */}
-                    <ShieldApp isEmbedded={true} />
-                  </Suspense>
-                </ErrorBoundary>
-              } />
               <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
-              <Route path="/pipeline/*" element={
-                <ErrorBoundary key="pipeline-eb">
-                  <Suspense fallback={
-                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                      <div className="spinner"></div>
-                      <span style={{ fontSize: '0.95rem' }}>正在加载流水线微应用...</span>
-                    </div>
-                  }>
-                    {/* @ts-ignore */}
-                    <PipelineApp isEmbedded={true} />
-                  </Suspense>
-                </ErrorBoundary>
-              } />
 
-              <Route path="/pdm/*" element={
-                <ErrorBoundary key="pdm-eb">
-                  <Suspense fallback={
-                    <div style={{ padding: '8rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'var(--text-secondary)' }}>
-                      <div className="spinner"></div>
-                      <span style={{ fontSize: '0.95rem' }}>正在加载产品数据管理微应用...</span>
-                    </div>
-                  }>
-                    {/* @ts-ignore */}
-                    <PdmApp isEmbedded={true} />
-                  </Suspense>
-                </ErrorBoundary>
-              } />
+              {modules.map((mod) => (
+                <Route
+                  key={mod.key}
+                  path={`${mod.path}/*`}
+                  element={
+                    <DynamicRemoteApp
+                      entry={mod.entry}
+                      moduleKey={mod.key}
+                      title={mod.title}
+                      isEmbedded={true}
+                    />
+                  }
+                />
+              ))}
             </Routes>
           </MainLayout>
           <VersionNotification />
