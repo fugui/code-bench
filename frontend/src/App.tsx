@@ -202,7 +202,7 @@ function ModuleNavSection({
               if (group.adminOnly && !isModAdmin) return null;
 
               const visibleItems = (group.items || []).filter((item: any) => {
-                if (item.path === '/admin/teams' || item.path === '/admin/users') return false;
+                if (module.key === 'shield' && (item.path === '/admin/teams' || item.path === '/admin/users')) return false;
                 if (item.superAdminOnly) return isSuperAdmin;
                 if (item.adminOnly) return isModAdmin;
                 return true;
@@ -239,7 +239,7 @@ function ModuleNavSection({
             })
           ) : (
             flatItems.map((item: any) => {
-              if (item.path === '/admin/teams' || item.path === '/admin/users') return false;
+              if (module.key === 'shield' && (item.path === '/admin/teams' || item.path === '/admin/users')) return false;
               if (item.superAdminOnly && !isSuperAdmin) return null;
               if (item.adminOnly && !isModAdmin) return null;
 
