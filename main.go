@@ -96,6 +96,8 @@ func main() {
 				}
 				r.Any("/"+p+"/api", forwardHandler)
 				r.Any("/"+p+"/api/*path", forwardHandler)
+				r.Any("/"+p+"/v1", forwardHandler)
+				r.Any("/"+p+"/v1/*path", forwardHandler)
 				r.Any("/"+p+"/assets/*path", forwardHandler)
 				r.Any("/"+p+"/remoteEntry.js", forwardHandler)
 			}

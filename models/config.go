@@ -192,11 +192,18 @@ var knownModules = map[string]ModuleMeta{
 		Icon:        "ClipboardList",
 		Description: "规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。",
 	},
+	"gate": {
+		Key:         "gate",
+		Path:        "/gate",
+		Title:       "AI 网关 (Code Gate)",
+		Icon:        "Bot",
+		Description: "企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。",
+	},
 }
 
 func GetActiveModules() []ModuleMeta {
 	modules := make([]ModuleMeta, 0, len(AppConfig.Gateways))
-	priorityOrder := []string{"shield", "pipeline", "pdm", "proto"}
+	priorityOrder := []string{"shield", "pipeline", "pdm", "gate", "proto"}
 	processed := make(map[string]bool)
 
 	for _, key := range priorityOrder {
