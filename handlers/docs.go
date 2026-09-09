@@ -390,8 +390,22 @@ func DeleteDocComment(c *gin.Context) {
 	})
 }
 
-// scanDocDir recursively scans directory for markdown files
+const maxDocScanDepth = 25
+
+// scanDocDir recursively scans directory for markdown files, supporting external directory symlinks
 func scanDocDir(currentDir string, rootDir string) ([]DocNode, error) {
+	visited := make(map[string]bool)
+	if rootReal, err := filepath.EvalSymlinks(rootDir); err == nil {
+		visited[rootReal] = true
+	}
+	return scanDocDirInternal(currentDir, rootDir, visited, 0)
+}
+
+func scanDocDirInternal(currentDir string, rootDir string, visited map[string]bool, depth int) ([]DocNode, error) {
+	if depth > maxDocScanDepth {
+		return nil, nil
+	}
+
 	entries, err := os.ReadDir(currentDir)
 	if err != nil {
 		return nil, err
@@ -413,11 +427,30 @@ func scanDocDir(currentDir string, rootDir string) ([]DocNode, error) {
 		// Standardize path separator to forward slash for frontend matching
 		relPath = filepath.ToSlash(relPath)
 
-		if entry.IsDir() {
-			children, err := scanDocDir(fullPath, rootDir)
+		// Determine if the entry is a directory or a symlink pointing to a directory
+		isDir := entry.IsDir()
+		isSymlink := entry.Type()&os.ModeSymlink != 0
+		if !isDir && isSymlink {
+			if fi, err := os.Stat(fullPath); err == nil && fi.IsDir() {
+				isDir = true
+			}
+		}
+
+		if isDir {
+			// Resolve canonical real path for cycle detection
+			realPath, err := filepath.EvalSymlinks(fullPath)
+			if err != nil || visited[realPath] {
+				// Skip broken symlinks or recursive loops
+				continue
+			}
+
+			visited[realPath] = true
+			children, err := scanDocDirInternal(fullPath, rootDir, visited, depth+1)
+			delete(visited, realPath) // Unmark when unwinding stack to allow DAG structures
 			if err != nil {
 				continue
 			}
+
 			// Only include directories that have valid markdown children
 			if len(children) > 0 {
 				nodes = append(nodes, DocNode{
@@ -430,6 +463,13 @@ func scanDocDir(currentDir string, rootDir string) ([]DocNode, error) {
 		} else {
 			ext := strings.ToLower(filepath.Ext(name))
 			if ext == ".md" || ext == ".markdown" {
+				// If it's a symlink to a file, verify the target actually exists
+				if isSymlink {
+					if _, err := os.Stat(fullPath); err != nil {
+						continue
+					}
+				}
+
 				docID := registerDocID(relPath)
 				nodes = append(nodes, DocNode{
 					ID:    docID,

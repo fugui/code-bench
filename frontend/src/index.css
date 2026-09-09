@@ -124,3 +124,22 @@ body {
     transform: rotate(360deg);
   }
 }
+
+.code-docs-refresh-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--radius-sm, 4px);
+  transition: var(--transition-fast, all 0.15s ease);
+}
+
+.code-docs-refresh-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+

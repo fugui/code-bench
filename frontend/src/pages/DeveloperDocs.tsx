@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
-  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2
+  Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2, RefreshCw
 } from 'lucide-react';
 import { MermaidDiagram } from '../components/MermaidDiagram';
 import { LatexFormula, renderLatexToHtml } from '../components/LatexFormula';
@@ -1388,9 +1388,20 @@ export default function DeveloperDocs() {
       }}>
         {/* Header & Search */}
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <BookOpen size={18} color="#3b82f6" />
-            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)' }}>手册目录</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BookOpen size={18} color="#3b82f6" />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)' }}>手册目录</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchTree()}
+              title="刷新手册目录"
+              className="code-docs-refresh-btn"
+              disabled={loadingTree}
+            >
+              <RefreshCw size={14} style={loadingTree ? { animation: 'spin 1s linear infinite' } : undefined} />
+            </button>
           </div>
           <div style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
