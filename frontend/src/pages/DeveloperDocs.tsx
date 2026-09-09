@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
@@ -81,6 +81,122 @@ export default function DeveloperDocs() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Record<string, boolean>>({});
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
+
+  // Resizable sidebar states
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('code-docs-sidebar-width');
+    if (saved) {
+      const val = parseInt(saved, 10);
+      if (!isNaN(val) && val >= 220 && val <= 700) {
+        return val;
+      }
+    }
+    return 280;
+  });
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Floating Tooltip state for long / truncated document and folder names
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    name: string;
+    path: string;
+    isDir: boolean;
+    views?: number;
+    comments?: number;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    name: '',
+    path: '',
+    isDir: false,
+  });
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Handle sidebar resizing drag interactions
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!sidebarRef.current) return;
+      const rect = sidebarRef.current.getBoundingClientRect();
+      const newWidth = Math.min(Math.max(e.clientX - rect.left, 220), 700);
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Persist sidebar width to localStorage
+  useEffect(() => {
+    if (!isResizing) {
+      localStorage.setItem('code-docs-sidebar-width', sidebarWidth.toString());
+    }
+  }, [sidebarWidth, isResizing]);
+
+  // Show tooltip only when the text title is truncated with ellipsis
+  const handleNodeMouseEnter = (e: React.MouseEvent<HTMLDivElement>, node: DocNode) => {
+    const textSpan = e.currentTarget.querySelector('.code-doc-node-title') as HTMLElement | null;
+    if (!textSpan) return;
+
+    // Check if the title text overflows and is truncated
+    if (textSpan.scrollWidth > textSpan.clientWidth + 1) {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      const rect = e.currentTarget.getBoundingClientRect();
+      let x = rect.right + 10;
+      let y = rect.top + rect.height / 2;
+
+      // Ensure tooltip does not overflow viewport horizontally
+      if (x + 360 > window.innerWidth) {
+        x = Math.max(10, rect.left + 16);
+        y = rect.bottom + 6;
+      }
+      // Ensure tooltip stays within viewport vertically
+      if (y > window.innerHeight - 80) {
+        y = window.innerHeight - 80;
+      }
+
+      tooltipTimerRef.current = setTimeout(() => {
+        setTooltip({
+          visible: true,
+          x,
+          y,
+          name: node.name,
+          path: node.path,
+          isDir: node.is_dir,
+          views: node.views,
+          comments: node.comment_count,
+        });
+      }, 120);
+    }
+  };
+
+  const handleNodeMouseLeave = () => {
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = null;
+    }
+    setTooltip(prev => (prev.visible ? { ...prev, visible: false } : prev));
+  };
+
 
   const [isLightTheme, setIsLightTheme] = useState<boolean>(() => {
     return document.documentElement.classList.contains('light-theme') || localStorage.getItem('code-theme') === 'light';
@@ -1112,24 +1228,14 @@ export default function DeveloperDocs() {
           <div key={node.path} style={{ marginLeft: depth > 0 ? '0.75rem' : '0' }}>
             <div
               onClick={() => toggleFolder(node.path)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.45rem 0.75rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                color: 'var(--text-color)',
-                fontSize: '0.875rem',
-                transition: 'background 0.15s'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={(e) => handleNodeMouseEnter(e, node)}
+              onMouseLeave={handleNodeMouseLeave}
+              className="code-doc-tree-item"
+              title={node.name}
             >
-              {isExpanded ? <ChevronDown size={16} color="var(--text-secondary)" /> : <ChevronRight size={16} color="var(--text-secondary)" />}
-              {isExpanded ? <FolderOpen size={16} color="#60a5fa" /> : <Folder size={16} color="#60a5fa" />}
-              <span style={{ fontWeight: 500, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isExpanded ? <ChevronDown size={16} color="var(--text-secondary)" style={{ flexShrink: 0 }} /> : <ChevronRight size={16} color="var(--text-secondary)" style={{ flexShrink: 0 }} />}
+              {isExpanded ? <FolderOpen size={16} color="#60a5fa" style={{ flexShrink: 0 }} /> : <Folder size={16} color="#60a5fa" style={{ flexShrink: 0 }} />}
+              <span className="code-doc-node-title" style={{ fontWeight: 500 }}>
                 {node.name}
               </span>
             </div>
@@ -1147,31 +1253,15 @@ export default function DeveloperDocs() {
         <div
           key={node.path}
           onClick={() => handleSelectDoc(node)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.5rem',
-            padding: '0.45rem 0.75rem',
-            marginLeft: depth > 0 ? '0.25rem' : '0',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            color: isSelected ? '#ffffff' : 'var(--text-secondary)',
-            background: isSelected ? 'var(--primary-color, #3b82f6)' : 'transparent',
-            fontWeight: isSelected ? 600 : 400,
-            transition: 'all 0.15s'
-          }}
-          onMouseEnter={(e) => {
-            if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-          }}
-          onMouseLeave={(e) => {
-            if (!isSelected) e.currentTarget.style.background = 'transparent';
-          }}
+          onMouseEnter={(e) => handleNodeMouseEnter(e, node)}
+          onMouseLeave={handleNodeMouseLeave}
+          className={`code-doc-tree-item ${isSelected ? 'code-doc-tree-item--selected' : ''}`}
+          style={{ marginLeft: depth > 0 ? '0.25rem' : '0' }}
+          title={node.name}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-            <FileText size={15} opacity={isSelected ? 1 : 0.7} />
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <FileText size={15} opacity={isSelected ? 1 : 0.7} style={{ flexShrink: 0 }} />
+            <span className="code-doc-node-title">
               {node.name}
             </span>
           </div>
@@ -1376,16 +1466,31 @@ export default function DeveloperDocs() {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 80px)', background: 'var(--bg-color, #0f172a)', overflow: 'hidden' }}>
-      {/* Left Sidebar: Document Tree */}
-      <div style={{
-        width: '280px',
-        borderRight: '1px solid var(--border-color)',
-        background: 'var(--card-bg)',
+    <div
+      style={{
         display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
-      }}>
+        height: 'calc(100vh - 80px)',
+        background: 'var(--bg-color, #0f172a)',
+        overflow: 'hidden',
+        cursor: isResizing ? 'col-resize' : 'auto',
+        userSelect: isResizing ? 'none' : 'auto',
+      }}
+    >
+      {/* Left Sidebar: Document Tree */}
+      <div
+        ref={sidebarRef}
+        style={{
+          width: `${sidebarWidth}px`,
+          minWidth: '220px',
+          maxWidth: '700px',
+          borderRight: '1px solid var(--border-color)',
+          background: 'var(--card-bg)',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          position: 'relative',
+        }}
+      >
         {/* Header & Search */}
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
@@ -1425,7 +1530,10 @@ export default function DeveloperDocs() {
         </div>
 
         {/* Tree Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.5rem' }}>
+        <div
+          onScroll={handleNodeMouseLeave}
+          style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.5rem' }}
+        >
           {loadingTree ? (
             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
               正在加载文档树...
@@ -1443,7 +1551,49 @@ export default function DeveloperDocs() {
             renderTreeNodes(filteredTree)
           )}
         </div>
+
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={`code-docs-resize-handle ${isResizing ? 'code-docs-resize-handle--active' : ''}`}
+          title="按住左右拖拽调整目录宽度"
+        />
       </div>
+
+      {/* Floating Tooltip for Truncated Document and Folder Titles */}
+      {tooltip.visible && (
+        <div
+          className="code-docs-tree-tooltip"
+          style={{
+            position: 'fixed',
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+            transform: 'translateY(-50%)',
+          }}
+        >
+          <div className="code-docs-tree-tooltip-header">
+            {tooltip.isDir ? (
+              <Folder size={15} color="#60a5fa" style={{ flexShrink: 0 }} />
+            ) : (
+              <FileText size={15} color="#3b82f6" style={{ flexShrink: 0 }} />
+            )}
+            <span>{tooltip.name}</span>
+          </div>
+          <div className="code-docs-tree-tooltip-path">
+            {tooltip.path}
+          </div>
+          {!tooltip.isDir && (
+            <div className="code-docs-tree-tooltip-stats">
+              <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <Eye size={12} /> {tooltip.views || 0} 次阅读
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <MessageSquare size={12} /> {tooltip.comments || 0} 讨论
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Center: Main Markdown Reader & Discussion Section */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '2rem 3rem' }}>
