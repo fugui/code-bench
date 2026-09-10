@@ -14,6 +14,7 @@ export interface ModuleMeta {
   title: string;
   icon?: string;
   description?: string;
+  superAdminOnly?: boolean;
 }
 
 export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [
@@ -48,6 +49,7 @@ export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [
     title: 'AI 网关 (Code Gate)',
     icon: 'Bot',
     description: '企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。',
+    superAdminOnly: true,
   },
 ];
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { 
   Shield, 
   LayoutDashboard, 
@@ -33,6 +33,18 @@ import { ConfirmProvider, UserMenu, setupFetchInterceptor, VersionNotification }
 
 // Setup unified global fetch interceptor
 setupFetchInterceptor();
+
+interface AuthContextValue {
+  user: any;
+  isSuperAdmin: boolean;
+}
+
+export const AuthContext = React.createContext<AuthContextValue>({
+  user: null,
+  isSuperAdmin: false,
+});
+
+export const useAuth = () => React.useContext(AuthContext);
 
 const ICON_MAP: Record<string, any> = {
   Shield,
@@ -78,6 +90,12 @@ function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string
 }
 
 function Home({ modules }: { modules: ModuleMeta[] }) {
+  const { isSuperAdmin } = useAuth();
+  const visibleModules = modules.filter((mod) => {
+    const isSuperAdminOnly = Boolean(mod.superAdminOnly || mod.key === 'gate');
+    return !isSuperAdminOnly || isSuperAdmin;
+  });
+
   return (
     <div style={{ padding: '2.5rem' }}>
       <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
@@ -86,7 +104,7 @@ function Home({ modules }: { modules: ModuleMeta[] }) {
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        {modules.map((mod) => {
+        {visibleModules.map((mod) => {
           const Icon = getModuleIcon(mod.icon);
           return (
             <div key={mod.key} className="portal-card">
@@ -160,6 +178,11 @@ function ModuleNavSection({
   user,
   isSuperAdmin,
 }: ModuleNavSectionProps) {
+  const isModuleSuperAdminOnly = Boolean(module.superAdminOnly || (menuData as any)?.superAdminOnly || module.key === 'gate');
+  if (isModuleSuperAdminOnly && !isSuperAdmin) {
+    return null;
+  }
+
   const modPath = module.path;
   const isMatch = location.pathname === modPath || location.pathname.startsWith(modPath + '/');
   const Icon = getModuleIcon(module.icon);
@@ -441,7 +464,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
             }
             setModuleMenus((prev) => ({
               ...prev,
-              [mod.key]: { items, groups },
+              [mod.key]: { items, groups, superAdminOnly: c?.superAdminOnly },
             }));
           };
 
@@ -549,39 +572,47 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
   const canManageTeams = !!(user && (isSuperAdmin || userRoles.includes('bench_admin')));
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-      {/* Sidebar */}
-      <aside style={{ width: '280px', background: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
-        <div style={{ height: '80px', padding: '0 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '1.25rem', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}>
-            CB
+    <AuthContext.Provider value={{ user, isSuperAdmin }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+        {/* Sidebar */}
+        <aside style={{ width: '280px', background: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
+          <div style={{ height: '80px', padding: '0 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '1.25rem', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}>
+              CB
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '1.05rem', color: 'var(--text-color)', fontWeight: 700, letterSpacing: '0.5px' }}>CodeBench</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.3px' }}>开发者工作台</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '1.05rem', color: 'var(--text-color)', fontWeight: 700, letterSpacing: '0.5px' }}>CodeBench</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.3px' }}>开发者工作台</span>
-          </div>
-        </div>
 
-        <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
-          <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={collapseAll} />
+          <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
+            <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={collapseAll} />
 
-          {modules.map((mod) => (
-            <ModuleNavSection
-              key={mod.key}
-              module={mod}
-              menuData={moduleMenus[mod.key]}
-              collapsed={collapsedState[mod.key] ?? false}
-              onToggleCollapse={() => {
-                setCollapsedState((prev) => ({
-                  ...prev,
-                  [mod.key]: !(prev[mod.key] ?? false),
-                }));
-              }}
-              location={location}
-              user={user}
-              isSuperAdmin={isSuperAdmin}
-            />
-          ))}
+            {modules.map((mod) => {
+              const menuData = moduleMenus[mod.key];
+              const isModuleSuperAdminOnly = Boolean(mod.superAdminOnly || (menuData as any)?.superAdminOnly || mod.key === 'gate');
+              if (isModuleSuperAdminOnly && !isSuperAdmin) {
+                return null;
+              }
+              return (
+                <ModuleNavSection
+                  key={mod.key}
+                  module={mod}
+                  menuData={menuData}
+                  collapsed={collapsedState[mod.key] ?? false}
+                  onToggleCollapse={() => {
+                    setCollapsedState((prev) => ({
+                      ...prev,
+                      [mod.key]: !(prev[mod.key] ?? false),
+                    }));
+                  }}
+                  location={location}
+                  user={user}
+                  isSuperAdmin={isSuperAdmin}
+                />
+              );
+            })}
 
           {user && (canManageTeams || isSuperAdmin) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
@@ -634,6 +665,10 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
               for (const mod of modules) {
                 if (pathname.startsWith(mod.path)) {
                   const menuData = moduleMenus[mod.key];
+                  const isModSuperAdminOnly = Boolean(mod.superAdminOnly || (menuData as any)?.superAdminOnly || mod.key === 'gate');
+                  if (isModSuperAdminOnly && !isSuperAdmin) {
+                    return '开发者综合工作台';
+                  }
                   const items = menuData?.items || [];
                   const matchedItem = items.find((item: any) => {
                     const fullPath = `${mod.path}${item.path === '/' ? '' : item.path}`;
@@ -709,6 +744,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
         </main>
       </div>
     </div>
+    </AuthContext.Provider>
   );
 }
 
@@ -755,6 +791,14 @@ function OAuthCallback() {
   );
 }
 
+function ModuleRouteGuard({ isSuperAdminOnly, children }: { isSuperAdminOnly: boolean; children: React.ReactNode }) {
+  const { isSuperAdmin } = useAuth();
+  if (isSuperAdminOnly && !isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   const [modules, setModules] = React.useState<ModuleMeta[]>(DEFAULT_FALLBACK_MODULES);
 
@@ -778,20 +822,25 @@ export default function App() {
               <Route path="/admin/teams/:tab" element={<TeamManagement />} />
               <Route path="/modelgate/*" element={<PlaceholderView title="大模型网关 (ModelGate)" icon={Brain} color="168, 85, 247" />} />
 
-              {modules.map((mod) => (
-                <Route
-                  key={mod.key}
-                  path={`${mod.path}/*`}
-                  element={
-                    <DynamicRemoteApp
-                      entry={mod.entry}
-                      moduleKey={mod.key}
-                      title={mod.title}
-                      isEmbedded={true}
-                    />
-                  }
-                />
-              ))}
+              {modules.map((mod) => {
+                const isSuperAdminOnly = Boolean(mod.superAdminOnly || mod.key === 'gate');
+                return (
+                  <Route
+                    key={mod.key}
+                    path={`${mod.path}/*`}
+                    element={
+                      <ModuleRouteGuard isSuperAdminOnly={isSuperAdminOnly}>
+                        <DynamicRemoteApp
+                          entry={mod.entry}
+                          moduleKey={mod.key}
+                          title={mod.title}
+                          isEmbedded={true}
+                        />
+                      </ModuleRouteGuard>
+                    }
+                  />
+                );
+              })}
             </Routes>
           </MainLayout>
           <VersionNotification />

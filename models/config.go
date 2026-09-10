@@ -25,10 +25,11 @@ type DocsConfig struct {
 }
 
 type GatewayItem struct {
-	URL         string `yaml:"url" json:"url"`
-	Title       string `yaml:"title" json:"title"`
-	Icon        string `yaml:"icon" json:"icon"`
-	Description string `yaml:"description" json:"description"`
+	URL            string `yaml:"url" json:"url"`
+	Title          string `yaml:"title" json:"title"`
+	Icon           string `yaml:"icon" json:"icon"`
+	Description    string `yaml:"description" json:"description"`
+	SuperAdminOnly bool   `yaml:"super_admin_only" json:"superAdminOnly,omitempty"`
 }
 
 // UnmarshalYAML 支持字符串格式 ("http://...") 和对象格式 ({ url: "...", title: "..." })
@@ -47,12 +48,13 @@ func (g *GatewayItem) UnmarshalYAML(value *yaml.Node) error {
 }
 
 type ModuleMeta struct {
-	Key         string `json:"key"`
-	Path        string `json:"path"`
-	Entry       string `json:"entry"`
-	Title       string `json:"title"`
-	Icon        string `json:"icon"`
-	Description string `json:"description"`
+	Key            string `json:"key"`
+	Path           string `json:"path"`
+	Entry          string `json:"entry"`
+	Title          string `json:"title"`
+	Icon           string `json:"icon"`
+	Description    string `json:"description"`
+	SuperAdminOnly bool   `json:"superAdminOnly,omitempty"`
 }
 
 type Config struct {
@@ -193,11 +195,12 @@ var knownModules = map[string]ModuleMeta{
 		Description: "规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。",
 	},
 	"gate": {
-		Key:         "gate",
-		Path:        "/gate",
-		Title:       "AI 网关 (Code Gate)",
-		Icon:        "Bot",
-		Description: "企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。",
+		Key:            "gate",
+		Path:           "/gate",
+		Title:          "AI 网关 (Code Gate)",
+		Icon:           "Bot",
+		Description:    "企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。",
+		SuperAdminOnly: true,
 	},
 }
 
@@ -233,6 +236,7 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 		meta.Title = known.Title
 		meta.Icon = known.Icon
 		meta.Description = known.Description
+		meta.SuperAdminOnly = known.SuperAdminOnly
 	} else {
 		meta.Title = strings.ToUpper(key[:1]) + key[1:]
 		meta.Icon = "Layers"
@@ -247,6 +251,9 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 	}
 	if item.Description != "" {
 		meta.Description = item.Description
+	}
+	if item.SuperAdminOnly {
+		meta.SuperAdminOnly = true
 	}
 
 	return meta
