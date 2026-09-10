@@ -42,15 +42,6 @@ export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [
     icon: 'ClipboardList',
     description: '规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。',
   },
-  {
-    key: 'gate',
-    path: '/gate',
-    entry: '/gate/assets/remoteEntry.js',
-    title: 'AI 网关 (Code Gate)',
-    icon: 'Bot',
-    description: '企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。',
-    superAdminOnly: true,
-  },
 ];
 
 function getSharedScope() {
