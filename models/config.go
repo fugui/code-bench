@@ -21,7 +21,8 @@ type SyncConfig struct {
 }
 
 type DocsConfig struct {
-	Path string `yaml:"path"`
+	Path        string `yaml:"path"`
+	UploadsPath string `yaml:"uploads_path"`
 }
 
 type GatewayItem struct {
@@ -124,6 +125,10 @@ func applyDefaults() {
 
 	if !AppConfig.Auth.OAuth2.Enabled && !AppConfig.Auth.PasswordLoginEnabled {
 		AppConfig.Auth.PasswordLoginEnabled = true
+	}
+
+	if strings.TrimSpace(AppConfig.Docs.UploadsPath) == "" {
+		AppConfig.Docs.UploadsPath = "./uploads"
 	}
 
 	if AppConfig.Auth.OAuth2.Enabled {

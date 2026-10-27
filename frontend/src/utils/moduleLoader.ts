@@ -139,7 +139,7 @@ export async function loadRemoteModule<T = any>(entryUrl: string, exposePath: st
 
 export async function fetchActiveModules(): Promise<ModuleMeta[]> {
   try {
-    const res = await fetch('/api/modules');
+    const res = await fetch('/api/modules', { headers: { 'X-Portal-Request': 'true' } });
     if (!res.ok) {
       throw new Error(`Failed to fetch modules: HTTP ${res.status}`);
     }

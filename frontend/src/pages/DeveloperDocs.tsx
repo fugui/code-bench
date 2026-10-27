@@ -559,7 +559,7 @@ export default function DeveloperDocs() {
   // Extract Table of Contents from Markdown Content
   const tocList = useMemo<TocItem[]>(() => {
     if (!docContent) return [];
-    const lines = docContent.split('\n');
+    const lines = docContent.split(/\r\n?|\n/);
     const items: TocItem[] = [];
 
     lines.forEach((line) => {
@@ -695,7 +695,7 @@ export default function DeveloperDocs() {
   const renderMarkdown = (markdownText: string) => {
     if (!markdownText) return null;
 
-    const lines = markdownText.split('\n');
+    const lines = markdownText.split(/\r\n?|\n/);
     const elements: React.ReactNode[] = [];
     let i = 0;
     let codeBlockCount = 0;

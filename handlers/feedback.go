@@ -39,7 +39,7 @@ func UploadFeedbackImage(c *gin.Context) {
 		return
 	}
 
-	uploadDir := "./uploads/feedback"
+	uploadDir := filepath.Join(models.AppConfig.Docs.UploadsPath, "feedback")
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建文件保存目录失败"})
 		return

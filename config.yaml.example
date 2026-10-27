@@ -73,4 +73,4 @@ gateways:
 # ── 团队开发指导文档规范仓库配置 ──
 docs:
   path: "./docs"                             # 本地面向开发人员的 Markdown 指导文档仓库路径
-
+  uploads_path: "./uploads"                  # 用户上传文件存储根目录（建议配置在应用仓库外的持久化目录）

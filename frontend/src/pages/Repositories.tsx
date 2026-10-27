@@ -56,7 +56,7 @@ const getServiceGroupFromUrl = (url: string) => {
   if (segments.length >= 2) {
     let secondLast = segments[segments.length - 2];
     if (secondLast && secondLast !== 'http' && secondLast !== 'https' && !secondLast.includes('@')) {
-      return secondLast.toUpperCase();
+      return secondLast;
     }
   }
   return '';
@@ -309,7 +309,10 @@ function Repositories() {
     }
 
     const autoName = extractRepoPath(rawVal);
-    const autoServiceGroup = getServiceGroupFromUrl(rawVal);
+    const rawServiceGroup = getServiceGroupFromUrl(rawVal);
+    const autoServiceGroup = rawServiceGroup
+      ? subsystems.find(sub => sub.identifier.toLowerCase() === rawServiceGroup.toLowerCase())?.identifier || rawServiceGroup
+      : '';
 
     setFormData(prev => ({
       ...prev,
@@ -417,7 +420,7 @@ function Repositories() {
           <select value={filterServiceGroup} onChange={e => handleFilterChange(setFilterServiceGroup, e.target.value)} className="code-select">
             <option value="">全部子系统</option>
             {subsystems.map(sub => (
-              <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+              <option key={sub.id} value={sub.identifier}>{sub.identifier}</option>
             ))}
           </select>
           <input type="text" placeholder="按名称过滤..." value={filterName} onChange={e => handleFilterChange(setFilterName, e.target.value)} className="code-input" />
@@ -847,7 +850,7 @@ function Repositories() {
                 >
                   <option value="">-- 请选择归属子系统 --</option>
                   {subsystems.map(sub => (
-                    <option key={sub.id} value={sub.name_cn}>{sub.name_cn}</option>
+                    <option key={sub.id} value={sub.identifier}>{sub.identifier}</option>
                   ))}
                 </select>
               </div>

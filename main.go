@@ -189,7 +189,7 @@ func main() {
 			}
 
 			// Serve uploaded images statically
-			r.Static("/uploads", "./uploads")
+			r.Static("/uploads", models.AppConfig.Docs.UploadsPath)
 		},
 	})
 	if err != nil {
