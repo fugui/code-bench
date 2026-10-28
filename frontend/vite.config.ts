@@ -30,6 +30,10 @@ export default defineConfig({
         target: 'http://localhost:5175',
         changeOrigin: true,
       },
+      '/architecture': {
+        target: 'http://localhost:5185',
+        changeOrigin: true,
+      },
       '/pipeline': {
         target: 'http://localhost:5176',
         changeOrigin: true,
