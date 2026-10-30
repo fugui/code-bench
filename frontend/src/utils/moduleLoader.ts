@@ -17,32 +17,7 @@ export interface ModuleMeta {
   superAdminOnly?: boolean;
 }
 
-export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [
-  {
-    key: 'shield',
-    path: '/shield',
-    entry: '/shield/assets/remoteEntry.js',
-    title: '代码质量 (Code Shield)',
-    icon: 'Shield',
-    description: '码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。',
-  },
-  {
-    key: 'pipeline',
-    path: '/pipeline',
-    entry: '/pipeline/assets/remoteEntry.js',
-    title: '持续构建 (Code Pipeline)',
-    icon: 'Activity',
-    description: '自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。',
-  },
-  {
-    key: 'pdm',
-    path: '/pdm',
-    entry: '/pdm/assets/remoteEntry.js',
-    title: '产品数据管理 (PDM)',
-    icon: 'ClipboardList',
-    description: '规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。',
-  },
-];
+export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [];
 
 function getSharedScope() {
   const defaultScope = {
@@ -144,12 +119,12 @@ export async function fetchActiveModules(): Promise<ModuleMeta[]> {
       throw new Error(`Failed to fetch modules: HTTP ${res.status}`);
     }
     const data = await res.json();
-    if (Array.isArray(data.modules) && data.modules.length > 0) {
+    if (Array.isArray(data.modules)) {
       return data.modules;
     }
     return DEFAULT_FALLBACK_MODULES;
   } catch (err) {
-    console.warn('[ModuleLoader] Failed to fetch active modules, using default fallback:', err);
+    console.warn('[ModuleLoader] Failed to fetch active modules:', err);
     return DEFAULT_FALLBACK_MODULES;
   }
 }

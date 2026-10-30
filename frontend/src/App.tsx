@@ -38,7 +38,7 @@ import FeedbackCenter from './pages/FeedbackCenter';
 import AuditManagement from './pages/AuditManagement';
 import { ToastProvider } from './components/Toast';
 import { DynamicRemoteApp } from './components/DynamicRemoteApp';
-import { fetchActiveModules, loadRemoteModule, DEFAULT_FALLBACK_MODULES, type ModuleMeta } from './utils/moduleLoader';
+import { fetchActiveModules, loadRemoteModule, type ModuleMeta } from './utils/moduleLoader';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
@@ -516,16 +516,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
               { path: '/admin/users', label: '用户管理', adminOnly: true },
               { path: '/admin/activity', label: '执行日志', adminOnly: true }
             ];
-          } else if (mod.key === 'pipeline') {
-            fallbackItems = [
-              { path: '/dashboard', label: '控制中心' },
-              { path: '/repos', label: '仓库配置' }
-            ];
-          } else if (mod.key === 'pdm') {
-            fallbackItems = [
-              { path: '/device-type', label: '设备类型管理' },
-              { path: '/device', label: '设备ID管理' }
-            ];
           }
           setModuleMenus((prev) => ({
             ...prev,
@@ -828,7 +818,7 @@ function ModuleRouteGuard({ isSuperAdminOnly, children }: { isSuperAdminOnly: bo
 }
 
 export default function App() {
-  const [modules, setModules] = React.useState<ModuleMeta[]>(DEFAULT_FALLBACK_MODULES);
+  const [modules, setModules] = React.useState<ModuleMeta[]>([]);
 
   React.useEffect(() => {
     fetchActiveModules().then(setModules);
