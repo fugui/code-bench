@@ -78,7 +78,7 @@ func GetUsers(c *gin.Context) {
 	case "employee_id":
 		orderExpr = fmt.Sprintf("users.employee_id %s NULLS LAST", order)
 	case "roles":
-		orderExpr = fmt.Sprintf("(CASE WHEN users.roles::text LIKE '%%super_admin%%' THEN 5 WHEN users.roles::text LIKE '%%bench_admin%%' THEN 4 WHEN users.roles::text LIKE '%%pipeline_admin%%' THEN 3 WHEN users.roles::text LIKE '%%shield_admin%%' THEN 2 WHEN users.roles::text LIKE '%%pdm_admin%%' THEN 1 ELSE 0 END) %s, users.created_at DESC", order)
+		orderExpr = buildRolesOrderExpr(order)
 	case "last_login":
 		orderExpr = fmt.Sprintf("users.last_login %s NULLS LAST, users.created_at DESC", order)
 	case "is_active":
@@ -188,10 +188,25 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
+func buildRolesOrderExpr(order string) string {
+	modules := models.GetActiveModules()
+	var caseParts []string
+	weight := len(modules) + 10
+	caseParts = append(caseParts, fmt.Sprintf("WHEN users.roles::text LIKE '%%%s%%' THEN %d", "super_admin", weight))
+	weight--
+	caseParts = append(caseParts, fmt.Sprintf("WHEN users.roles::text LIKE '%%%s%%' THEN %d", "bench_admin", weight))
+	weight--
+	for _, mod := range modules {
+		caseParts = append(caseParts, fmt.Sprintf("WHEN users.roles::text LIKE '%%%s_admin%%' THEN %d", mod.Key, weight))
+		weight--
+	}
+	return fmt.Sprintf("(CASE %s ELSE 0 END) %s, users.created_at DESC", strings.Join(caseParts, " "), order)
+}
+
 func isPrivilegedRoles(roles []string) bool {
 	for _, r := range roles {
 		lower := strings.ToLower(strings.TrimSpace(r))
-		if lower == "super_admin" || lower == "bench_admin" || lower == "admin" {
+		if strings.HasSuffix(lower, "_admin") || lower == "admin" {
 			return true
 		}
 	}

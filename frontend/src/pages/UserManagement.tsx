@@ -1,27 +1,113 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Pagination, usePagination, useConfirm, Modal, EmptyState } from '@code/common';
-
 
 import { useToast } from '../components/Toast';
 import { AUTH_TOKEN_KEY } from '../config';
+import { fetchActiveModules, type ModuleMeta } from '../utils/moduleLoader';
+
+interface RoleOption {
+  key: string;
+  label: string;
+  badge?: string;
+  isCustom?: boolean;
+}
+
+const CORE_ROLES: RoleOption[] = [
+  { key: 'super_admin', label: '超级管理员 (全系统)', badge: 'code-badge--warning' },
+  { key: 'bench_admin', label: 'CodeBench 管理员', badge: 'code-badge--danger' }
+];
+
+const PRESET_BADGES: Record<string, string> = {
+  super_admin: 'code-badge--warning',
+  bench_admin: 'code-badge--danger',
+  shield_admin: 'code-badge--success',
+  pipeline_admin: 'code-badge--warning',
+  pdm_admin: 'code-badge--primary',
+  traefik_admin: 'code-badge--purple',
+  gate_admin: 'code-badge--purple',
+  proto_admin: 'code-badge--primary'
+};
+
+const FALLBACK_BADGES = [
+  'code-badge--primary',
+  'code-badge--success',
+  'code-badge--warning',
+  'code-badge--purple',
+  'code-badge--orange'
+];
 
 function UserManagement() {
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
-  const AVAILABLE_ROLES = [
-    { key: 'super_admin', label: '超级管理员 (全系统)' },
-    { key: 'pdm_admin', label: 'PDM 管理员' },
-    { key: 'pipeline_admin', label: 'Pipeline 管理员' },
-    { key: 'shield_admin', label: 'CodeShield 管理员' },
-    { key: 'bench_admin', label: 'CodeBench 管理员' }
-  ];
+  const [activeModules, setActiveModules] = useState<ModuleMeta[]>([]);
+
+  useEffect(() => {
+    fetchActiveModules().then(setActiveModules);
+  }, []);
+
+  const availableRoles: RoleOption[] = useMemo(() => {
+    const dynamicRoles: RoleOption[] = activeModules.map((m, idx) => {
+      const roleKey = `${m.key}_admin`;
+      const badge = PRESET_BADGES[roleKey] || FALLBACK_BADGES[idx % FALLBACK_BADGES.length];
+      return {
+        key: roleKey,
+        label: `${m.title || m.key} 管理员`,
+        badge
+      };
+    });
+    return [...CORE_ROLES, ...dynamicRoles];
+  }, [activeModules]);
+
+  const roleMap: Record<string, { label: string; badge: string }> = useMemo(() => {
+    const map: Record<string, { label: string; badge: string }> = {};
+    availableRoles.forEach(r => {
+      map[r.key] = { label: r.label, badge: r.badge || 'code-badge--muted' };
+    });
+    // 对常见历史角色在未激活网关时提供中文名称兜底与 (未激活) 标识
+    const knownHistoryLabels: Record<string, string> = {
+      pdm_admin: 'PDM 管理员',
+      pipeline_admin: 'Pipeline 管理员',
+      shield_admin: 'CodeShield 管理员',
+      traefik_admin: 'Traefik 管理员',
+      gate_admin: 'AI 网关管理员',
+      proto_admin: 'Proto 契约管理员'
+    };
+    Object.keys(knownHistoryLabels).forEach(key => {
+      if (!map[key]) {
+        map[key] = {
+          label: `${knownHistoryLabels[key]} (未激活)`,
+          badge: 'code-badge--muted'
+        };
+      }
+    });
+    return map;
+  }, [availableRoles]);
 
   const [newUserForm, setNewUserForm] = useState({ email: '', name: '', password: '', employee_id: '', unique_id: '', employee_type: '', roles: [] as string[], department_id: '' as string | number });
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editUserForm, setEditUserForm] = useState({ name: '', email: '', employee_id: '', unique_id: '', employee_type: '', roles: [] as string[], password: '', department_id: '' as string | number });
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+
+  // 编辑用户弹窗角色列表：合并当前激活的 availableRoles 与该用户身上可能持有的历史未激活角色
+  const editModalRoles = useMemo(() => {
+    const currentKeys = new Set(availableRoles.map(r => r.key));
+    const extraRoles: RoleOption[] = [];
+    (editUserForm.roles || []).forEach(r => {
+      if (!currentKeys.has(r)) {
+        const info = roleMap[r];
+        const label = info ? info.label : `${r} (历史分配)`;
+        extraRoles.push({
+          key: r,
+          label: label.includes('(未激活)') ? label : `${label} (历史分配)`,
+          badge: 'code-badge--muted',
+          isCustom: true
+        });
+      }
+    });
+    return [...availableRoles, ...extraRoles];
+  }, [availableRoles, editUserForm.roles, roleMap]);
   const [departments, setDepartments] = useState<any[]>([]);
 
   // Pagination states
@@ -421,13 +507,6 @@ function UserManagement() {
                           return <span className="code-badge code-badge--muted">普通骨干</span>;
                         }
 
-                        const roleMap: Record<string, { label: string; badge: string }> = {
-                          pdm_admin: { label: 'PDM管理员', badge: 'code-badge--primary' },
-                          pipeline_admin: { label: 'Pipeline管理员', badge: 'code-badge--warning' },
-                          shield_admin: { label: 'Shield管理员', badge: 'code-badge--success' },
-                          bench_admin: { label: 'Bench管理员', badge: 'code-badge--danger' }
-                        };
-
                         return (
                           <div className="flex-center gap-xs flex-wrap" style={{ justifyContent: 'flex-start' }}>
                             {rList.map((rk: string) => {
@@ -554,7 +633,7 @@ function UserManagement() {
           <div style={{ width: '100%', boxSizing: 'border-box' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>分配系统管理权限</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
-              {AVAILABLE_ROLES.map(role => (
+              {availableRoles.map(role => (
                 <label key={role.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-color)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
@@ -627,8 +706,8 @@ function UserManagement() {
           <div style={{ width: '100%', boxSizing: 'border-box' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-color)', fontWeight: 500 }}>分配系统管理权限</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
-              {AVAILABLE_ROLES.map(role => (
-                <label key={role.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-color)', cursor: 'pointer' }}>
+              {editModalRoles.map(role => (
+                <label key={role.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: role.isCustom ? 'var(--text-secondary)' : 'var(--text-color)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={editUserForm.roles.includes(role.key)}
@@ -643,6 +722,7 @@ function UserManagement() {
                     }}
                   />
                   <span>{role.label}</span>
+                  {role.isCustom && <span className="code-badge code-badge--muted" style={{ transform: 'scale(0.85)', transformOrigin: 'left center' }}>历史分配</span>}
                 </label>
               ))}
             </div>
