@@ -1,10 +1,15 @@
 @import '@code/common/src/styles/theme.css';
 
-:root {
+:root,
+:root.light-theme,
+html,
+body {
   /* 微前端宿主拓扑尺寸规范 (Host Geometry SSOT) */
-  --portal-header-height: 80px;
-  --portal-sidebar-width: 280px;
+  --portal-header-height: 80px !important;
+  --portal-sidebar-width: 280px !important;
+}
 
+:root {
   /* Legacy variable mappings for backward compatibility */
   --bg-dark: var(--bg-color);
   --card-dark: var(--card-bg);

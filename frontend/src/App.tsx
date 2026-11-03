@@ -462,6 +462,8 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
     } else {
       root.classList.remove('light-theme');
     }
+    root.style.setProperty('--portal-header-height', '80px');
+    root.style.setProperty('--portal-sidebar-width', '280px');
     localStorage.setItem('code-theme', theme);
   }, [theme]);
 
@@ -660,7 +662,8 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{ 
-          height: 'var(--portal-header-height, 80px)', 
+          height: '80px',
+          minHeight: '80px', 
           background: 'var(--card-bg)', 
           borderBottom: '1px solid var(--border-color)', 
           display: 'flex', 
