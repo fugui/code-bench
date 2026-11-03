@@ -59,3 +59,4 @@ func TestIsPrivilegedRoles(t *testing.T) {
 		})
 	}
 }
+
