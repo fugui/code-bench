@@ -1,6 +1,10 @@
 @import '@code/common/src/styles/theme.css';
 
 :root {
+  /* 微前端宿主拓扑尺寸规范 (Host Geometry SSOT) */
+  --portal-header-height: 80px;
+  --portal-sidebar-width: 280px;
+
   /* Legacy variable mappings for backward compatibility */
   --bg-dark: var(--bg-color);
   --card-dark: var(--card-bg);

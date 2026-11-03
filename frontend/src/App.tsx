@@ -660,14 +660,16 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{ 
-          height: '80px', 
+          height: 'var(--portal-header-height, 80px)', 
           background: 'var(--card-bg)', 
           borderBottom: '1px solid var(--border-color)', 
           display: 'flex', 
           alignItems: 'center', 
           padding: '0 2.5rem', 
           justifyContent: 'space-between', 
-          zIndex: 10 
+          zIndex: 'var(--z-index-header, 1100)' as any,
+          position: 'sticky',
+          top: 0
         }}>
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
             {(() => {
@@ -757,8 +759,10 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)' }}>
+        <main className="portal-content" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)', position: 'relative' }}>
           {children}
+          {/* 微前端工作区抽屉专用挂载锚点 */}
+          <div id="portal-workspace-overlay-root" />
         </main>
       </div>
     </div>
