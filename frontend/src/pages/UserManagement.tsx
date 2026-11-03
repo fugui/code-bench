@@ -14,7 +14,7 @@ interface RoleOption {
 
 const CORE_ROLES: RoleOption[] = [
   { key: 'super_admin', label: '超级管理员 (全系统)', badge: 'code-badge--warning' },
-  { key: 'bench_admin', label: 'CodeBench 管理员', badge: 'code-badge--danger' }
+  { key: 'bench_admin', label: 'Bench 管理员', badge: 'code-badge--danger' }
 ];
 
 const PRESET_BADGES: Record<string, string> = {
@@ -36,6 +36,13 @@ const FALLBACK_BADGES = [
   'code-badge--orange'
 ];
 
+/** 将模块 key 转换为标准首字母大写的管理员展示标签，如 traefik -> Traefik 管理员 */
+const formatModuleRoleLabel = (key: string): string => {
+  if (!key) return '';
+  const capKey = key.charAt(0).toUpperCase() + key.slice(1);
+  return `${capKey} 管理员`;
+};
+
 function UserManagement() {
   const { showToast } = useToast();
   const confirm = useConfirm();
@@ -52,7 +59,7 @@ function UserManagement() {
       const badge = PRESET_BADGES[roleKey] || FALLBACK_BADGES[idx % FALLBACK_BADGES.length];
       return {
         key: roleKey,
-        label: `${m.title || m.key} 管理员`,
+        label: formatModuleRoleLabel(m.key),
         badge
       };
     });
@@ -63,23 +70,6 @@ function UserManagement() {
     const map: Record<string, { label: string; badge: string }> = {};
     availableRoles.forEach(r => {
       map[r.key] = { label: r.label, badge: r.badge || 'code-badge--muted' };
-    });
-    // 对常见历史角色在未激活网关时提供中文名称兜底与 (未激活) 标识
-    const knownHistoryLabels: Record<string, string> = {
-      pdm_admin: 'PDM 管理员',
-      pipeline_admin: 'Pipeline 管理员',
-      shield_admin: 'CodeShield 管理员',
-      traefik_admin: 'Traefik 管理员',
-      gate_admin: 'AI 网关管理员',
-      proto_admin: 'Proto 契约管理员'
-    };
-    Object.keys(knownHistoryLabels).forEach(key => {
-      if (!map[key]) {
-        map[key] = {
-          label: `${knownHistoryLabels[key]} (未激活)`,
-          badge: 'code-badge--muted'
-        };
-      }
     });
     return map;
   }, [availableRoles]);
@@ -96,11 +86,15 @@ function UserManagement() {
     const extraRoles: RoleOption[] = [];
     (editUserForm.roles || []).forEach(r => {
       if (!currentKeys.has(r)) {
-        const info = roleMap[r];
-        const label = info ? info.label : `${r} (历史分配)`;
+        let label = roleMap[r]?.label;
+        if (!label) {
+          label = r.endsWith('_admin')
+            ? `${formatModuleRoleLabel(r.slice(0, -6))} (未激活)`
+            : `${r} (历史分配)`;
+        }
         extraRoles.push({
           key: r,
-          label: label.includes('(未激活)') ? label : `${label} (历史分配)`,
+          label,
           badge: 'code-badge--muted',
           isCustom: true
         });
@@ -510,7 +504,10 @@ function UserManagement() {
                         return (
                           <div className="flex-center gap-xs flex-wrap" style={{ justifyContent: 'flex-start' }}>
                             {rList.map((rk: string) => {
-                              const info = roleMap[rk] || { label: rk, badge: 'code-badge--muted' };
+                              const info = roleMap[rk] || {
+                                label: rk.endsWith('_admin') ? `${formatModuleRoleLabel(rk.slice(0, -6))} (未激活)` : rk,
+                                badge: 'code-badge--muted'
+                              };
                               return (
                                 <span key={rk} className={`code-badge ${info.badge}`}>
                                   {info.label}
