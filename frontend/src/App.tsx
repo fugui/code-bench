@@ -570,7 +570,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
   };
 
   React.useEffect(() => {
-    if (modules.length === 0) return;
+    if (modules.length === 0 || !user) return;
     const unsubs: Array<() => void> = [];
 
     modules.forEach((mod) => {
@@ -626,7 +626,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
 
     const handleShieldChanged = () => {
       const shieldMod = modules.find((m) => m.key === 'shield');
-      if (!shieldMod) return;
+      if (!shieldMod || !user) return;
       loadRemoteModule(shieldMod.entry, './menu')
         .then((mod) => {
           if (mod && typeof mod.fetchShieldMenuConfig === 'function') {
@@ -648,35 +648,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       unsubs.forEach((fn) => fn());
       window.removeEventListener('shield-task-types-changed', handleShieldChanged);
     };
-  }, [modules]);
-
-  const isPublicRoute = location.pathname.startsWith('/shield/public/');
-
-  if (isPublicRoute) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
-        {children}
-      </div>
-    );
-  }
-
-  // Enforce authentication gate
-  if (loadingUser) {
-    return (
-      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: '#64748b', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-          .spinner { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(59,130,246,0.2); border-top: 2px solid #3b82f6; animation: spin 0.8s linear infinite; }
-        `}</style>
-        <div className="spinner"></div>
-        <span style={{ marginLeft: '12px', fontSize: '0.95rem', fontWeight: 500 }}>正在验证身份...</span>
-      </div>
-    );
-  }
-
-  if (!user && location.pathname !== '/oauth2/callback') {
-    return <Login onLoginSuccess={loadUser} />;
-  }
+  }, [modules, user]);
 
   let userRoles: string[] = [];
   if (user) {
@@ -765,6 +737,34 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
     }
     return null;
   }, [accessibleModules, pinnedKeys, location.pathname]);
+
+  const isPublicRoute = location.pathname.startsWith('/shield/public/');
+
+  if (isPublicRoute) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)' }}>
+        {children}
+      </div>
+    );
+  }
+
+  // Enforce authentication gate
+  if (loadingUser) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: '#64748b', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .spinner { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(59,130,246,0.2); border-top: 2px solid #3b82f6; animation: spin 0.8s linear infinite; }
+        `}</style>
+        <div className="spinner"></div>
+        <span style={{ marginLeft: '12px', fontSize: '0.95rem', fontWeight: 500 }}>正在验证身份...</span>
+      </div>
+    );
+  }
+
+  if (!user && location.pathname !== '/oauth2/callback') {
+    return <Login onLoginSuccess={loadUser} />;
+  }
 
   return (
     <AuthContext.Provider value={{ user, isSuperAdmin }}>
