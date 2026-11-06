@@ -15,6 +15,7 @@ export interface ModuleMeta {
   icon?: string;
   description?: string;
   superAdminOnly?: boolean;
+  order?: number;
 }
 
 export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [];
@@ -120,7 +121,14 @@ export async function fetchActiveModules(): Promise<ModuleMeta[]> {
     }
     const data = await res.json();
     if (Array.isArray(data.modules)) {
-      return data.modules;
+      return (data.modules as ModuleMeta[]).slice().sort((a, b) => {
+        const orderA = a.order ?? 100;
+        const orderB = b.order ?? 100;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.key.localeCompare(b.key);
+      });
     }
     return DEFAULT_FALLBACK_MODULES;
   } catch (err) {

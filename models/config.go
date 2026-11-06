@@ -5,6 +5,7 @@ import (
 	commonModels "code-common/backend/models"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ type GatewayItem struct {
 	Icon           string `yaml:"icon" json:"icon"`
 	Description    string `yaml:"description" json:"description"`
 	SuperAdminOnly bool   `yaml:"super_admin_only" json:"superAdminOnly,omitempty"`
+	Order          int    `yaml:"order" json:"order,omitempty"`
 }
 
 // UnmarshalYAML 支持字符串格式 ("http://...") 和对象格式 ({ url: "...", title: "..." })
@@ -56,6 +58,7 @@ type ModuleMeta struct {
 	Icon           string `json:"icon"`
 	Description    string `json:"description"`
 	SuperAdminOnly bool   `json:"superAdminOnly,omitempty"`
+	Order          int    `json:"order"`
 }
 
 type Config struct {
@@ -177,6 +180,7 @@ var knownModules = map[string]ModuleMeta{
 		Title:       "代码质量 (Code Shield)",
 		Icon:        "Shield",
 		Description: "码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。",
+		Order:       10,
 	},
 	"pipeline": {
 		Key:         "pipeline",
@@ -184,13 +188,7 @@ var knownModules = map[string]ModuleMeta{
 		Title:       "持续构建 (Code Pipeline)",
 		Icon:        "Activity",
 		Description: "自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。",
-	},
-	"proto": {
-		Key:         "proto",
-		Path:        "/proto",
-		Title:       "接口文稿 (Code Proto)",
-		Icon:        "FileCode",
-		Description: "接口规范与协议文稿管理，支持在线编辑与协作沉淀。",
+		Order:       20,
 	},
 	"pdm": {
 		Key:         "pdm",
@@ -198,6 +196,7 @@ var knownModules = map[string]ModuleMeta{
 		Title:       "产品数据管理 (PDM)",
 		Icon:        "ClipboardList",
 		Description: "规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。",
+		Order:       30,
 	},
 	"gate": {
 		Key:            "gate",
@@ -206,26 +205,30 @@ var knownModules = map[string]ModuleMeta{
 		Icon:           "Bot",
 		Description:    "企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。",
 		SuperAdminOnly: true,
+		Order:          40,
+	},
+	"proto": {
+		Key:         "proto",
+		Path:        "/proto",
+		Title:       "接口文稿 (Code Proto)",
+		Icon:        "FileCode",
+		Description: "接口规范与协议文稿管理，支持在线编辑与协作沉淀。",
+		Order:       50,
 	},
 }
 
 func GetActiveModules() []ModuleMeta {
 	modules := make([]ModuleMeta, 0, len(AppConfig.Gateways))
-	priorityOrder := []string{"shield", "pipeline", "pdm", "gate", "proto"}
-	processed := make(map[string]bool)
-
-	for _, key := range priorityOrder {
-		if item, ok := AppConfig.Gateways[key]; ok {
-			modules = append(modules, buildModuleMeta(key, item))
-			processed[key] = true
-		}
-	}
-
 	for key, item := range AppConfig.Gateways {
-		if !processed[key] {
-			modules = append(modules, buildModuleMeta(key, item))
-		}
+		modules = append(modules, buildModuleMeta(key, item))
 	}
+
+	sort.SliceStable(modules, func(i, j int) bool {
+		if modules[i].Order != modules[j].Order {
+			return modules[i].Order < modules[j].Order
+		}
+		return modules[i].Key < modules[j].Key
+	})
 
 	return modules
 }
@@ -235,6 +238,7 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 		Key:   key,
 		Path:  "/" + key,
 		Entry: "/" + key + "/assets/remoteEntry.js",
+		Order: 100,
 	}
 	known, isKnown := knownModules[key]
 	if isKnown {
@@ -242,6 +246,9 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 		meta.Icon = known.Icon
 		meta.Description = known.Description
 		meta.SuperAdminOnly = known.SuperAdminOnly
+		if known.Order > 0 {
+			meta.Order = known.Order
+		}
 	} else {
 		meta.Title = strings.ToUpper(key[:1]) + key[1:]
 		meta.Icon = "Layers"
@@ -259,6 +266,9 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 	}
 	if item.SuperAdminOnly {
 		meta.SuperAdminOnly = true
+	}
+	if item.Order != 0 {
+		meta.Order = item.Order
 	}
 
 	return meta
