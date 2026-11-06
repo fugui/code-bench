@@ -33,6 +33,7 @@ type GatewayItem struct {
 	Description    string `yaml:"description" json:"description"`
 	SuperAdminOnly bool   `yaml:"super_admin_only" json:"superAdminOnly,omitempty"`
 	Order          int    `yaml:"order" json:"order,omitempty"`
+	DefaultPinned  *bool  `yaml:"default_pinned" json:"defaultPinned,omitempty"`
 }
 
 // UnmarshalYAML 支持字符串格式 ("http://...") 和对象格式 ({ url: "...", title: "..." })
@@ -59,6 +60,7 @@ type ModuleMeta struct {
 	Description    string `json:"description"`
 	SuperAdminOnly bool   `json:"superAdminOnly,omitempty"`
 	Order          int    `json:"order"`
+	DefaultPinned  bool   `json:"defaultPinned,omitempty"`
 }
 
 type Config struct {
@@ -175,28 +177,31 @@ func applyDefaults() {
 
 var knownModules = map[string]ModuleMeta{
 	"shield": {
-		Key:         "shield",
-		Path:        "/shield",
-		Title:       "代码质量 (Code Shield)",
-		Icon:        "Shield",
-		Description: "码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。",
-		Order:       10,
+		Key:           "shield",
+		Path:          "/shield",
+		Title:         "代码质量 (Code Shield)",
+		Icon:          "Shield",
+		Description:   "码盾守护代码质量与资产安全。支持自动化代码评审、敏感信息扫描、合规性审计等功能。",
+		Order:         10,
+		DefaultPinned: true,
 	},
 	"pipeline": {
-		Key:         "pipeline",
-		Path:        "/pipeline",
-		Title:       "持续构建 (Code Pipeline)",
-		Icon:        "Activity",
-		Description: "自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。",
-		Order:       20,
+		Key:           "pipeline",
+		Path:          "/pipeline",
+		Title:         "持续构建 (Code Pipeline)",
+		Icon:          "Activity",
+		Description:   "自动化持续构建与流水线管理。支持代码仓同步、流水线配置、多方案执行以及看板状态大屏呈现。",
+		Order:         20,
+		DefaultPinned: true,
 	},
 	"pdm": {
-		Key:         "pdm",
-		Path:        "/pdm",
-		Title:       "产品数据管理 (PDM)",
-		Icon:        "ClipboardList",
-		Description: "规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。",
-		Order:       30,
+		Key:           "pdm",
+		Path:          "/pdm",
+		Title:         "产品数据管理 (PDM)",
+		Icon:          "ClipboardList",
+		Description:   "规范物理产品大类与设备ID档案。支持按规则下拉过滤、设备ID首字母/后缀拼合生成及资产数据导出。",
+		Order:         30,
+		DefaultPinned: true,
 	},
 	"gate": {
 		Key:            "gate",
@@ -206,14 +211,16 @@ var knownModules = map[string]ModuleMeta{
 		Description:    "企业大模型统一接入网关，支持协议感知直通路由、Prompt KV Cache 亲和加速与 Credits 双周期算力治理。",
 		SuperAdminOnly: true,
 		Order:          40,
+		DefaultPinned:  false,
 	},
 	"proto": {
-		Key:         "proto",
-		Path:        "/proto",
-		Title:       "接口文稿 (Code Proto)",
-		Icon:        "FileCode",
-		Description: "接口规范与协议文稿管理，支持在线编辑与协作沉淀。",
-		Order:       50,
+		Key:           "proto",
+		Path:          "/proto",
+		Title:         "接口文稿 (Code Proto)",
+		Icon:          "FileCode",
+		Description:   "接口规范与协议文稿管理，支持在线编辑与协作沉淀。",
+		Order:         50,
+		DefaultPinned: false,
 	},
 }
 
@@ -246,6 +253,7 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 		meta.Icon = known.Icon
 		meta.Description = known.Description
 		meta.SuperAdminOnly = known.SuperAdminOnly
+		meta.DefaultPinned = known.DefaultPinned
 		if known.Order > 0 {
 			meta.Order = known.Order
 		}
@@ -269,6 +277,9 @@ func buildModuleMeta(key string, item GatewayItem) ModuleMeta {
 	}
 	if item.Order != 0 {
 		meta.Order = item.Order
+	}
+	if item.DefaultPinned != nil {
+		meta.DefaultPinned = *item.DefaultPinned
 	}
 
 	return meta

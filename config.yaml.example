@@ -70,6 +70,7 @@ gateways:
   #   icon: "Activity"                       # Lucide 图标名称（如 Shield, Activity, Database, Box, Layers, Cpu 等）
   #   description: "实时监控集群节点健康状态与指标" # 工作台首页卡片简介说明
   #   order: 35                              # 侧边栏菜单排序权重（数值越小排序越靠前；内置模块默认：shield=10, pipeline=20, pdm=30, gate=40, proto=50）
+  #   default_pinned: true                   # 是否默认钉选至左侧常用栏（新用户或未设定偏好时生效，默认 false）
 
 # ── 团队开发指导文档规范仓库配置 ──
 docs:

@@ -114,3 +114,52 @@ func TestModuleOrderAndSorting(t *testing.T) {
 		}
 	}
 }
+
+func TestModuleDefaultPinned(t *testing.T) {
+	// 1. 验证内置模块默认钉选状态
+	if !knownModules["shield"].DefaultPinned {
+		t.Errorf("expected shield DefaultPinned to be true")
+	}
+	if !knownModules["pipeline"].DefaultPinned {
+		t.Errorf("expected pipeline DefaultPinned to be true")
+	}
+	if !knownModules["pdm"].DefaultPinned {
+		t.Errorf("expected pdm DefaultPinned to be true")
+	}
+	if knownModules["gate"].DefaultPinned {
+		t.Errorf("expected gate DefaultPinned to be false")
+	}
+	if knownModules["proto"].DefaultPinned {
+		t.Errorf("expected proto DefaultPinned to be false")
+	}
+
+	// 2. 验证未知模块默认 DefaultPinned 为 false
+	unknownItem := GatewayItem{
+		URL: "http://127.0.0.1:8099",
+	}
+	unknownMeta := buildModuleMeta("custom_app", unknownItem)
+	if unknownMeta.DefaultPinned {
+		t.Errorf("expected unknown module DefaultPinned to be false")
+	}
+
+	// 3. 验证 GatewayItem 显式设置 DefaultPinned 覆盖
+	trueVal := true
+	falseVal := false
+	customPinnedItem := GatewayItem{
+		URL:           "http://127.0.0.1:8099",
+		DefaultPinned: &trueVal,
+	}
+	customPinnedMeta := buildModuleMeta("custom_app", customPinnedItem)
+	if !customPinnedMeta.DefaultPinned {
+		t.Errorf("expected custom module with DefaultPinned:true to have DefaultPinned true")
+	}
+
+	overrideShieldItem := GatewayItem{
+		URL:           "http://127.0.0.1:8080",
+		DefaultPinned: &falseVal,
+	}
+	overrideShieldMeta := buildModuleMeta("shield", overrideShieldItem)
+	if overrideShieldMeta.DefaultPinned {
+		t.Errorf("expected shield with DefaultPinned:false to have DefaultPinned false")
+	}
+}

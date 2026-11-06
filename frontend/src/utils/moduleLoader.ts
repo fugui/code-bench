@@ -16,6 +16,7 @@ export interface ModuleMeta {
   description?: string;
   superAdminOnly?: boolean;
   order?: number;
+  defaultPinned?: boolean;
 }
 
 export const DEFAULT_FALLBACK_MODULES: ModuleMeta[] = [];
