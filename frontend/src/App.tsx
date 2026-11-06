@@ -29,10 +29,10 @@ import {
   ScrollText, 
   Layers, 
   FileCode,
-  LayoutGrid,
   Pin,
   PinOff,
-  Search
+  Search,
+  X
 } from 'lucide-react';
 import Login from './Login';
 import UserManagement from './pages/UserManagement';
@@ -43,7 +43,6 @@ import AuditManagement from './pages/AuditManagement';
 import { ToastProvider } from './components/Toast';
 import { DynamicRemoteApp } from './components/DynamicRemoteApp';
 import { fetchActiveModules, loadRemoteModule, type ModuleMeta } from './utils/moduleLoader';
-import { AppDrawer } from './components/AppDrawer';
 
 // Set global environment flag for federated sub-applications
 (window as any).__POWERED_BY_PORTAL__ = true;
@@ -68,17 +67,11 @@ export const useAuth = () => React.useContext(AuthContext);
 export interface PinnedContextValue {
   pinnedKeys: string[];
   togglePin: (key: string) => void;
-  openAppDrawer: () => void;
-  closeAppDrawer: () => void;
-  isAppDrawerOpen: boolean;
 }
 
 export const PinnedContext = React.createContext<PinnedContextValue>({
   pinnedKeys: [],
   togglePin: () => {},
-  openAppDrawer: () => {},
-  closeAppDrawer: () => {},
-  isAppDrawerOpen: false,
 });
 
 export const usePinned = () => React.useContext(PinnedContext);
@@ -142,112 +135,254 @@ function NavLink({ to, icon: Icon, label, activePattern, onClick }: { to: string
 
 function Home({ modules }: { modules: ModuleMeta[] }) {
   const { isSuperAdmin } = useAuth();
-  const { pinnedKeys, togglePin, openAppDrawer } = usePinned();
+  const { pinnedKeys, togglePin } = usePinned();
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [filterTab, setFilterTab] = React.useState<'all' | 'pinned' | 'unpinned'>('all');
 
-  const visibleModules = modules.filter((mod) => {
-    const isSuperAdminOnly = Boolean(mod.superAdminOnly || mod.key === 'gate');
-    return !isSuperAdminOnly || isSuperAdmin;
-  });
+  const visibleModules = React.useMemo(() => {
+    return modules.filter((mod) => {
+      const isSuperAdminOnly = Boolean(mod.superAdminOnly || mod.key === 'gate');
+      return !isSuperAdminOnly || isSuperAdmin;
+    });
+  }, [modules, isSuperAdmin]);
+
+  const filteredModules = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return visibleModules.filter((mod) => {
+      const matchesSearch = !q || (
+        mod.title.toLowerCase().includes(q) ||
+        mod.key.toLowerCase().includes(q) ||
+        (mod.description && mod.description.toLowerCase().includes(q))
+      );
+      if (!matchesSearch) return false;
+
+      const isPinned = pinnedKeys.includes(mod.key);
+      if (filterTab === 'pinned') return isPinned;
+      if (filterTab === 'unpinned') return !isPinned;
+      return true;
+    });
+  }, [visibleModules, searchQuery, filterTab, pinnedKeys]);
+
+  const pinnedCount = React.useMemo(() => {
+    return visibleModules.filter(m => pinnedKeys.includes(m.key)).length;
+  }, [visibleModules, pinnedKeys]);
 
   return (
     <div style={{ padding: '2.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      {/* 头部欢迎区与搜索栏 */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '0.5rem' }}>欢迎使用 CodeBench 开发者综合工作台</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0, maxWidth: '800px' }}>
-            这里是您的一站式研发效能与安全管理中心。我们聚合了代码质量检测、持续构建流水线以及产品数据管理等核心业务系统。
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '0.5rem' }}>
+            欢迎使用 CodeBench 开发者综合工作台
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6, margin: 0, maxWidth: '800px' }}>
+            聚合代码质量、持续构建、产品数据与 AI 网关等核心业务子系统。您可直接在卡片上点击钉选，个性化定制左侧常用菜单栏。
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAppDrawer}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '10px',
-            border: '1px solid var(--border-color)',
-            background: 'var(--card-bg)',
-            color: 'var(--text-color)',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--primary-color)';
-            e.currentTarget.style.color = 'var(--primary-color)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-color)';
-            e.currentTarget.style.color = 'var(--text-color)';
-          }}
-        >
-          <LayoutGrid size={18} color="var(--primary-color)" />
-          <span>全部应用中心 ({visibleModules.length})</span>
-        </button>
+
+        {/* 搜索框 */}
+        <div style={{ position: 'relative', width: '300px', maxWidth: '100%' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="搜索系统名称或关键词..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.55rem 2.2rem 0.55rem 2.3rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--card-bg)',
+              color: 'var(--text-color)',
+              fontSize: '0.875rem',
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }}
+            onFocus={(e) => { e.target.style.borderColor = 'var(--primary-color)'; }}
+            onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '2px'
+              }}
+              title="清空搜索"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        {visibleModules.map((mod) => {
-          const Icon = getModuleIcon(mod.icon);
-          const isPinned = pinnedKeys.includes(mod.key);
-
+      {/* 分类过滤 Tab */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem', alignItems: 'center' }}>
+        {[
+          { id: 'all', label: '全部应用', count: visibleModules.length },
+          { id: 'pinned', label: '我的常用', count: pinnedCount },
+          { id: 'unpinned', label: '未钉选', count: visibleModules.length - pinnedCount }
+        ].map((tab) => {
+          const isActive = filterTab === tab.id;
           return (
-            <div key={mod.key} className="portal-card" style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div className="card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                    <Icon size={24} />
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>{mod.title}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    togglePin(mod.key);
-                  }}
-                  title={isPinned ? '从侧边栏常用移除' : '钉选至侧边栏常用'}
-                  style={{
-                    background: isPinned ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-color)',
-                    border: isPinned ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-color)',
-                    color: isPinned ? 'var(--primary-color)' : 'var(--text-secondary)',
-                    borderRadius: '8px',
-                    padding: '0.35rem 0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    transition: 'all 0.2s',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary-color)';
-                    e.currentTarget.style.color = 'var(--primary-color)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = isPinned ? 'rgba(59, 130, 246, 0.4)' : 'var(--border-color)';
-                    e.currentTarget.style.color = isPinned ? 'var(--primary-color)' : 'var(--text-secondary)';
-                  }}
-                >
-                  <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
-                  <span>{isPinned ? '已钉选' : '钉选'}</span>
-                </button>
-              </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
-                {mod.description || '一站式微前端业务应用系统。'}
-              </p>
-              <Link to={mod.path} className="card-btn">进入系统 &rarr;</Link>
-            </div>
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilterTab(tab.id as any)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.4rem 0.85rem',
+                borderRadius: '8px',
+                border: isActive ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
+                background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'var(--card-bg)',
+                color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
+                fontSize: '0.85rem',
+                fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <span>{tab.label}</span>
+              <span style={{
+                fontSize: '0.75rem',
+                padding: '1px 6px',
+                borderRadius: '10px',
+                background: isActive ? 'var(--primary-color)' : 'rgba(128, 128, 128, 0.12)',
+                color: isActive ? '#fff' : 'inherit'
+              }}>
+                {tab.count}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {/* 卡片列表 */}
+      {filteredModules.length === 0 ? (
+        <div style={{
+          padding: '4rem 2rem',
+          textAlign: 'center',
+          color: 'var(--text-secondary)',
+          background: 'var(--card-bg)',
+          borderRadius: '12px',
+          border: '1px dashed var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)' }}>
+            {filterTab === 'pinned' ? '暂无已钉选的微前端应用' : '未找到匹配的应用系统'}
+          </div>
+          <div style={{ fontSize: '0.9rem' }}>
+            {filterTab === 'pinned'
+              ? '请在「全部应用」中点击卡片右上角的大头针图标，即可将其钉选到侧边栏。'
+              : '请尝试更换搜索关键词或重置筛选条件。'}
+          </div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.4rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-color)',
+                color: 'var(--primary-color)',
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              清空搜索条件
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          {filteredModules.map((mod) => {
+            const Icon = getModuleIcon(mod.icon);
+            const isPinned = pinnedKeys.includes(mod.key);
+
+            return (
+              <div key={mod.key} className="portal-card" style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                      <Icon size={24} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)', fontWeight: 600 }}>{mod.title}</h3>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: '2px' }}>
+                        {mod.path}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      togglePin(mod.key);
+                    }}
+                    title={isPinned ? '从侧边栏常用移除' : '钉选至侧边栏常用'}
+                    style={{
+                      background: isPinned ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-color)',
+                      border: isPinned ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-color)',
+                      color: isPinned ? 'var(--primary-color)' : 'var(--text-secondary)',
+                      borderRadius: '8px',
+                      padding: '0.35rem 0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                      flexShrink: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary-color)';
+                      e.currentTarget.style.color = 'var(--primary-color)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = isPinned ? 'rgba(59, 130, 246, 0.4)' : 'var(--border-color)';
+                      e.currentTarget.style.color = isPinned ? 'var(--primary-color)' : 'var(--text-secondary)';
+                    }}
+                  >
+                    <Pin size={13} fill={isPinned ? 'currentColor' : 'none'} />
+                    <span>{isPinned ? '已钉选' : '钉选'}</span>
+                  </button>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', minHeight: '4.8rem' }}>
+                  {mod.description || '一站式微前端业务应用系统。'}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                  <Link to={mod.path} className="card-btn">进入系统 &rarr;</Link>
+                  {mod.superAdminOnly && (
+                    <span style={{ fontSize: '0.72rem', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                      仅超管
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -664,7 +799,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
   const usernameOrId = user?.username || user?.preferred_username || user?.id || (user ? 'user' : 'guest');
   const storageKey = `code_bench_pinned_modules_${usernameOrId}`;
 
-  const [isAppDrawerOpen, setIsAppDrawerOpen] = React.useState(false);
   const [pinnedKeys, setPinnedKeys] = React.useState<string[]>([]);
 
   // Accessible modules for current user
@@ -771,9 +905,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       <PinnedContext.Provider value={{
         pinnedKeys,
         togglePin,
-        openAppDrawer: () => setIsAppDrawerOpen(true),
-        closeAppDrawer: () => setIsAppDrawerOpen(false),
-        isAppDrawerOpen,
       }}>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
         {/* Sidebar */}
@@ -791,60 +922,12 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           <nav style={{ padding: '1.5rem 0.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
             <NavLink to="/" icon={LayoutDashboard} label="首页" onClick={collapseAll} />
 
-            {/* 全部应用入口 */}
-            <button
-              type="button"
-              onClick={() => setIsAppDrawerOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.875rem 1rem',
-                borderRadius: '10px',
-                border: 'none',
-                width: '100%',
-                textAlign: 'left',
-                background: isAppDrawerOpen ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
-                color: isAppDrawerOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
-                fontWeight: 500,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                borderLeft: isAppDrawerOpen ? '3px solid var(--primary-color)' : '3px solid transparent'
-              }}
-              onMouseEnter={(e) => {
-                if (!isAppDrawerOpen) {
-                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)';
-                  e.currentTarget.style.color = 'var(--text-color)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isAppDrawerOpen) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }
-              }}
-            >
-              <LayoutGrid size={20} />
-              <span style={{ flex: 1 }}>全部应用</span>
-              <span style={{
-                fontSize: '0.72rem',
-                padding: '2px 7px',
-                borderRadius: '10px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                color: 'var(--primary-color)',
-                fontWeight: 600
-              }}>
-                {accessibleModules.length}
-              </span>
-            </button>
-
             {/* 分组标题：我的常用 */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '0.65rem 0.75rem 0.25rem 0.5rem',
+              padding: '0.75rem 0.75rem 0.25rem 0.5rem',
               marginTop: '0.5rem',
               borderTop: '1px solid var(--border-color)',
               paddingTop: '0.85rem'
@@ -859,27 +942,18 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
               }}>
                 我的常用
               </span>
-              <button
-                type="button"
-                onClick={() => setIsAppDrawerOpen(true)}
-                title="管理常用钉选"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '0.72rem',
+              {pinnedModules.length > 0 && (
+                <span style={{
+                  fontSize: '0.7rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  background: 'rgba(59, 130, 246, 0.08)',
                   color: 'var(--primary-color)',
-                  padding: '2px 4px',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontWeight: 500
-                }}
-              >
-                <Pin size={11} fill="currentColor" />
-                <span>管理 ({pinnedModules.length})</span>
-              </button>
+                  fontWeight: 600
+                }}>
+                  {pinnedModules.length}
+                </span>
+              )}
             </div>
 
             {/* 钉选微前端应用列表 */}
@@ -891,7 +965,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
                 fontStyle: 'italic',
                 lineHeight: 1.5
               }}>
-                暂无钉选应用，点击上方的「全部应用」进行钉选
+                暂无常用应用，可在首页工作台点击钉选
               </div>
             ) : (
               pinnedModules.map((mod) => {
@@ -1051,43 +1125,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <button 
-              type="button"
-              onClick={() => setIsAppDrawerOpen(true)} 
-              style={{ 
-                background: 'var(--bg-color)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '8px', 
-                height: '36px',
-                padding: '0 0.75rem',
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.45rem',
-                cursor: 'pointer', 
-                color: 'var(--text-color)',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' 
-              }}
-              title="全部应用中心 (App Drawer)"
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.02)';
-                e.currentTarget.style.borderColor = 'var(--primary-color)';
-                e.currentTarget.style.color = 'var(--primary-color)';
-                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.color = 'var(--text-color)';
-                e.currentTarget.style.background = 'var(--bg-color)';
-              }}
-            >
-              <LayoutGrid size={16} />
-              <span>全部应用</span>
-            </button>
-
-            <button 
               onClick={toggleTheme} 
               style={{ 
                 background: 'var(--bg-color)', 
@@ -1146,16 +1183,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           <div id="portal-workspace-overlay-root" />
         </main>
       </div>
-
-      {/* 应用中心抽屉 (App Drawer) */}
-      <AppDrawer
-        open={isAppDrawerOpen}
-        onClose={() => setIsAppDrawerOpen(false)}
-        modules={accessibleModules}
-        pinnedKeys={pinnedKeys}
-        onTogglePin={togglePin}
-        getModuleIcon={getModuleIcon}
-      />
     </div>
     </PinnedContext.Provider>
     </AuthContext.Provider>
