@@ -15,7 +15,7 @@ func TestBuildRolesOrderExpr(t *testing.T) {
 
 	models.AppConfig.Gateways = map[string]models.GatewayItem{
 		"shield":  {URL: "http://127.0.0.1:8080", Title: "代码质量 (Code Shield)"},
-		"traefik": {URL: "http://127.0.0.1:8091", Title: "业务流量监控与重放"},
+		"traefik": {URL: "http://127.0.0.1:8091", Title: "架构与活体契约治理平台"},
 	}
 
 	expr := buildRolesOrderExpr("DESC")
