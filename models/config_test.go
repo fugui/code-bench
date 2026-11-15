@@ -74,7 +74,7 @@ func TestModuleOrderAndSorting(t *testing.T) {
 	}()
 
 	AppConfig.Gateways = map[string]GatewayItem{
-		"traefik": {
+		"contract": {
 			URL:   "http://127.0.0.1:8091",
 			Order: 5, // 设为 5，比 shield (10) 更小，应当排在第一位
 		},
@@ -101,7 +101,7 @@ func TestModuleOrderAndSorting(t *testing.T) {
 	}
 
 	// 多次调用 GetActiveModules 验证结果严格稳定
-	expectedKeys := []string{"traefik", "shield", "pdm", "pipeline", "alpha_mod", "beta_mod"}
+	expectedKeys := []string{"contract", "shield", "pdm", "pipeline", "alpha_mod", "beta_mod"}
 	for run := 0; run < 10; run++ {
 		active := GetActiveModules()
 		if len(active) != len(expectedKeys) {

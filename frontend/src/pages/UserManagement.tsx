@@ -23,7 +23,7 @@ const PRESET_BADGES: Record<string, string> = {
   shield_admin: 'code-badge--success',
   pipeline_admin: 'code-badge--warning',
   pdm_admin: 'code-badge--primary',
-  traefik_admin: 'code-badge--purple',
+  contract_admin: 'code-badge--purple',
   gate_admin: 'code-badge--purple',
   proto_admin: 'code-badge--primary'
 };
@@ -36,7 +36,7 @@ const FALLBACK_BADGES = [
   'code-badge--orange'
 ];
 
-/** 将模块 key 转换为标准首字母大写的管理员展示标签，如 traefik -> Traefik 管理员 */
+/** 将模块 key 转换为标准首字母大写的管理员展示标签，如 contract -> Contract 管理员 */
 const formatModuleRoleLabel = (key: string): string => {
   if (!key) return '';
   const capKey = key.charAt(0).toUpperCase() + key.slice(1);

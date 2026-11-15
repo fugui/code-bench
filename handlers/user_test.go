@@ -14,8 +14,8 @@ func TestBuildRolesOrderExpr(t *testing.T) {
 	}()
 
 	models.AppConfig.Gateways = map[string]models.GatewayItem{
-		"shield":  {URL: "http://127.0.0.1:8080", Title: "代码质量 (Code Shield)"},
-		"traefik": {URL: "http://127.0.0.1:8091", Title: "架构与活体契约治理平台"},
+		"shield":   {URL: "http://127.0.0.1:8080", Title: "代码质量 (Code Shield)"},
+		"contract": {URL: "http://127.0.0.1:8091", Title: "架构与活体契约治理平台"},
 	}
 
 	expr := buildRolesOrderExpr("DESC")
@@ -28,8 +28,8 @@ func TestBuildRolesOrderExpr(t *testing.T) {
 	if !strings.Contains(expr, "shield_admin") {
 		t.Errorf("expected shield_admin in orderExpr, got: %s", expr)
 	}
-	if !strings.Contains(expr, "traefik_admin") {
-		t.Errorf("expected traefik_admin in orderExpr, got: %s", expr)
+	if !strings.Contains(expr, "contract_admin") {
+		t.Errorf("expected contract_admin in orderExpr, got: %s", expr)
 	}
 	if !strings.HasSuffix(expr, "DESC, users.created_at DESC") {
 		t.Errorf("expected DESC order suffix, got: %s", expr)
@@ -45,7 +45,7 @@ func TestIsPrivilegedRoles(t *testing.T) {
 		{"super_admin", []string{"super_admin"}, true},
 		{"bench_admin", []string{"bench_admin"}, true},
 		{"shield_admin", []string{"shield_admin"}, true},
-		{"traefik_admin", []string{"traefik_admin"}, true},
+		{"contract_admin", []string{"contract_admin"}, true},
 		{"mixed_with_user", []string{"developer", "pipeline_admin"}, true},
 		{"regular_developer", []string{"developer", "qa"}, false},
 		{"empty", []string{}, false},
