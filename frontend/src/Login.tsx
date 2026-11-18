@@ -73,6 +73,7 @@ function Login({ onLoginSuccess }: LoginProps) {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+        sessionStorage.removeItem('dept_synced');
         window.dispatchEvent(new Event('auth-change'));
         onLoginSuccess();
       } else {

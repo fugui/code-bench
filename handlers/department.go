@@ -4,6 +4,7 @@ import (
 	"bytes"
 	commonAudit "code-common/backend/audit"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
+	"gorm.io/gorm"
 )
 
 func GetDepartments(c *gin.Context) {
@@ -291,6 +293,7 @@ func ImportDepartments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully imported/updated %d departments", successCount)})
 }
 
+// UpdateMyDepartment 同步当前登录用户的所属部门（无部门或中途换部门时均可更新）。
 func UpdateMyDepartment(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -312,16 +315,39 @@ func UpdateMyDepartment(c *gin.Context) {
 		return
 	}
 
+	var currentUser models.User
+	if err := database.DB.Preload("Department").First(&currentUser, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load user info"})
+		return
+	}
+
 	var dept models.Department
 	err := database.DB.Where("name = ?", deptName).First(&dept).Error
 	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query department"})
+			return
+		}
 		dept = models.Department{
 			Name: deptName,
 		}
 		if createErr := database.DB.Create(&dept).Error; createErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create department"})
-			return
+			// 并发请求下可能同时创建同名部门，回查一次以兼容唯一约束冲突
+			if retryErr := database.DB.Where("name = ?", deptName).First(&dept).Error; retryErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create department"})
+				return
+			}
 		}
+	}
+
+	// 若用户当前已归属目标部门，则幂等返回，避免重复写库与无效审计
+	if currentUser.DepartmentID != nil && *currentUser.DepartmentID == dept.ID {
+		c.JSON(http.StatusOK, currentUser)
+		return
 	}
 
 	if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Update("department_id", dept.ID).Error; err != nil {
@@ -335,7 +361,18 @@ func UpdateMyDepartment(c *gin.Context) {
 		return
 	}
 
-	// Sync the updated user info
+	oldDeptName := "未分配"
+	if currentUser.Department != nil && currentUser.Department.Name != "" {
+		oldDeptName = currentUser.Department.Name
+	}
+	displayName := updatedUser.Name
+	if displayName == "" {
+		displayName = updatedUser.Email
+	}
+	commonAudit.SetAuditContext(c, "user", "sync_department", models.AuditLevelP2,
+		fmt.Sprintf("用户 [%s] 自动同步部门变更: %s -> %s", displayName, oldDeptName, dept.Name),
+		"user", fmt.Sprintf("%d", updatedUser.ID), displayName,
+		currentUser, updatedUser)
 
 	c.JSON(http.StatusOK, updatedUser)
 }

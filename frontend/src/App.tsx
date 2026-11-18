@@ -600,6 +600,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
   const loadUser = () => {
     const token = localStorage.getItem('code_shield_token');
     if (!token) {
+      sessionStorage.removeItem('dept_synced');
       setUser(null);
       setLoadingUser(false);
       return;
@@ -608,6 +609,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       .then(res => {
         if (res.status === 401) {
           localStorage.removeItem('code_shield_token');
+          sessionStorage.removeItem('dept_synced');
           return null;
         }
         return res.ok ? res.json() : null;
@@ -617,7 +619,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           setUser(data);
 
           const activeConfig = authConfigRef.current;
-          if (activeConfig?.dept_api_url && !data.department_id && !sessionStorage.getItem('dept_synced')) {
+          if (activeConfig?.dept_api_url && !sessionStorage.getItem('dept_synced')) {
             sessionStorage.setItem('dept_synced', 'true');
             console.log('[MainLayout] Syncing user department from api via proxy:', activeConfig.dept_api_url);
             portalFetch('/api/me/department-proxy')
@@ -632,9 +634,14 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
               })
               .then(deptData => {
                 if (!deptData) return;
-                const deptName = deptData?.data?.department;
-                if (deptName) {
-                  console.log('[MainLayout] Found department:', deptName, ', sending update to portal...');
+                const deptName = typeof deptData?.data?.department === 'string'
+                  ? deptData.data.department.trim()
+                  : '';
+                const currentDeptName = typeof data?.department?.name === 'string'
+                  ? data.department.name.trim()
+                  : '';
+                if (deptName && deptName !== currentDeptName) {
+                  console.log('[MainLayout] Department changed or missing:', currentDeptName || '(none)', '->', deptName, ', sending update to portal...');
                   portalFetch('/api/me/department', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
