@@ -6,6 +6,15 @@ import {
 } from 'lucide-react';
 import { MermaidDiagram } from '../components/MermaidDiagram';
 import { LatexFormula, renderLatexToHtml } from '../components/LatexFormula';
+import { fetchActiveModules } from '../utils/moduleLoader';
+import {
+  formatFrontmatterEntries,
+  isMountedModuleRoute,
+  normalizeModulePrefixes,
+  parseFrontmatter,
+  resolveMarkdownUrl,
+} from '../utils/frontmatter';
+import './DeveloperDocs.css';
 
 interface DocNode {
   id?: string;
@@ -77,6 +86,7 @@ export default function DeveloperDocs() {
   const [submittingReply, setSubmittingReply] = useState<boolean>(false);
 
   const [currentUser, setCurrentUser] = useState<UserInfo | null>(null);
+  const [mountedModulePrefixes, setMountedModulePrefixes] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Record<string, boolean>>({});
@@ -287,10 +297,13 @@ export default function DeveloperDocs() {
     return null;
   };
 
-  // Fetch document tree and current user on mount
+  // Fetch document tree, current user, and active mounted module prefixes on mount
   useEffect(() => {
     fetchTree();
     fetchCurrentUser();
+    fetchActiveModules().then((modules) => {
+      setMountedModulePrefixes(normalizeModulePrefixes(modules.map((m) => m.path)));
+    });
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -556,10 +569,17 @@ export default function DeveloperDocs() {
 
   const filteredTree = useMemo(() => filterTree(tree, searchQuery), [tree, searchQuery]);
 
-  // Extract Table of Contents from Markdown Content
+  // Strip optional YAML Frontmatter (D-02) before TOC extraction & Markdown rendering
+  const parsedDoc = useMemo(() => parseFrontmatter(docContent), [docContent]);
+  const frontmatterEntries = useMemo(
+    () => (parsedDoc.metadata ? formatFrontmatterEntries(parsedDoc.metadata) : []),
+    [parsedDoc.metadata]
+  );
+
+  // Extract Table of Contents from Frontmatter-stripped Markdown body
   const tocList = useMemo<TocItem[]>(() => {
-    if (!docContent) return [];
-    const lines = docContent.split(/\r\n?|\n/);
+    if (!parsedDoc.body) return [];
+    const lines = parsedDoc.body.split(/\r\n?|\n/);
     const items: TocItem[] = [];
 
     lines.forEach((line) => {
@@ -573,7 +593,7 @@ export default function DeveloperDocs() {
     });
 
     return items;
-  }, [docContent]);
+  }, [parsedDoc.body]);
 
   // Copy code to clipboard handler
   const handleCopyCode = (codeText: string, index: number) => {
@@ -1027,74 +1047,7 @@ export default function DeveloperDocs() {
     return elements;
   };
 
-  // Helper to resolve Markdown link URLs (external, anchor, download attachments, or relative/absolute doc paths)
-  const resolveMarkdownUrl = (url: string, baseDocPath: string): { href: string; isExternal: boolean; isDownload?: boolean } => {
-    const trimmed = url.trim();
-
-    // 1. External links
-    if (/^(https?:\/\/|mailto:|ftp:\/\/|\/\/)/i.test(trimmed)) {
-      return { href: trimmed, isExternal: true };
-    }
-
-    // 2. Anchor links (#section-id)
-    if (trimmed.startsWith('#')) {
-      return { href: trimmed, isExternal: false };
-    }
-
-    // 3. Raw API links (/api/docs/raw...)
-    if (trimmed.startsWith('/api/')) {
-      return { href: trimmed, isExternal: true, isDownload: true };
-    }
-
-    // 4. Absolute docs links (/docs/...)
-    if (trimmed.startsWith('/docs/')) {
-      return { href: trimmed, isExternal: false };
-    }
-
-    // 5. Relative or absolute document/file paths (e.g. ./01-规范/代码.md, ./files/template.xlsx)
-    let rawPath = trimmed;
-    let hash = '';
-    const hashIdx = rawPath.indexOf('#');
-    if (hashIdx !== -1) {
-      hash = rawPath.substring(hashIdx);
-      rawPath = rawPath.substring(0, hashIdx);
-    }
-
-    if (rawPath.startsWith('/')) {
-      rawPath = rawPath.substring(1);
-    } else if (baseDocPath) {
-      const dirParts = baseDocPath.split('/').slice(0, -1);
-      const targetParts = rawPath.split('/');
-
-      for (const part of targetParts) {
-        if (part === '.' || part === '') continue;
-        if (part === '..') {
-          if (dirParts.length > 0) dirParts.pop();
-        } else {
-          dirParts.push(part);
-        }
-      }
-      rawPath = dirParts.join('/');
-    }
-
-    // Check if path points to a non-markdown file (attachment / template download)
-    const ext = rawPath.includes('.') ? rawPath.substring(rawPath.lastIndexOf('.')).toLowerCase() : '';
-    const isDocFile = ext === '' || ext === '.md' || ext === '.markdown';
-
-    const encodedPath = rawPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
-
-    if (!isDocFile) {
-      return {
-        href: `/api/docs/raw?path=${encodedPath}`,
-        isExternal: true,
-        isDownload: true,
-      };
-    }
-
-    return { href: `/docs/${encodedPath}${hash}`, isExternal: false };
-  };
-
-  // Click delegation handler for Markdown links (smooth SPA route navigation & anchor scrolling)
+  // Click delegation handler for Markdown links (smooth SPA route navigation, mounted portal modules & anchor scrolling)
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const link = target.closest('a');
@@ -1117,7 +1070,7 @@ export default function DeveloperDocs() {
       return;
     }
 
-    if (href.startsWith('/docs/')) {
+    if (href.startsWith('/docs/') || isMountedModuleRoute(href, mountedModulePrefixes)) {
       e.preventDefault();
       navigate(href);
     }
@@ -1168,12 +1121,13 @@ export default function DeveloperDocs() {
         if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanUrl)) {
           cleanUrl = `mailto:${cleanUrl}`;
         }
-        const { href, isExternal, isDownload } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const { href, isExternal, isDownload, isPortalRoute } = resolveMarkdownUrl(cleanUrl, selectedPath, mountedModulePrefixes);
+        const safeHref = href.replace(/"/g, '&quot;');
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
         const downloadAttr = isDownload ? 'download' : '';
-        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : isPortalRoute ? 'doc-link portal-link' : 'doc-link internal-link';
         const icon = isDownload ? ' <span style="font-size: 0.8em; opacity: 0.8;">📥</span>' : isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
-        return `<a href="${href}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${displayTitle}${icon}</a>`;
+        return `<a href="${safeHref}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${displayTitle}${icon}</a>`;
       });
 
       // 2. Markdown Images ![ALT](URL)
@@ -1181,7 +1135,7 @@ export default function DeveloperDocs() {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
         let imageUrl = cleanUrl;
         if (!/^(https?:\/\/|data:|blob:|\/\/)/i.test(cleanUrl)) {
-          const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath);
+          const { href, isExternal } = resolveMarkdownUrl(cleanUrl, selectedPath, mountedModulePrefixes);
           if (!isExternal && href.startsWith('/docs/')) {
             const relDocPath = decodeURIComponent(href.substring(6));
             // Preserve slashes while encoding path segments for clean URL parameter
@@ -1191,18 +1145,20 @@ export default function DeveloperDocs() {
             imageUrl = href;
           }
         }
-        return `<img src="${imageUrl}" alt="${alt || ''}" title="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0.75rem 0; display: block; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);" />`;
+        const safeImgUrl = imageUrl.replace(/"/g, '&quot;');
+        return `<img src="${safeImgUrl}" alt="${alt || ''}" title="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0.75rem 0; display: block; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);" />`;
       });
 
       // 3. Markdown Links [TITLE](URL)
       subContent = subContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, title, rawUrl) => {
         const cleanUrl = rawUrl.trim().replace(/\s+"[^"]*"$/, '').replace(/\s+'[^']*'$/, '');
-        const { href, isExternal, isDownload } = resolveMarkdownUrl(cleanUrl, selectedPath);
+        const { href, isExternal, isDownload, isPortalRoute } = resolveMarkdownUrl(cleanUrl, selectedPath, mountedModulePrefixes);
+        const safeHref = href.replace(/"/g, '&quot;');
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
         const downloadAttr = isDownload ? 'download' : '';
-        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : 'doc-link internal-link';
+        const classAttr = isDownload ? 'doc-link download-link' : isExternal ? 'doc-link external-link' : isPortalRoute ? 'doc-link portal-link' : 'doc-link internal-link';
         const icon = isDownload ? ' <span style="font-size: 0.8em; opacity: 0.8;">📥</span>' : isExternal ? ' <span style="font-size: 0.75em; opacity: 0.7;">↗</span>' : '';
-        return `<a href="${href}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
+        return `<a href="${safeHref}" ${downloadAttr} ${targetAttr} class="${classAttr}" style="color: var(--primary-color, #3b82f6); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; transition: color 0.15s;">${title}${icon}</a>`;
       });
 
       return <span key={index} dangerouslySetInnerHTML={{ __html: subContent }} />;
@@ -1700,11 +1656,31 @@ export default function DeveloperDocs() {
                   <span>{docCommentCount} 条讨论</span>
                 </a>
               </div>
+
+              {frontmatterEntries.length > 0 && (
+                <div className="code-docs-frontmatter-bar" aria-label="文档元信息">
+                  {frontmatterEntries.map((entry) => (
+                    <div key={entry.key} className="code-docs-frontmatter-item">
+                      <span className="code-docs-frontmatter-label">{entry.label}</span>
+                      <span
+                        className={
+                          entry.monospace
+                            ? 'code-docs-frontmatter-value code-docs-frontmatter-value--mono'
+                            : 'code-docs-frontmatter-value'
+                        }
+                        title={entry.fullValue || entry.value}
+                      >
+                        {entry.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Document Body */}
             <div style={{ color: 'var(--text-color)' }} onClick={handleContentClick}>
-              {renderMarkdown(docContent)}
+              {renderMarkdown(parsedDoc.body)}
             </div>
 
             {/* Divider */}
