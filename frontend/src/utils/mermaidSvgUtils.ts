@@ -237,16 +237,43 @@ export function isDangerousUrl(urlValue: string): boolean {
 }
 
 /**
+ * 将 Mermaid 通过 HTML DOM 序列化出的非严格 XML 片段（如未自闭合的 <br>、<hr>、&nbsp;）
+ * 规范化为合法 XML 1.0，兼容 image/svg+xml 解析与独立 SVG/PNG 导出。
+ */
+export function normalizeSvgXml(svgMarkup: string): string {
+  return svgMarkup
+    .replace(/<(br|hr|img)(\s[^<>]*?)?>/gi, (match, tag: string, attrs?: string) => {
+      if (match.endsWith('/>')) {
+        return match;
+      }
+      const safeAttrs = attrs ? attrs.replace(/\s+$/, '') : '';
+      return `<${tag}${safeAttrs}/>`;
+    })
+    .replace(/&nbsp;/gi, '&#160;');
+}
+
+/**
  * 使用 DOMParser 安全解析 Mermaid SVG 并做纵深 XSS 净化，避免使用 innerHTML / dangerouslySetInnerHTML。
+ * 优先按 image/svg+xml 解析；若含 Mermaid foreignObject 中的其他 HTML5 语法导致 XML 解析失败，
+ * 自动回退至浏览器原生惰性 text/html 解析器（不执行脚本且完整保留 SVG/XHTML 命名空间）。
  */
 export function parseAndSanitizeSvg(svgMarkup: string): SVGSVGElement | null {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgMarkup, 'image/svg+xml');
-  if (doc.querySelector('parsererror')) {
-    return null;
+  const normalizedXml = normalizeSvgXml(svgMarkup);
+
+  let root: Element | null = null;
+  const xmlDoc = parser.parseFromString(normalizedXml, 'image/svg+xml');
+  if (
+    !xmlDoc.querySelector('parsererror') &&
+    xmlDoc.documentElement &&
+    xmlDoc.documentElement.tagName.toLowerCase() === 'svg'
+  ) {
+    root = xmlDoc.documentElement;
+  } else {
+    const htmlDoc = parser.parseFromString(svgMarkup, 'text/html');
+    root = htmlDoc.body.querySelector('svg') ?? htmlDoc.querySelector('svg');
   }
 
-  const root = doc.documentElement;
   if (!root || root.tagName.toLowerCase() !== 'svg') {
     return null;
   }
@@ -390,7 +417,7 @@ export function buildStandaloneSvg(
   }
   cloned.insertBefore(bgRect, insertBeforeNode);
 
-  const serialized = new XMLSerializer().serializeToString(cloned);
+  const serialized = normalizeSvgXml(new XMLSerializer().serializeToString(cloned));
   const svgString = `<?xml version="1.0" encoding="UTF-8"?>\n${serialized}`;
 
   return {

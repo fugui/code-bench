@@ -18,6 +18,7 @@ import {
   isDangerousAttrName,
   isDangerousUrl,
   encodeUtf8ToBase64,
+  normalizeSvgXml,
 } from '../src/utils/mermaidSvgUtils.ts';
 
 test('clampZoom 限制缩放区间并消除浮点漂移', () => {
@@ -186,3 +187,21 @@ test('encodeUtf8ToBase64 正确编码包含中文的 SVG 字符串', () => {
   const decoded = Buffer.from(encoded, 'base64').toString('utf8');
   assert.equal(decoded, svg);
 });
+
+test('normalizeSvgXml 将 HTML5 风格空标签与实体规范为合法 XML SVG', () => {
+  const mermaidHtmlSvg =
+    '<svg viewBox="0 0 800 400"><foreignObject width="200" height="80">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml"><p>pkg/crosrpc<br>24B 公共头<br class="x">V01&nbsp;&amp;&nbsp;V05<hr><br/><br /><br ></p></div>' +
+    '</foreignObject></svg>';
+
+  const normalized = normalizeSvgXml(mermaidHtmlSvg);
+  assert.ok(normalized.includes('<br/>24B 公共头'));
+  assert.ok(normalized.includes('<br class="x"/>V01'));
+  assert.ok(normalized.includes('<hr/>'));
+  assert.ok(normalized.includes('&#160;&amp;&#160;'));
+  assert.ok(normalized.includes('<br/><br /><br/>'));
+  // 已自闭合标签不被破坏为 <br//>
+  assert.ok(!normalized.includes('<br//>'));
+  assert.ok(!normalized.includes('&nbsp;'));
+});
+
