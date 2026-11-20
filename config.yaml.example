@@ -64,15 +64,15 @@ gateways:
 
 
   # 方式二：完整对象格式（支持自定义标题、图标、卡片描述与排序权重，推荐第三方/新模块接入使用）
-  # custom_module:
-  #   url: "http://192.168.1.100:8080"       # 模块基准服务地址（支持反向代理、API 透传与静态资源加载）
-  #   title: "业务运维监控"                   # 门户侧边栏一级菜单与工作台卡片展示标题
-  #   icon: "Activity"                       # Lucide 图标名称（如 Shield, Activity, Database, Box, Layers, Cpu 等）
-  #   description: "实时监控集群节点健康状态与指标" # 工作台首页卡片简介说明
-  #   order: 35                              # 侧边栏菜单排序权重（数值越小排序越靠前；内置模块默认：shield=10, pipeline=20, pdm=30, gate=40, proto=50）
-  #   default_pinned: true                   # 是否默认钉选至左侧常用栏（新用户或未设定偏好时生效，默认 false）
+  # archdoc:
+  #   url: "http://127.0.0.1:8100"             # 代码设计文档反推子系统地址（同机部署建议配合 docs.path 符号链接挂载 publish_dir）
+  #   title: "代码设计文档反推"                 # 门户侧边栏一级菜单与工作台卡片展示标题
+  #   icon: "ScrollText"                       # Lucide 图标名称
+  #   description: "基于代码唯一事实源的反推架构文档与漂移治理工作台"
+  #   order: 35                                # 侧边栏菜单排序权重（数值越小排序越靠前；内置模块默认：shield=10, pipeline=20, pdm=30, gate=40, proto=50）
+  #   default_pinned: true                     # 是否默认钉选至左侧常用栏（新用户或未设定偏好时生效，默认 false）
 
 # ── 团队开发指导文档规范仓库配置 ──
 docs:
-  path: "./docs"                             # 本地面向开发人员的 Markdown 指导文档仓库路径
+  path: "./docs"                             # 本地面向开发人员的 Markdown 指导文档仓库路径（支持符号链接挂载子系统发布目录，如 ln -s <archdoc_publish_dir> ./docs/archdoc）
   uploads_path: "./uploads"                  # 用户上传文件存储根目录（建议配置在应用仓库外的持久化目录）
