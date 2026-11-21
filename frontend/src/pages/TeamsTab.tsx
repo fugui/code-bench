@@ -138,16 +138,16 @@ function TeamsTab() {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button className="btn" onClick={openAdd}>新增部门</button>
+          <button className="btn btn-primary" onClick={openAdd}>新增部门</button>
           <button 
-            className="btn" 
+            className="btn btn-success" 
             style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
             onClick={() => fileInputRef.current?.click()}
           >
             批量导入
           </button>
           <button 
-            className="btn" 
+            className="btn btn-success" 
             style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: 'white' }}
             onClick={() => {
               repoFetch('/api/departments/export')
@@ -189,7 +189,7 @@ function TeamsTab() {
                 title="暂未录入任何部门"
                 description="部门用于组织管理代码仓、架构节点与成员权限。"
                 action={
-                  <button className="btn" onClick={openAdd} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+                  <button className="btn btn-primary" onClick={openAdd} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
                     新增部门
                   </button>
                 }
@@ -203,8 +203,8 @@ function TeamsTab() {
                 <td>{t.repo_count || 0} 个</td>
                 <td>{t.leader ? `${t.leader.name} (${t.leader.employee_id || t.leader.id})` : t.leader_id || <span style={{ color: '#aaa' }}>未配置</span>}</td>
                 <td style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn" onClick={() => openEdit(t)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>编辑</button>
-                  <button className="btn" onClick={() => handleDelete(t.id, t.name)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
+                  <button className="btn btn-primary" onClick={() => openEdit(t)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>编辑</button>
+                  <button className="btn btn-outline" onClick={() => handleDelete(t.id, t.name)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
                 </td>
               </tr>
             ))}

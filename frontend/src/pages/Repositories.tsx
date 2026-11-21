@@ -576,7 +576,7 @@ function Repositories() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="btn"
+              className="btn btn-primary"
               style={{
                 padding: '0.625rem 1.5rem',
                 fontSize: '0.875rem',

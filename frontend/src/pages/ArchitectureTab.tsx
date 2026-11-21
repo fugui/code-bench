@@ -552,7 +552,7 @@ function ArchitectureTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-color)' }}>架构元素数</h3>
           <button 
-            className="btn" 
+            className="btn btn-primary" 
             onClick={() => openAdd(null, 'subsystem')}
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
@@ -626,10 +626,10 @@ function ArchitectureTab() {
                   {getTypeBadge(selectedNode.type)}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn" onClick={() => openEdit(selectedNode)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button className="btn btn-primary" onClick={() => openEdit(selectedNode)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Edit size={14} /> 编辑属性
                   </button>
-                  <button className="btn" onClick={() => handleDelete(selectedNode.id, selectedNode.name_cn)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button className="btn btn-outline" onClick={() => handleDelete(selectedNode.id, selectedNode.name_cn)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Trash2 size={14} /> 删除节点
                   </button>
                 </div>
@@ -686,7 +686,7 @@ function ArchitectureTab() {
                     下级架构元素 ({directChildren.length})
                   </h4>
                   <button 
-                    className="btn" 
+                    className="btn btn-primary" 
                     onClick={() => openAdd(selectedNode.id)}
                     style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                   >
@@ -736,8 +736,8 @@ function ArchitectureTab() {
                             </td>
                             <td>
                               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button className="btn" onClick={() => openEdit(child)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>编辑</button>
-                                <button className="btn" onClick={() => handleDelete(child.id, child.name_cn)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
+                                <button className="btn btn-primary" onClick={() => openEdit(child)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>编辑</button>
+                                <button className="btn btn-outline" onClick={() => handleDelete(child.id, child.name_cn)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
                               </div>
                             </td>
                           </tr>
@@ -760,7 +760,7 @@ function ArchitectureTab() {
                 软件架构由子系统、功能组和功能模块构成，您可以通过层级树快速梳理软件体系，并绑定代码仓和责任人。
               </p>
             </div>
-            <button className="btn" onClick={() => openAdd(null, 'subsystem')} style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
+            <button className="btn btn-primary" onClick={() => openAdd(null, 'subsystem')} style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
               新增顶层子系统
             </button>
           </div>
@@ -777,7 +777,7 @@ function ArchitectureTab() {
         footer={
           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
             <button type="button" onClick={() => setDrawerMode(null)} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'var(--bg-color, white)', color: 'var(--text-color, #64748b)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
-            <button type="button" onClick={handleFormSubmit} className="btn" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
+            <button type="button" onClick={handleFormSubmit} className="btn btn-primary" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
               {drawerMode === 'edit' ? '保存修改' : '确认新增'}
             </button>
           </div>
