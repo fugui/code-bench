@@ -4,7 +4,8 @@ import {
   BookOpen, Folder, FolderOpen, FileText, Search, ChevronRight, ChevronDown, Clock, Copy, Check, AlertTriangle, FileQuestion,
   Eye, MessageSquare, Send, CornerDownRight, Trash2, User as UserIcon, MessageCircle, Share2, RefreshCw
 } from 'lucide-react';
-import { MermaidDiagram } from '../components/MermaidDiagram';
+import mermaid from 'mermaid';
+import { MermaidDiagram } from '@code/common/mermaid';
 import { LatexFormula, renderLatexToHtml } from '../components/LatexFormula';
 import { fetchActiveModules } from '../utils/moduleLoader';
 import {
@@ -741,6 +742,7 @@ export default function DeveloperDocs() {
             <MermaidDiagram
               key={`mermaid-${i}`}
               chart={codeText}
+              mermaid={mermaid}
               isLightTheme={isLightTheme}
             />
           );
