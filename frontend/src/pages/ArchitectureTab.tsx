@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '../components/Toast';
 import { Drawer, useConfirm } from '@code/common';
 import MemberSearchSelect from '../components/MemberSearchSelect';
-
+import './ArchitectureTab.css';
 
 import { AUTH_TOKEN_KEY } from '../config';
 import { 
@@ -20,26 +20,6 @@ import {
   GitBranch,
   BookOpen
 } from 'lucide-react';
-
-const inputStyle: React.CSSProperties = { 
-  width: '100%', 
-  padding: '0.625rem 0.75rem', 
-  borderRadius: '6px', 
-  border: '1px solid var(--border-color)', 
-  background: 'var(--bg-color)', 
-  color: 'var(--text-color)', 
-  boxSizing: 'border-box', 
-  fontSize: '0.875rem', 
-  transition: 'border-color 0.2s',
-  outline: 'none'
-};
-const labelStyle: React.CSSProperties = { 
-  display: 'block', 
-  marginBottom: '0.375rem', 
-  fontSize: '0.8rem', 
-  color: '#64748b', 
-  fontWeight: 500 
-};
 
 interface User {
   id: number;
@@ -349,13 +329,13 @@ function ArchitectureTab() {
   const getNodeIcon = (type: 'subsystem' | 'group' | 'module', isExpanded?: boolean) => {
     switch (type) {
       case 'subsystem':
-        return <Cpu size={16} className="text-primary-color" style={{ color: 'var(--primary-color)' }} />;
+        return <Cpu size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />;
       case 'group':
-        return isExpanded 
-          ? <FolderOpen size={16} style={{ color: '#eab308' }} /> 
-          : <Folder size={16} style={{ color: '#eab308' }} />;
+        return isExpanded
+          ? <FolderOpen size={16} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+          : <Folder size={16} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />;
       case 'module':
-        return <FileCode size={16} style={{ color: '#10b981' }} />;
+        return <FileCode size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} />;
       default:
         return null;
     }
@@ -365,11 +345,11 @@ function ArchitectureTab() {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'subsystem':
-        return <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)' }}>子系统</span>;
+        return <span className="code-badge code-badge--primary">子系统</span>;
       case 'group':
-        return <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(234, 179, 8, 0.1)', color: '#eab308' }}>功能组</span>;
+        return <span className="code-badge code-badge--warning">功能组</span>;
       case 'module':
-        return <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>功能模块</span>;
+        return <span className="code-badge code-badge--success">功能模块</span>;
       default:
         return null;
     }
@@ -402,101 +382,58 @@ function ArchitectureTab() {
 
     return (
       <div key={node.id} style={{ display: 'flex', flexDirection: 'column' }}>
-        <div 
+        <div
           onClick={() => selectNode(node)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            paddingLeft: `${depth * 1.25 + 0.75}rem`,
-            borderRadius: '6px',
-            cursor: 'pointer',
-            background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
-            transition: 'background 0.2s',
-            userSelect: 'none',
-            justifyContent: 'space-between',
-            position: 'relative'
-          }}
-          onMouseEnter={e => {
-            if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--bg-color)';
-            const hoverMenu = e.currentTarget.querySelector('.hover-actions') as HTMLElement;
-            if (hoverMenu) hoverMenu.style.opacity = '1';
-          }}
-          onMouseLeave={e => {
-            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-            const hoverMenu = e.currentTarget.querySelector('.hover-actions') as HTMLElement;
-            if (hoverMenu) hoverMenu.style.opacity = '0';
-          }}
+          className={`code-arch-tree-node${isSelected ? ' code-arch-tree-node--selected' : ''}`}
+          style={{ paddingLeft: `${depth * 1.25 + 0.75}rem` }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
             {/* Collapse indicator */}
-            <span 
+            <span
               onClick={(e) => toggleExpand(node.id, e)}
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                width: '18px', 
-                height: '18px', 
-                color: '#64748b',
-                cursor: 'pointer',
-                opacity: hasChildren ? 1 : 0,
-                pointerEvents: hasChildren ? 'auto' : 'none'
-              }}
+              className={`code-arch-tree-toggle${hasChildren ? '' : ' code-arch-tree-toggle--hidden'}`}
             >
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
 
             {getNodeIcon(node.type, isExpanded)}
-            
-            <span style={{ 
-              fontSize: '0.875rem', 
-              color: 'var(--text-color)', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap',
-              fontWeight: isSelected ? 600 : 500
-            }}>
+
+            <span
+              className="code-arch-tree-label"
+              title={`${node.name_cn} [${node.identifier}]`}
+            >
               {node.name_cn}
-              <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.3rem', fontFamily: 'monospace' }}>
+              <span className="code-arch-tree-identifier">
                 [{node.identifier}]
               </span>
             </span>
           </div>
 
           {/* Quick actions shown on hover */}
-          <div 
-            className="hover-actions" 
-            style={{ 
-              display: 'flex', 
-              gap: '0.3rem', 
-              opacity: 0, 
-              transition: 'opacity 0.2s',
-              background: isSelected ? 'rgba(30, 41, 59, 0.95)' : 'var(--card-bg)',
-              paddingLeft: '0.5rem',
-              borderRadius: '4px'
-            }}
-          >
+          <div className="code-arch-tree-actions">
             {node.type !== 'module' && (
-              <button 
-                title="新增子节点" 
-                onClick={(e) => { e.stopPropagation(); openAdd(node.id); }} 
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', padding: '0.2rem' }}
+              <button
+                type="button"
+                title="新增子节点"
+                onClick={(e) => { e.stopPropagation(); openAdd(node.id); }}
+                className="code-arch-tree-action-btn code-arch-tree-action-btn--add"
               >
                 <Plus size={14} />
               </button>
             )}
-            <button 
-              title="编辑" 
-              onClick={(e) => { e.stopPropagation(); openEdit(node); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#eab308', display: 'flex', alignItems: 'center', padding: '0.2rem' }}
+            <button
+              type="button"
+              title="编辑"
+              onClick={(e) => { e.stopPropagation(); openEdit(node); }}
+              className="code-arch-tree-action-btn code-arch-tree-action-btn--edit"
             >
               <Edit size={14} />
             </button>
-            <button 
-              title="删除" 
-              onClick={(e) => { e.stopPropagation(); handleDelete(node.id, node.name_cn); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger-color)', display: 'flex', alignItems: 'center', padding: '0.2rem' }}
+            <button
+              type="button"
+              title="删除"
+              onClick={(e) => { e.stopPropagation(); handleDelete(node.id, node.name_cn); }}
+              className="code-arch-tree-action-btn code-arch-tree-action-btn--delete"
             >
               <Trash2 size={14} />
             </button>
@@ -545,14 +482,15 @@ function ArchitectureTab() {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '1.5rem', minHeight: '600px', background: 'var(--card-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
+    <div style={{ display: 'flex', gap: '1.5rem', minHeight: '600px', background: 'var(--color-bg-surface)', borderRadius: '12px', border: '1px solid var(--color-border-primary)', padding: '1.25rem' }}>
       
       {/* LEFT: Arch tree panel */}
-      <div style={{ width: '300px', borderRight: '1px solid var(--border-color)', paddingRight: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
+      <div style={{ width: '300px', borderRight: '1px solid var(--color-border-primary)', paddingRight: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-color)' }}>架构元素数</h3>
-          <button 
-            className="btn btn-primary" 
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>架构元素数</h3>
+          <button
+            type="button"
+            className="btn btn-primary"
             onClick={() => openAdd(null, 'subsystem')}
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
@@ -562,30 +500,20 @@ function ArchitectureTab() {
 
         {/* Search Input */}
         <div style={{ position: 'relative' }}>
-          <input 
-            type="text" 
-            placeholder="搜索架构元素..." 
+          <input
+            type="text"
+            placeholder="搜索架构元素..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '0.5rem 0.5rem 0.5rem 2rem', 
-              borderRadius: '6px', 
-              border: '1px solid var(--border-color)', 
-              background: 'var(--bg-color)', 
-              color: 'var(--text-color)', 
-              boxSizing: 'border-box', 
-              fontSize: '0.8rem',
-              outline: 'none'
-            }}
+            className="code-input code-arch-search-input"
           />
-          <Search size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+          <Search size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
         </div>
 
         {/* Tree Render area */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.2rem', maxHeight: '550px' }}>
           {treeData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.85rem' }}>暂无架构数据</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>暂无架构数据</div>
           ) : (
             treeData.map(root => renderTreeNode(root))
           )}
@@ -596,14 +524,14 @@ function ArchitectureTab() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
         
         {/* Breadcrumb path */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#64748b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
           <span style={{ fontWeight: 500 }}>架构根节点</span>
           {breadcrumbs.map(crumb => (
             <React.Fragment key={crumb.id}>
               <span>/</span>
-              <span 
+              <span
                 onClick={() => selectNode(crumb)}
-                style={{ cursor: 'pointer', color: selectedNode?.id === crumb.id ? 'var(--primary-color)' : '#64748b', fontWeight: selectedNode?.id === crumb.id ? 600 : 400 }}
+                style={{ cursor: 'pointer', color: selectedNode?.id === crumb.id ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: selectedNode?.id === crumb.id ? 600 : 400 }}
               >
                 {crumb.name_cn}
               </span>
@@ -614,22 +542,22 @@ function ArchitectureTab() {
         {selectedNode ? (
           <>
             {/* Card: Details view */}
-            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-color)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-bg-app)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-primary)', paddingBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                     {selectedNode.name_cn}
                   </span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                  <span className="code-arch-identifier-tag">
                     {selectedNode.identifier}
                   </span>
                   {getTypeBadge(selectedNode.type)}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-primary" onClick={() => openEdit(selectedNode)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => openEdit(selectedNode)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Edit size={14} /> 编辑属性
                   </button>
-                  <button className="btn btn-outline" onClick={() => handleDelete(selectedNode.id, selectedNode.name_cn)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button type="button" className="btn btn-outline code-arch-danger-outline-btn" onClick={() => handleDelete(selectedNode.id, selectedNode.name_cn)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Trash2 size={14} /> 删除节点
                   </button>
                 </div>
@@ -638,41 +566,41 @@ function ArchitectureTab() {
               {/* Grid: Properties */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>中文名称</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 500 }}>{selectedNode.name_cn}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>中文名称</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>{selectedNode.name_cn}</span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>英文名称</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 500 }}>{selectedNode.name_en || '-'}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>英文名称</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>{selectedNode.name_en || '-'}</span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>责任人</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <User size={14} style={{ color: '#64748b' }} />
-                    {selectedNode.owner ? `${selectedNode.owner.name} (${selectedNode.owner.employee_id || selectedNode.owner.id})` : <span style={{ color: '#64748b', fontStyle: 'italic' }}>未分配</span>}
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>责任人</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <User size={14} style={{ color: 'var(--color-text-muted)' }} />
+                    {selectedNode.owner ? `${selectedNode.owner.name} (${selectedNode.owner.employee_id || selectedNode.owner.id})` : <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>未分配</span>}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>关联代码仓</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <GitBranch size={14} style={{ color: '#64748b' }} />
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>关联代码仓</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <GitBranch size={14} style={{ color: 'var(--color-text-muted)' }} />
                     {selectedNode.repo ? (
-                      <a href={selectedNode.repo.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'none' }} onMouseEnter={e => e.currentTarget.style.textDecoration='underline'} onMouseLeave={e => e.currentTarget.style.textDecoration='none'}>
+                      <a href={selectedNode.repo.url} target="_blank" rel="noopener noreferrer" className="code-arch-link">
                         {selectedNode.repo.name}
                       </a>
-                    ) : <span style={{ color: '#64748b', fontStyle: 'italic' }}>无</span>}
+                    ) : <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>无</span>}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>子目录路径</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 500, fontFamily: 'monospace' }}>
-                    {selectedNode.subdirectory ? selectedNode.subdirectory : <span style={{ color: '#64748b', fontStyle: 'italic' }}>无</span>}
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>子目录路径</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 500, fontFamily: 'var(--font-family-mono, monospace)' }}>
+                    {selectedNode.subdirectory ? selectedNode.subdirectory : <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>无</span>}
                   </span>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>功能描述</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-color)', display: 'block', lineHeight: 1.5 }}>
-                    {selectedNode.description || <span style={{ color: '#64748b', fontStyle: 'italic' }}>暂无描述</span>}
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.25rem' }}>功能描述</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', display: 'block', lineHeight: 1.5 }}>
+                    {selectedNode.description || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>暂无描述</span>}
                   </span>
                 </div>
               </div>
@@ -682,11 +610,12 @@ function ArchitectureTab() {
             {selectedNode.type !== 'module' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     下级架构元素 ({directChildren.length})
                   </h4>
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    type="button"
+                    className="btn btn-primary"
                     onClick={() => openAdd(selectedNode.id)}
                     style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                   >
@@ -709,20 +638,18 @@ function ArchitectureTab() {
                     <tbody>
                       {directChildren.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                             该架构下暂无子级元素
                           </td>
                         </tr>
                       ) : (
                         directChildren.map(child => (
                           <tr key={child.id}>
-                            <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{child.identifier}</td>
+                            <td style={{ fontFamily: 'var(--font-family-mono, monospace)', fontWeight: 600 }}>{child.identifier}</td>
                             <td>
-                              <span 
+                              <span
                                 onClick={() => selectNode(child)}
-                                style={{ color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 500 }}
-                                onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                                onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                                className="code-arch-link"
                               >
                                 {child.name_cn}
                               </span>
@@ -731,13 +658,13 @@ function ArchitectureTab() {
                             <td>{getTypeBadge(child.type)}</td>
                             <td>
                               {child.owner ? (
-                                <span>{child.owner.name} <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({child.owner.employee_id || child.owner.id})</span></span>
+                                <span>{child.owner.name} <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>({child.owner.employee_id || child.owner.id})</span></span>
                               ) : '-'}
                             </td>
                             <td>
                               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button className="btn btn-primary" onClick={() => openEdit(child)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>编辑</button>
-                                <button className="btn btn-outline" onClick={() => handleDelete(child.id, child.name_cn)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', background: 'transparent', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>删除</button>
+                                <button type="button" className="btn btn-primary" onClick={() => openEdit(child)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>编辑</button>
+                                <button type="button" className="btn btn-outline code-arch-danger-outline-btn" onClick={() => handleDelete(child.id, child.name_cn)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>删除</button>
                               </div>
                             </td>
                           </tr>
@@ -750,17 +677,17 @@ function ArchitectureTab() {
             )}
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', color: '#64748b', gap: '1.25rem', background: 'var(--bg-color)', borderRadius: '12px' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.08)', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', color: 'var(--color-text-muted)', gap: '1.25rem', background: 'var(--color-bg-app)', borderRadius: '12px' }}>
+            <div className="code-arch-empty-icon">
               <BookOpen size={28} />
             </div>
             <div style={{ textAlign: 'center' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-color)', fontSize: '1.05rem', fontWeight: 600 }}>请在左侧选择或创建一个架构元素</h4>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', maxWidth: '360px', lineHeight: 1.5 }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-primary)', fontSize: '1.05rem', fontWeight: 600 }}>请在左侧选择或创建一个架构元素</h4>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', maxWidth: '360px', lineHeight: 1.5 }}>
                 软件架构由子系统、功能组和功能模块构成，您可以通过层级树快速梳理软件体系，并绑定代码仓和责任人。
               </p>
             </div>
-            <button className="btn btn-primary" onClick={() => openAdd(null, 'subsystem')} style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
+            <button type="button" className="btn btn-primary" onClick={() => openAdd(null, 'subsystem')} style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
               新增顶层子系统
             </button>
           </div>
@@ -771,42 +698,41 @@ function ArchitectureTab() {
       <Drawer
         open={!!drawerMode}
         onClose={() => setDrawerMode(null)}
-
         title={drawerMode === 'edit' ? '编辑架构元素' : '新增架构元素'}
         width="xl"
         footer={
           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
-            <button type="button" onClick={() => setDrawerMode(null)} style={{ flex: 1, padding: '0.625rem', border: '1px solid var(--border-color)', background: 'var(--bg-color, white)', color: 'var(--text-color, #64748b)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>取消</button>
+            <button type="button" onClick={() => setDrawerMode(null)} className="btn btn-secondary" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>取消</button>
             <button type="button" onClick={handleFormSubmit} className="btn btn-primary" style={{ flex: 1, padding: '0.625rem', fontSize: '0.875rem' }}>
               {drawerMode === 'edit' ? '保存修改' : '确认新增'}
             </button>
           </div>
         }
       >
-        <form 
-          onSubmit={handleFormSubmit} 
+        <form
+          onSubmit={handleFormSubmit}
           style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem 1.5rem' }}>
             <div>
-              <label style={labelStyle}>标识名称 (Identifier)</label>
-              <input 
-                required 
-                type="text" 
-                placeholder="例如: SEC, AUTH, API (只允许大写字母、数字、连字符、下划线)" 
-                value={formData.identifier} 
-                onChange={e => setFormData({ ...formData, identifier: e.target.value })} 
-                style={inputStyle} 
+              <label className="code-arch-field-label">标识名称 (Identifier)</label>
+              <input
+                required
+                type="text"
+                placeholder="例如: SEC, AUTH, API (只允许大写字母、数字、连字符、下划线)"
+                value={formData.identifier}
+                onChange={e => setFormData({ ...formData, identifier: e.target.value })}
+                className="code-input w-full"
               />
             </div>
 
             <div>
-              <label style={labelStyle}>节点类型 (Node Type)</label>
-              <select 
-                required 
-                value={formData.type} 
-                onChange={e => setFormData({ ...formData, type: e.target.value as 'subsystem' | 'group' | 'module' })} 
-                style={inputStyle}
+              <label className="code-arch-field-label">节点类型 (Node Type)</label>
+              <select
+                required
+                value={formData.type}
+                onChange={e => setFormData({ ...formData, type: e.target.value as 'subsystem' | 'group' | 'module' })}
+                className="code-select w-full"
                 disabled={formData.parent_id === '' && drawerMode === 'add'} // Root must be subsystem
               >
                 <option value="subsystem">子系统 (Subsystem)</option>
@@ -816,35 +742,35 @@ function ArchitectureTab() {
             </div>
 
             <div>
-              <label style={labelStyle}>中文名称 (Chinese Name)</label>
-              <input 
-                required 
-                type="text" 
-                placeholder="例如: 安全管理" 
-                value={formData.name_cn} 
-                onChange={e => setFormData({ ...formData, name_cn: e.target.value })} 
-                style={inputStyle} 
+              <label className="code-arch-field-label">中文名称 (Chinese Name)</label>
+              <input
+                required
+                type="text"
+                placeholder="例如: 安全管理"
+                value={formData.name_cn}
+                onChange={e => setFormData({ ...formData, name_cn: e.target.value })}
+                className="code-input w-full"
               />
             </div>
 
             <div>
-              <label style={labelStyle}>英文名称 (English Name)</label>
-              <input 
-                required 
-                type="text" 
-                placeholder="例如: Security Management" 
-                value={formData.name_en} 
-                onChange={e => setFormData({ ...formData, name_en: e.target.value })} 
-                style={inputStyle} 
+              <label className="code-arch-field-label">英文名称 (English Name)</label>
+              <input
+                required
+                type="text"
+                placeholder="例如: Security Management"
+                value={formData.name_en}
+                onChange={e => setFormData({ ...formData, name_en: e.target.value })}
+                className="code-input w-full"
               />
             </div>
 
             <div>
-              <label style={labelStyle}>父级架构元素 (Parent Node)</label>
-              <select 
-                value={formData.parent_id} 
-                onChange={e => setFormData({ ...formData, parent_id: e.target.value ? Number(e.target.value) : '' })} 
-                style={inputStyle}
+              <label className="code-arch-field-label">父级架构元素 (Parent Node)</label>
+              <select
+                value={formData.parent_id}
+                onChange={e => setFormData({ ...formData, parent_id: e.target.value ? Number(e.target.value) : '' })}
+                className="code-select w-full"
                 disabled={formData.type === 'subsystem' && drawerMode === 'add'} // Subsystems at root suggestion
               >
                 <option value="">-- 无 (设置为顶级节点) --</option>
@@ -857,47 +783,48 @@ function ArchitectureTab() {
             </div>
 
             <div>
-              <label style={labelStyle}>责任人 (Owner)</label>
-              <MemberSearchSelect 
-                value={formData.owner_id} 
-                onChange={id => setFormData({ ...formData, owner_id: id || '' })} 
+              <label className="code-arch-field-label">责任人 (Owner)</label>
+              <MemberSearchSelect
+                value={formData.owner_id}
+                onChange={id => setFormData({ ...formData, owner_id: id || '' })}
               />
             </div>
 
             <div>
-              <label style={labelStyle}>关联代码仓 (Linked Repo)</label>
-              <select 
-                value={formData.repo_id} 
-                onChange={e => setFormData({ ...formData, repo_id: e.target.value ? Number(e.target.value) : '' })} 
-                style={inputStyle}
+              <label className="code-arch-field-label">关联代码仓 (Linked Repo)</label>
+              <select
+                value={formData.repo_id}
+                onChange={e => setFormData({ ...formData, repo_id: e.target.value ? Number(e.target.value) : '' })}
+                className="code-select w-full"
               >
                 <option value="">-- 不关联代码仓 --</option>
                 {repos.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
-              ))}
+                ))}
               </select>
             </div>
 
             <div>
-              <label style={labelStyle}>子目录路径 (Subdirectory Path)</label>
-              <input 
-                type="text" 
-                placeholder="例如: src/components/security (代码仓内子路径, 选填)" 
-                value={formData.subdirectory} 
-                onChange={e => setFormData({ ...formData, subdirectory: e.target.value })} 
-                style={inputStyle} 
+              <label className="code-arch-field-label">子目录路径 (Subdirectory Path)</label>
+              <input
+                type="text"
+                placeholder="例如: src/components/security (代码仓内子路径, 选填)"
+                value={formData.subdirectory}
+                onChange={e => setFormData({ ...formData, subdirectory: e.target.value })}
+                className="code-input w-full"
               />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
-              <label style={labelStyle}>功能描述 (Description)</label>
-              <textarea 
-                placeholder="输入此架构元素的详细描述..." 
-                value={formData.description} 
-                onChange={e => setFormData({ ...formData, description: e.target.value })} 
-                style={{ ...inputStyle, height: '80px', resize: 'vertical' }} 
+              <label className="code-arch-field-label">功能描述 (Description)</label>
+              <textarea
+                placeholder="输入此架构元素的详细描述..."
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                className="code-textarea w-full"
+                style={{ height: '80px', resize: 'vertical' }}
               />
             </div>
           </div>
