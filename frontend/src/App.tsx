@@ -1092,9 +1092,9 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           alignItems: 'center', 
           padding: '0 2.5rem', 
           justifyContent: 'space-between', 
-          zIndex: 'var(--z-index-header, 1100)' as any,
-          position: 'sticky',
-          top: 0
+          zIndex: 'var(--z-index-header, 200)' as unknown as number,
+          position: 'relative',
+          flexShrink: 0
         }}>
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600, color: 'var(--text-color)' }}>
             {(() => {
@@ -1186,8 +1186,6 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
 
         <main className="portal-content" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)', position: 'relative' }}>
           {children}
-          {/* 微前端工作区抽屉专用挂载锚点 */}
-          <div id="portal-workspace-overlay-root" />
         </main>
       </div>
     </div>

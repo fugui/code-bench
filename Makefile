@@ -50,6 +50,7 @@ dev: $(NODE_MODULES)
 lint: $(NODE_MODULES)
 	@echo "Running linter..."
 	cd $(FRONTEND_DIR) && ( [ -f node_modules/.bin/eslint ] && ./node_modules/.bin/eslint . || [ -f node_modules/.bin/tsc ] && ./node_modules/.bin/tsc --noEmit || true )
+	node ../code-common/scripts/check-overlay-guard.mjs $(FRONTEND_DIR)/src
 
 # 启动本地生产预览
 preview: $(DIST_DIR)

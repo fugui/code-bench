@@ -208,7 +208,7 @@ body {
   box-shadow: var(--shadow-lg);
   border-radius: var(--radius-md, 8px);
   padding: 0.55rem 0.8rem;
-  z-index: 9999;
+  z-index: var(--z-index-toast, 2000);
   pointer-events: none;
   max-width: 380px;
   word-break: break-word;
