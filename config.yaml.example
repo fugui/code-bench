@@ -71,6 +71,13 @@ gateways:
   #   description: "基于代码唯一事实源的反推架构文档与漂移治理工作台"
   #   order: 35                                # 侧边栏菜单排序权重（数值越小排序越靠前；内置模块默认：shield=10, pipeline=20, pdm=30, gate=40, proto=50）
   #   default_pinned: true                     # 是否默认钉选至左侧常用栏（新用户或未设定偏好时生效，默认 false）
+  # markdocx:
+  #   url: "http://127.0.0.1:8105"             # Word (.docx) 转 Markdown & UML 转 Mermaid 无状态工具子系统
+  #   title: "Word 转 Markdown"
+  #   icon: "FileCode2"
+  #   description: "将 .docx 架构文档与 UML 图智能转换为合规 Markdown 与 Mermaid 图表"
+  #   order: 37
+  #   default_pinned: true
 
 # ── 团队开发指导文档规范仓库配置 ──
 docs:
