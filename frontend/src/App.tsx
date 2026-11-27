@@ -913,9 +913,9 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
         pinnedKeys,
         togglePin,
       }}>
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-color)', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
         {/* Sidebar */}
-        <aside style={{ width: '280px', background: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
+        <aside style={{ width: '280px', flexShrink: 0, background: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
           <div style={{ height: '80px', padding: '0 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '1.25rem', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}>
               CB
@@ -1082,7 +1082,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
       </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{ 
           height: '80px',
           minHeight: '80px', 
@@ -1184,7 +1184,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           </div>
         </header>
 
-        <main className="portal-content" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-color)', position: 'relative' }}>
+        <main className="portal-content" style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--bg-color)', position: 'relative' }}>
           {children}
         </main>
       </div>
