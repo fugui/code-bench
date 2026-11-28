@@ -30,6 +30,14 @@ body {
   overflow-x: hidden;
 }
 
+.portal-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg-color);
+  position: relative;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

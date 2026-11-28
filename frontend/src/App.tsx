@@ -1184,7 +1184,7 @@ function MainLayout({ children, modules }: { children: React.ReactNode; modules:
           </div>
         </header>
 
-        <main className="portal-content" style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--bg-color)', position: 'relative' }}>
+        <main className="portal-content">
           {children}
         </main>
       </div>
